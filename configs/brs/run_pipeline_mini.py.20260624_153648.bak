@@ -1,0 +1,257 @@
+import argparse
+
+import m5
+from m5.objects import *
+from m5.objects import PipelineMiniCPU
+from m5.util.convert import toMemorySize
+
+
+parser = argparse.ArgumentParser(
+    description="Run BRS PipelineMiniCPU with selectable gem5 memory platform."
+)
+parser.add_argument("--binary", default="", help="Path to RISC-V ELF binary")
+parser.add_argument("--program-file", default="", help="Path to instruction hex file")
+parser.add_argument("--max-cycles", type=int, default=200)
+parser.add_argument("--mem-size", default="64MiB")
+parser.add_argument(
+    "--mem-system",
+    choices=["ddr3", "simple", "split", "spirit-like"],
+    default="ddr3",
+    help="Memory platform: original DDR3, single fixed-latency SimpleMemory, split IMEM/DMEM SimpleMemory, or Spirit-like separated IMEM/DMEM.",
+)
+parser.add_argument(
+    "--mem-latency",
+    default="1ns",
+    help="Fixed latency for simple memory modes. At 1GHz, 1ns is one CPU cycle.",
+)
+parser.add_argument("--imem-latency", default="", help="Override IMEM latency in split mode")
+parser.add_argument("--dmem-latency", default="", help="Override DMEM latency in split mode")
+parser.add_argument(
+    "--imem-image",
+    default="",
+    help="Raw instruction memory image for spirit-like IMEM SimpleMemory initialization.",
+)
+parser.add_argument(
+    "--dmem-image",
+    default="",
+    help="Optional raw image to initialize DMEM. In split mode it defaults to --binary when provided; in spirit-like mode it is used only when explicitly set.",
+)
+parser.add_argument(
+    "--dmem-hex",
+    default="",
+    help="Spirit-style text hex file to initialize spirit-like DMEM (byte granularity, each hex token = 1 byte). Loaded by CPU via functional port.",
+)
+parser.add_argument(
+    "--imem-base",
+    default="0x80000000",
+    help="IMEM base address for spirit-like mode.",
+)
+parser.add_argument(
+    "--dmem-base",
+    default="0x80200000",
+    help="DMEM base address for spirit-like mode.",
+)
+parser.add_argument(
+    "--imem-size",
+    default="8KiB",
+    help="IMEM size for spirit-like mode.",
+)
+parser.add_argument(
+    "--dmem-size",
+    default="8KiB",
+    help="DMEM size for spirit-like mode.",
+)
+parser.add_argument("--icache-size", type=int, default=4096)
+parser.add_argument("--icache-line-size", type=int, default=64)
+parser.add_argument("--no-icache", action="store_true")
+args = parser.parse_args()
+
+
+def parse_addr(value):
+    return int(value, 0)
+
+
+if args.mem_system == "spirit-like" and args.binary:
+    parser.error(
+        "--mem-system spirit-like uses --imem-image/--program-file and "
+        "optional --dmem-image instead of --binary ELF preload"
+    )
+
+if args.mem_system == "spirit-like" and args.imem_image and args.program_file:
+    parser.error("Use only one of raw --imem-image or hex --program-file in spirit-like mode")
+
+if args.dmem_hex and args.dmem_image:
+    parser.error("Use only one of --dmem-hex or raw --dmem-image")
+
+if args.dmem_hex and args.mem_system != "spirit-like":
+    parser.error("--dmem-hex is currently supported only with --mem-system spirit-like")
+
+
+system = System()
+
+system.clk_domain = SrcClockDomain()
+system.clk_domain.clock = "1GHz"
+system.clk_domain.voltage_domain = VoltageDomain()
+
+system.mem_mode = "timing"
+
+if args.mem_system == "spirit-like":
+    imem_base = parse_addr(args.imem_base)
+    dmem_base = parse_addr(args.dmem_base)
+    system.mem_ranges = [
+        AddrRange(start=imem_base, size=args.imem_size),
+        AddrRange(start=dmem_base, size=args.dmem_size),
+    ]
+    pipeline_program_file = args.program_file
+    pipeline_elf_file = ""
+    pipeline_text_base = imem_base
+    pipeline_preloaded_program = bool(args.imem_image)
+    pipeline_preloaded_program_size = toMemorySize(args.imem_size) if args.imem_image else 0
+    pipeline_dmem_hex_file = args.dmem_hex
+    pipeline_dmem_base = dmem_base
+    if not args.dmem_hex:
+        dmem_image_file = args.dmem_image
+    else:
+        dmem_image_file = ""
+else:
+    system.mem_ranges = [AddrRange(start=0x80000000, size=args.mem_size)]
+    pipeline_program_file = args.program_file
+    pipeline_elf_file = args.binary
+    pipeline_text_base = 0x80000000
+    pipeline_preloaded_program = False
+    pipeline_preloaded_program_size = 0
+    dmem_image_file = args.dmem_image
+
+system.pipeline = PipelineMiniCPU(
+    max_cycles=args.max_cycles,
+    program_file=pipeline_program_file,
+    elf_file=pipeline_elf_file,
+    preloaded_program=pipeline_preloaded_program,
+    preloaded_program_size=pipeline_preloaded_program_size,
+    text_base=pipeline_text_base,
+    dmem_base=pipeline_dmem_base,
+    dmem_hex_file=pipeline_dmem_hex_file,
+    icache_enabled=not args.no_icache,
+    icache_size=args.icache_size,
+    icache_line_size=args.icache_line_size,
+)
+system.pipeline.clk_domain = system.clk_domain
+
+if args.mem_system == "ddr3":
+    system.membus = SystemXBar()
+    system.pipeline.inst_port = system.membus.cpu_side_ports
+    system.pipeline.data_port = system.membus.cpu_side_ports
+    system.system_port = system.membus.cpu_side_ports
+
+    system.mem_ctrl = MemCtrl()
+    system.mem_ctrl.dram = DDR3_1600_8x8()
+    system.mem_ctrl.dram.range = system.mem_ranges[0]
+    system.mem_ctrl.port = system.membus.mem_side_ports
+
+elif args.mem_system == "simple":
+    system.membus = SystemXBar()
+    system.pipeline.inst_port = system.membus.cpu_side_ports
+    system.pipeline.data_port = system.membus.cpu_side_ports
+    system.system_port = system.membus.cpu_side_ports
+
+    system.memory = SimpleMemory(
+        range=system.mem_ranges[0],
+        latency=args.mem_latency,
+    )
+    system.memory.port = system.membus.mem_side_ports
+
+elif args.mem_system == "split":
+    imem_latency = args.imem_latency if args.imem_latency else args.mem_latency
+    dmem_latency = args.dmem_latency if args.dmem_latency else args.mem_latency
+    dmem_image = args.dmem_image if args.dmem_image else args.binary
+
+    system.ibus = SystemXBar()
+    system.dbus = SystemXBar()
+
+    system.pipeline.inst_port = system.ibus.cpu_side_ports
+    system.pipeline.data_port = system.dbus.cpu_side_ports
+
+    # Keep the system port on IMEM so PipelineMiniCPU::preloadElf() writes code
+    # through system->physProxy into the globally visible instruction memory.
+    system.system_port = system.ibus.cpu_side_ports
+
+    system.imem = SimpleMemory(
+        range=system.mem_ranges[0],
+        latency=imem_latency,
+        in_addr_map=True,
+    )
+    system.imem.port = system.ibus.mem_side_ports
+
+    # DMEM intentionally uses the same architectural address range as IMEM,
+    # but stays out of the global address map to avoid overlapping-memory checks.
+    # It still responds to data_port accesses through its private DBus.
+    system.dmem = SimpleMemory(
+        range=system.mem_ranges[0],
+        latency=dmem_latency,
+        in_addr_map=False,
+        image_file=dmem_image,
+    )
+    system.dmem.port = system.dbus.mem_side_ports
+
+elif args.mem_system == "spirit-like":
+    imem_latency = args.imem_latency if args.imem_latency else args.mem_latency
+    dmem_latency = args.dmem_latency if args.dmem_latency else args.mem_latency
+
+    system.ibus = SystemXBar()
+    system.dbus = SystemXBar()
+
+    system.pipeline.inst_port = system.ibus.cpu_side_ports
+    system.pipeline.data_port = system.dbus.cpu_side_ports
+
+    # Runtime access remains strictly split: IBUS reaches only IMEM and DBUS
+    # reaches only DMEM. system_port is kept on IBUS for compatibility, but
+    # spirit-like mode intentionally avoids ELF physProxy preload.
+    system.system_port = system.ibus.cpu_side_ports
+
+    system.imem = SimpleMemory(
+        range=system.mem_ranges[0],
+        latency=imem_latency,
+        in_addr_map=True,
+        image_file=args.imem_image,
+    )
+    system.imem.port = system.ibus.mem_side_ports
+
+    system.dmem = SimpleMemory(
+        range=system.mem_ranges[1],
+        latency=dmem_latency,
+        in_addr_map=True,
+        image_file=dmem_image_file,
+    )
+    system.dmem.port = system.dbus.mem_side_ports
+
+root = Root(full_system=False, system=system)
+
+m5.instantiate()
+
+print("Beginning PipelineMiniCPU simulation!")
+print("Memory system: {}".format(args.mem_system))
+if args.mem_system == "simple":
+    print("Memory latency: {}".format(args.mem_latency))
+elif args.mem_system == "split":
+    print("IMEM latency: {}".format(imem_latency))
+    print("DMEM latency: {}".format(dmem_latency))
+    print("DMEM image: {}".format(dmem_image if dmem_image else "<none>"))
+elif args.mem_system == "spirit-like":
+    print("IMEM range: {}".format(system.mem_ranges[0]))
+    print("DMEM range: {}".format(system.mem_ranges[1]))
+    print("IMEM latency: {}".format(imem_latency))
+    print("DMEM latency: {}".format(dmem_latency))
+    if args.imem_image:
+        print("IMEM image: {}".format(args.imem_image))
+    elif pipeline_program_file:
+        print("IMEM hex: {}".format(pipeline_program_file))
+    else:
+        print("IMEM image: <internal program>")
+    if args.dmem_hex:
+        print("DMEM hex: {} (loaded by CPU via dataPort)".format(args.dmem_hex))
+    else:
+        print("DMEM image: {}".format(dmem_image_file if dmem_image_file else "<none>"))
+print("Internal I-cache: {}".format("disabled" if args.no_icache else "enabled"))
+
+exit_event = m5.simulate()
+print("Exiting @ tick {} because {}".format(m5.curTick(), exit_event.getCause()))

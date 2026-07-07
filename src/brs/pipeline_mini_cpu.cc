@@ -1,0 +1,562 @@
+#include "brs/pipeline_mini_cpu.hh"
+
+#include "base/logging.hh"
+
+#include <algorithm>
+#include <cstring>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+
+#include "sim/sim_exit.hh"
+#include "mem/packet_access.hh"
+
+namespace gem5
+{
+
+bool
+PipelineMiniCPU::CpuRequestPort::recvTimingResp(PacketPtr pkt)
+{
+    if (kind == PortKind::Inst) {
+        return owner->completeTimingFetch(pkt);
+    }
+    return owner->completeTimingData(pkt);
+}
+
+void
+PipelineMiniCPU::CpuRequestPort::recvReqRetry()
+{
+    if (kind == PortKind::Inst) {
+        owner->retryInstFetch();
+    } else {
+        owner->retryDataRequest();
+    }
+}
+
+PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
+    : ClockedObject(p),
+      maxCycles(p.max_cycles),
+      resetCyclesRemaining(p.reset_cycles),
+      textBase(p.text_base),
+      system(p.system),
+      core(),
+      tickEvent([this] { processTick(); }, name()),
+      programFile(p.program_file),
+      elfFile(p.elf_file),
+      preloadedProgram(p.preloaded_program),
+      preloadedProgramSize(p.preloaded_program_size),
+      dmemHexFile(p.dmem_hex_file),
+      dmemBase(p.dmem_base),
+      pipeStats(this),
+      instRequestorId(p.system->getRequestorId(this, "inst")),
+      dataRequestorId(p.system->getRequestorId(this, "data")),
+      instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
+      dataPort(name() + ".data_port", this, CpuRequestPort::PortKind::Data),
+      icacheEnabled(p.icache_enabled),
+      icacheSize(p.icache_size),
+      icacheLineSize(p.icache_line_size),
+      icacheNumLines(0),
+      frontendBurstBytes(p.frontend_burst_bytes)
+{
+    fatal_if(frontendBurstBytes != 16,
+             "PipelineMiniCPU frontend currently models 16-byte RV-NEW bursts");
+    core.configureFrontend(p.instr_fifo_depth, p.frontend_burst_bytes);
+    core.configureFakeVeu(
+        p.fake_veu_latency, p.fake_veu_response_data);
+
+    if (icacheEnabled) {
+        fatal_if(icacheLineSize < frontendBurstBytes,
+                 "I-cache line size must be at least the frontend burst size");
+        fatal_if((icacheLineSize % sizeof(uint32_t)) != 0,
+                 "I-cache line size must be a multiple of 4 bytes");
+        fatal_if(icacheSize < icacheLineSize,
+                 "I-cache size must be at least one line");
+        fatal_if((icacheSize % icacheLineSize) != 0,
+                 "I-cache size must be a multiple of line size");
+
+        icacheNumLines = icacheSize / icacheLineSize;
+        icache.resize(icacheNumLines);
+        for (auto &line : icache) {
+            line.bytes.resize(icacheLineSize, 0);
+        }
+    }
+}
+
+Port &
+PipelineMiniCPU::getPort(const std::string &if_name, PortID idx)
+{
+    if (if_name == "inst_port") {
+        return instPort;
+    }
+    if (if_name == "data_port") {
+        return dataPort;
+    }
+    return ClockedObject::getPort(if_name, idx);
+}
+
+Addr
+PipelineMiniCPU::icacheLineBase(Addr addr) const
+{
+    return (addr / icacheLineSize) * icacheLineSize;
+}
+
+bool
+PipelineMiniCPU::icacheLookup(Addr addr, uint32_t &inst)
+{
+    if (!icacheEnabled || icacheNumLines == 0) {
+        return false;
+    }
+
+    const Addr blockAddr = icacheLineBase(addr);
+    const uint32_t index = (blockAddr / icacheLineSize) % icacheNumLines;
+    const ICacheLine &line = icache[index];
+
+    if (!line.valid || line.tag != blockAddr) {
+        return false;
+    }
+
+    const uint32_t offset = addr - blockAddr;
+    panic_if(offset + sizeof(uint32_t) > line.bytes.size(),
+             "Instruction fetch crosses I-cache line boundary: addr=%#x",
+             addr);
+
+    inst = static_cast<uint32_t>(line.bytes[offset]) |
+           (static_cast<uint32_t>(line.bytes[offset + 1]) << 8) |
+           (static_cast<uint32_t>(line.bytes[offset + 2]) << 16) |
+           (static_cast<uint32_t>(line.bytes[offset + 3]) << 24);
+    return true;
+}
+
+bool
+PipelineMiniCPU::icacheLookupBlock(Addr fetchAddr, FetchBlock &block)
+{
+    if (!icacheEnabled || icacheNumLines == 0) {
+        return false;
+    }
+
+    const Addr blockAddr = (fetchAddr / frontendBurstBytes) * frontendBurstBytes;
+    const Addr lineAddr = icacheLineBase(blockAddr);
+    const uint32_t index = (lineAddr / icacheLineSize) % icacheNumLines;
+    const ICacheLine &line = icache[index];
+
+    if (!line.valid || line.tag != lineAddr) {
+        return false;
+    }
+
+    const uint32_t offset = blockAddr - lineAddr;
+    panic_if(offset + frontendBurstBytes > line.bytes.size(),
+             "Instruction burst crosses I-cache line boundary: addr=%#x",
+             blockAddr);
+
+    block.fetchAddr = static_cast<uint32_t>(fetchAddr);
+    block.blockAddr = static_cast<uint32_t>(blockAddr);
+    for (unsigned i = 0; i < 4; ++i) {
+        const uint32_t wordOffset = offset + i * sizeof(uint32_t);
+        block.words[i] =
+            static_cast<uint32_t>(line.bytes[wordOffset]) |
+            (static_cast<uint32_t>(line.bytes[wordOffset + 1]) << 8) |
+            (static_cast<uint32_t>(line.bytes[wordOffset + 2]) << 16) |
+            (static_cast<uint32_t>(line.bytes[wordOffset + 3]) << 24);
+    }
+
+    return true;
+}
+
+void
+PipelineMiniCPU::fillICacheLine(Addr blockAddr, const uint8_t *data,
+                                unsigned size)
+{
+    if (!icacheEnabled || icacheNumLines == 0) {
+        return;
+    }
+
+    const uint32_t index = (blockAddr / icacheLineSize) % icacheNumLines;
+    ICacheLine &line = icache[index];
+    line.valid = true;
+    line.tag = blockAddr;
+    std::fill(line.bytes.begin(), line.bytes.end(), 0);
+    std::memcpy(line.bytes.data(), data,
+                std::min<unsigned>(size, icacheLineSize));
+}
+
+bool
+PipelineMiniCPU::fetchInstrFunctional(uint32_t addr, uint32_t &inst)
+{
+    auto req = std::make_shared<Request>(
+        addr, 4, Request::INST_FETCH, instRequestorId);
+    auto pkt = new Packet(req, MemCmd::ReadReq);
+    pkt->allocate();
+
+    instPort.sendFunctional(pkt);
+    inst = pkt->getLE<uint32_t>();
+
+    delete pkt;
+    return true;
+}
+
+bool
+PipelineMiniCPU::requestInstrTiming(uint32_t addr)
+{
+    const Addr fetchAddr = addr;
+    FetchBlock cachedBlock;
+    if (icacheLookupBlock(fetchAddr, cachedBlock)) {
+        ++icacheHitCount;
+        core.acceptFetchedBlock(cachedBlock);
+        return true;
+    }
+
+    if (pendingInstFetch != nullptr) {
+        return false;
+    }
+
+    ++icacheMissCount;
+    const Addr reqAddr = icacheEnabled ? icacheLineBase(fetchAddr) :
+        (fetchAddr / frontendBurstBytes) * frontendBurstBytes;
+    const unsigned fetchSize = icacheEnabled ? icacheLineSize :
+        frontendBurstBytes;
+
+    auto req = std::make_shared<Request>(
+        reqAddr, fetchSize, Request::INST_FETCH, instRequestorId);
+    auto pkt = new Packet(req, MemCmd::ReadReq);
+    pkt->allocate();
+
+    pendingInstAddr = reqAddr;
+    pendingInstFetchAddr = fetchAddr;
+    pendingInstFetch = pkt;
+    instFetchRetry = false;
+
+    if (instPort.sendTimingReq(pkt)) {
+        pendingInstFetch = nullptr;
+    } else {
+        instFetchRetry = true;
+    }
+
+    return true;
+}
+
+bool
+PipelineMiniCPU::completeTimingFetch(PacketPtr pkt)
+{
+    panic_if(pkt->isError(), "Timing instruction fetch failed: %s",
+             pkt->print());
+
+    FetchBlock block;
+    if (icacheEnabled) {
+        fillICacheLine(pkt->getAddr(), pkt->getConstPtr<uint8_t>(),
+                       pkt->getSize());
+        const bool hit = icacheLookupBlock(pendingInstFetchAddr, block);
+        panic_if(!hit, "I-cache line fill did not contain requested fetch %#x",
+                 pendingInstFetchAddr);
+        core.acceptFetchedBlock(block);
+    } else {
+        const uint8_t *data = pkt->getConstPtr<uint8_t>();
+        block.fetchAddr = static_cast<uint32_t>(pendingInstFetchAddr);
+        block.blockAddr = static_cast<uint32_t>(pkt->getAddr());
+        for (unsigned i = 0; i < 4; ++i) {
+            const unsigned offset = i * sizeof(uint32_t);
+            block.words[i] =
+                static_cast<uint32_t>(data[offset]) |
+                (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                (static_cast<uint32_t>(data[offset + 3]) << 24);
+        }
+        core.acceptFetchedBlock(block);
+    }
+
+    pendingInstFetch = nullptr;
+    instFetchRetry = false;
+    pendingInstAddr = 0;
+    pendingInstFetchAddr = 0;
+
+    delete pkt;
+    return true;
+}
+
+void
+PipelineMiniCPU::retryInstFetch()
+{
+    if (!pendingInstFetch || !instFetchRetry) {
+        return;
+    }
+
+    PacketPtr pkt = pendingInstFetch;
+    if (instPort.sendTimingReq(pkt)) {
+        pendingInstFetch = nullptr;
+        instFetchRetry = false;
+    }
+}
+
+bool
+PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
+                                   bool isWrite, uint32_t writeData)
+{
+    if (pendingDataReq != nullptr) {
+        return false;
+    }
+
+    Request::Flags flags;
+    auto req = std::make_shared<Request>(
+        addr, size, flags, dataRequestorId);
+    auto pkt = new Packet(req, isWrite ? MemCmd::WriteReq : MemCmd::ReadReq);
+    pkt->allocate();
+
+    if (isWrite) {
+        switch (size) {
+          case 1:
+            pkt->setLE<uint8_t>(static_cast<uint8_t>(writeData & 0xff));
+            break;
+          case 2:
+            pkt->setLE<uint16_t>(static_cast<uint16_t>(writeData & 0xffff));
+            break;
+          case 4:
+            pkt->setLE<uint32_t>(writeData);
+            break;
+          default:
+            panic("Unsupported data store size: %u", size);
+        }
+    }
+
+    pendingDataAddr = addr;
+    pendingDataSize = size;
+    pendingDataIsWrite = isWrite;
+    pendingDataWriteValue = writeData;
+    pendingDataReq = pkt;
+    dataReqRetry = false;
+
+    if (dataPort.sendTimingReq(pkt)) {
+        pendingDataReq = nullptr;
+    } else {
+        dataReqRetry = true;
+    }
+
+    return true;
+}
+
+bool
+PipelineMiniCPU::completeTimingData(PacketPtr pkt)
+{
+    panic_if(pkt->isError(), "Timing data access failed: %s", pkt->print());
+
+    uint32_t data = 0;
+    if (!pendingDataIsWrite) {
+        switch (pendingDataSize) {
+          case 1:
+            data = pkt->getLE<uint8_t>();
+            break;
+          case 2:
+            data = pkt->getLE<uint16_t>();
+            break;
+          case 4:
+            data = pkt->getLE<uint32_t>();
+            break;
+          default:
+            panic("Unsupported data load size: %u", pendingDataSize);
+        }
+    }
+
+    core.acceptDataResponse(static_cast<uint32_t>(pendingDataAddr),
+                            data, pendingDataIsWrite);
+
+    pendingDataReq = nullptr;
+    dataReqRetry = false;
+    pendingDataAddr = 0;
+    pendingDataSize = 0;
+    pendingDataIsWrite = false;
+    pendingDataWriteValue = 0;
+
+    delete pkt;
+    return true;
+}
+
+void
+PipelineMiniCPU::retryDataRequest()
+{
+    if (!pendingDataReq || !dataReqRetry) {
+        return;
+    }
+
+    PacketPtr pkt = pendingDataReq;
+    if (dataPort.sendTimingReq(pkt)) {
+        pendingDataReq = nullptr;
+        dataReqRetry = false;
+    }
+}
+
+void
+PipelineMiniCPU::preloadElf()
+{
+    std::unique_ptr<loader::ObjectFile> obj(loader::createObjectFile(elfFile));
+    fatal_if(!obj, "Failed to load ELF file: %s", elfFile);
+
+    fatal_if(obj->getArch() != loader::Riscv64 &&
+             obj->getArch() != loader::Riscv32,
+             "ELF file is not a RISC-V binary: %s", elfFile);
+
+    auto image = obj->buildImage();
+    fatal_if(!image.write(system->physProxy),
+             "Failed to write ELF image to physical memory: %s", elfFile);
+
+    const Addr start = obj->entryPoint();
+    const Addr end = image.maxAddr();
+    fatal_if(end <= start,
+             "Invalid ELF image range for %s: start=%#x end=%#x",
+             elfFile, start, end);
+
+    core.requestTimingFetch = [this](uint32_t addr) {
+        return requestInstrTiming(addr);
+    };
+    core.requestTimingData = [this](uint32_t addr, unsigned size,
+                                    bool isWrite, uint32_t writeData) {
+        return requestDataTiming(addr, size, isWrite, writeData);
+    };
+    core.reset(static_cast<uint32_t>(start), static_cast<uint32_t>(end));
+}
+
+void
+PipelineMiniCPU::preloadProgramFunctional()
+{
+    ProgramImage img;
+    if (!img.loadHexFile(programFile)) {
+        fatal("Failed to load program hex: %s", programFile);
+    }
+
+    for (uint32_t i = 0; i < img.program_words; ++i) {
+        Addr addr = textBase + i * 4;
+        auto req = std::make_shared<Request>(
+            addr, 4, Request::INST_FETCH, instRequestorId);
+        auto pkt = new Packet(req, MemCmd::WriteReq);
+        pkt->allocate();
+        pkt->setLE<uint32_t>(img.instr_mem[i]);
+        instPort.sendFunctional(pkt);
+        delete pkt;
+    }
+
+    core.requestTimingFetch = [this](uint32_t addr) {
+        return requestInstrTiming(addr);
+    };
+    core.requestTimingData = [this](uint32_t addr, unsigned size,
+                                    bool isWrite, uint32_t writeData) {
+        return requestDataTiming(addr, size, isWrite, writeData);
+    };
+    core.reset(textBase, textBase + img.program_words * 4);
+}
+
+void
+PipelineMiniCPU::usePreloadedProgram()
+{
+    fatal_if(preloadedProgramSize == 0,
+             "preloaded_program_size must be non-zero when preloaded_program is enabled");
+
+    core.requestTimingFetch = [this](uint32_t addr) {
+        return requestInstrTiming(addr);
+    };
+    core.requestTimingData = [this](uint32_t addr, unsigned size,
+                                    bool isWrite, uint32_t writeData) {
+        return requestDataTiming(addr, size, isWrite, writeData);
+    };
+    core.reset(textBase, textBase + preloadedProgramSize);
+}
+
+void
+PipelineMiniCPU::preloadDataFunctional()
+{
+    DataImage img;
+    if (!img.loadHexFile(dmemHexFile)) {
+        fatal("Failed to load DMEM hex file: %s", dmemHexFile);
+    }
+
+    const size_t totalBytes = img.data.size();
+    for (size_t i = 0; i < totalBytes; ++i) {
+        Addr addr = dmemBase + i;
+        auto req = std::make_shared<Request>(
+            addr, 1, 0, dataRequestorId);
+        auto pkt = new Packet(req, MemCmd::WriteReq);
+        pkt->allocate();
+        pkt->setLE<uint8_t>(img.data[i]);
+        dataPort.sendFunctional(pkt);
+        delete pkt;
+    }
+
+    inform("preloadDataFunctional: wrote %llu bytes to DMEM at %#x from %s",
+           static_cast<unsigned long long>(totalBytes), dmemBase, dmemHexFile);
+}
+
+void
+PipelineMiniCPU::startup()
+{
+    if (!elfFile.empty()) {
+        preloadElf();
+    } else if (!programFile.empty()) {
+        preloadProgramFunctional();
+    } else if (preloadedProgram) {
+        usePreloadedProgram();
+    }
+
+    if (!dmemHexFile.empty()) {
+        preloadDataFunctional();
+    }
+
+    schedule(tickEvent, clockEdge(Cycles(1)));
+}
+
+void
+PipelineMiniCPU::processTick()
+{
+    // Match spirit_top_tb.sv: the DUT remains inactive for ten rising
+    // edges by default. These reset edges advance gem5 time, but they do
+    // not advance PipelineCore::cycle, just as sim_cycle stays at zero
+    // while rstn is asserted in the RTL testbench.
+    if (resetCyclesRemaining > 0) {
+        --resetCyclesRemaining;
+        schedule(tickEvent, clockEdge(Cycles(1)));
+        return;
+    }
+
+    core.stepOneCycle();
+
+    pipeStats.cycle_count = core.getCycle();
+    pipeStats.retired_inst_count = core.getRetiredInstCount();
+    pipeStats.forward_count = core.getForwardCount();
+    pipeStats.stall_count = core.getStallCount();
+    pipeStats.flush_count = core.getFlushCount();
+    pipeStats.icache_hit_count = icacheHitCount;
+    pipeStats.icache_miss_count = icacheMissCount;
+    pipeStats.ibus_req_count = core.getIbusReqCount();
+    pipeStats.fetch_fifo_flush_count = core.getFetchFifoFlushCount();
+    pipeStats.aligned_instr_count = core.getAlignedInstrCount();
+
+    std::cout
+        << "[PipelineMiniCPU] cycle=" << core.getCycle()
+        << " pc=0x" << std::hex << core.getPC() << std::dec
+        << " IFID=" << core.ifidValid()
+        << " IDEX=" << core.idexValid()
+        << " EXMEM=" << core.exmemValid()
+        << " MEMWB=" << core.memwbValid()
+        << " x1=" << core.getReg(1)
+        << " x2=" << core.getReg(2)
+        << " x3=" << core.getReg(3)
+        << " x4=" << core.getReg(4)
+        << " retiredInst=" << core.getRetiredInstCount()
+        << " stall=" << core.getStallCount()
+        << " fwd=" << core.getForwardCount()
+        << " flush=" << core.getFlushCount()
+        << " icHit=" << icacheHitCount
+        << " icMiss=" << icacheMissCount
+        << " ibusReq=" << core.getIbusReqCount()
+        << " align=" << core.getAlignedInstrCount()
+        << std::endl;
+
+    if (core.done()) {
+        exitSimLoop("PipelineMiniCPU completed test");
+        return;
+    }
+
+    if (core.getCycle() >= maxCycles) {
+        exitSimLoop("PipelineMiniCPU hit max_cycles");
+        return;
+    }
+
+    schedule(tickEvent, clockEdge(Cycles(1)));
+}
+
+} // namespace gem5

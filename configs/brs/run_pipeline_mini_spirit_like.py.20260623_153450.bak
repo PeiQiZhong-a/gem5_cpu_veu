@@ -1,0 +1,72 @@
+import argparse
+
+import m5
+from m5.objects import *
+from m5.objects import PipelineMiniCPU
+
+
+parser = argparse.ArgumentParser(
+    description="Run PipelineMiniCPU with a Spirit-testbench-like fixed-latency memory platform."
+)
+parser.add_argument("--binary", required=True, help="Path to RISC-V ELF binary")
+parser.add_argument("--max-cycles", type=int, default=200)
+parser.add_argument("--mem-size", default="64MiB")
+parser.add_argument(
+    "--mem-latency",
+    default="1ns",
+    help="SimpleMemory fixed latency. At 1GHz, 1ns is one CPU cycle.",
+)
+parser.add_argument(
+    "--enable-icache",
+    action="store_true",
+    help="Enable PipelineMiniCPU internal direct-mapped I-cache. Disabled by default for Spirit-like runs.",
+)
+parser.add_argument("--icache-size", type=int, default=4096)
+parser.add_argument("--icache-line-size", type=int, default=64)
+args = parser.parse_args()
+
+
+system = System()
+
+system.clk_domain = SrcClockDomain()
+system.clk_domain.clock = "1GHz"
+system.clk_domain.voltage_domain = VoltageDomain()
+
+system.mem_mode = "timing"
+system.mem_ranges = [AddrRange(start=0x80000000, size=args.mem_size)]
+
+# Keep a minimal XBar so existing PipelineMiniCPU ports and system_port keep
+# normal gem5 timing-port semantics, but replace MemCtrl+DDR3 with fixed-latency
+# SimpleMemory to remove DRAM timing variability during Spirit-style alignment.
+system.membus = SystemXBar()
+
+system.pipeline = PipelineMiniCPU(
+    max_cycles=args.max_cycles,
+    elf_file=args.binary,
+    icache_enabled=args.enable_icache,
+    icache_size=args.icache_size,
+    icache_line_size=args.icache_line_size,
+)
+
+system.pipeline.clk_domain = system.clk_domain
+system.pipeline.inst_port = system.membus.cpu_side_ports
+system.pipeline.data_port = system.membus.cpu_side_ports
+
+system.system_port = system.membus.cpu_side_ports
+
+system.memory = SimpleMemory(
+    range=system.mem_ranges[0],
+    latency=args.mem_latency,
+)
+system.memory.port = system.membus.mem_side_ports
+
+root = Root(full_system=False, system=system)
+
+m5.instantiate()
+
+print("Beginning PipelineMiniCPU Spirit-like fixed-latency simulation!")
+print("Memory latency: {}".format(args.mem_latency))
+print("Internal I-cache: {}".format("enabled" if args.enable_icache else "disabled"))
+
+exit_event = m5.simulate()
+print("Exiting @ tick {} because {}".format(m5.curTick(), exit_event.getCause()))

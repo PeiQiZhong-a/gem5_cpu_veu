@@ -1,0 +1,97 @@
+Import('*')
+
+SimObject('PipelineMiniCPU.py', sim_objects=['PipelineMiniCPU'])
+
+Source('pipeline_mini_cpu.cc')
+Source('pipeline/frontend_fetch_unit.cc')
+Source('pipeline/compressed_decode.cc')
+Source('pipeline/pipeline_core.cc')
+Source('pipeline/stage_if.cc')
+Source('pipeline/stage_id.cc')
+Source('pipeline/stage_ex.cc')
+Source('pipeline/stage_mem.cc')
+Source('pipeline/stage_wb.cc')
+Source('pipeline/hazard_unit.cc')
+Source('pipeline/forwarding_unit.cc')
+Source('pipeline/memory_backend_local.cc')
+Source('veu/veu_cbu.cc')
+Source('veu/fake_veu.cc')
+
+GTest('brs_frontend_fetch_unit.test',
+      'pipeline/frontend_fetch_unit.test.cc',
+      'pipeline/frontend_fetch_unit.cc')
+
+GTest('brs_compressed_decode.test',
+      'pipeline/compressed_decode.test.cc',
+      'pipeline/compressed_decode.cc')
+
+GTest('brs_veu_protocol.test',
+      'veu/veu_protocol.test.cc')
+
+GTest('brs_veu_decode.test',
+      'pipeline/veu_decode.test.cc')
+
+GTest('brs_veu_cbu.test',
+      'veu/veu_cbu.test.cc',
+      'veu/veu_cbu.cc')
+
+GTest('brs_hazard_forwarding.test',
+      'pipeline/hazard_forwarding.test.cc',
+      'pipeline/hazard_unit.cc',
+      'pipeline/forwarding_unit.cc')
+
+GTest('brs_fake_veu.test',
+      'veu/fake_veu.test.cc',
+      'veu/fake_veu.cc',
+      'veu/veu_cbu.cc')
+
+GTest('brs_veu_issue.test',
+      'pipeline/veu_issue.test.cc')
+
+GTest('brs_pipeline_veu_stall.test',
+      'pipeline/pipeline_veu_stall.test.cc',
+      'pipeline/pipeline_core.cc',
+      'pipeline/stage_if.cc',
+      'pipeline/stage_id.cc',
+      'pipeline/compressed_decode.cc',
+      'pipeline/stage_ex.cc',
+      'pipeline/stage_mem.cc',
+      'pipeline/stage_wb.cc',
+      'pipeline/frontend_fetch_unit.cc',
+      'pipeline/hazard_unit.cc',
+      'pipeline/forwarding_unit.cc',
+      'pipeline/memory_backend_local.cc',
+      'veu/veu_cbu.cc',
+      'veu/fake_veu.cc')
+
+GTest('brs_pipeline_veu_writeback.test',
+      'pipeline/pipeline_veu_writeback.test.cc',
+      'pipeline/pipeline_core.cc',
+      'pipeline/stage_if.cc',
+      'pipeline/stage_id.cc',
+      'pipeline/compressed_decode.cc',
+      'pipeline/stage_ex.cc',
+      'pipeline/stage_mem.cc',
+      'pipeline/stage_wb.cc',
+      'pipeline/frontend_fetch_unit.cc',
+      'pipeline/hazard_unit.cc',
+      'pipeline/forwarding_unit.cc',
+      'pipeline/memory_backend_local.cc',
+      'veu/veu_cbu.cc',
+      'veu/fake_veu.cc')
+
+GTest('brs_pipeline_veu_end_to_end.test',
+      'pipeline/pipeline_veu_end_to_end.test.cc',
+      'pipeline/pipeline_core.cc',
+      'pipeline/stage_if.cc',
+      'pipeline/stage_id.cc',
+      'pipeline/compressed_decode.cc',
+      'pipeline/stage_ex.cc',
+      'pipeline/stage_mem.cc',
+      'pipeline/stage_wb.cc',
+      'pipeline/frontend_fetch_unit.cc',
+      'pipeline/hazard_unit.cc',
+      'pipeline/forwarding_unit.cc',
+      'pipeline/memory_backend_local.cc',
+      'veu/veu_cbu.cc',
+      'veu/fake_veu.cc')

@@ -1,0 +1,71 @@
+# Phase 1 Spirit-like fixed-latency platform
+
+## 目标
+
+为 `PipelineMiniCPU` 新增一个更接近 Spirit core-level testbench 的 gem5 运行平台，先消除 `MemCtrl + DDR3_1600_8x8` 带来的可变 DRAM timing，作为后续 data_port、MEM stall、IF timing 对齐的基线。
+
+## 新增配置
+
+- `configs/brs/run_pipeline_mini_spirit_like.py`
+
+该脚本保留现有 `PipelineMiniCPU`，但把原来的 DDR3 平台替换为：
+
+```text
+PipelineMiniCPU.inst_port/data_port
+    -> SystemXBar
+    -> SimpleMemory(latency=1ns by default)
+```
+
+在 1GHz CPU 时钟下，默认 `1ns` 对应约 1 个 CPU cycle 的固定内存响应延迟。
+
+## 与原 DDR3 配置的区别
+
+原脚本 `configs/brs/run_pipeline_mini.py` 使用：
+
+```text
+SystemXBar -> MemCtrl -> DDR3_1600_8x8
+```
+
+新脚本使用：
+
+```text
+SystemXBar -> SimpleMemory
+```
+
+这样减少：
+
+- DRAM timing 变化
+- memory controller 排队影响
+- DDR row/bank 行为影响
+
+## 与 Spirit testbench 的差距
+
+当前 Phase 1 是低风险第一版，还不是完全等价的 Spirit memory testbench：
+
+- 仍保留 `SystemXBar`，不是完全独立 IMEM/DMEM。
+- 仍使用 gem5 `SimpleMemory`，不是自定义 4-word block fetch 的 IMEM。
+- 当前 `PipelineMiniCPU` 的 data-side 主路径仍未接入 `data_port`，load/store 仍需 Phase 2 改造。
+- 当前 IF 还不是 Spirit 的 `IBU/PFU/IFU` block-fetch 行为。
+
+## 使用示例
+
+```bash
+build/RISCV/gem5.opt configs/brs/run_pipeline_mini_spirit_like.py \
+  --binary path/to/test.elf \
+  --max-cycles 200 \
+  --mem-latency 1ns
+```
+
+默认关闭 `PipelineMiniCPU` 内部 I-cache。如需临时开启：
+
+```bash
+build/RISCV/gem5.opt configs/brs/run_pipeline_mini_spirit_like.py \
+  --binary path/to/test.elf \
+  --enable-icache
+```
+
+## 后续步骤
+
+1. Phase 2：让 `data_port` 真正接管 load/store。
+2. Phase 3：把 MEM/IF 改成 request/response 驱动的 hold/advance 流水。
+3. 若需要更严格贴近 Spirit，再实现自定义 IMEM/DMEM：I-side 4-word block fetch，D-side byte-enable fixed-latency RAM。

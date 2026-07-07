@@ -1,0 +1,393 @@
+#include "brs/pipeline/pipeline_core.hh"
+#include "brs/pipeline/forwarding_unit.hh"
+#include "brs/pipeline/hazard_unit.hh"
+#include "brs/pipeline/memory_backend_local.hh"
+
+#include <cstring>
+#include <iostream>
+#include <cstdlib>
+#include <iomanip>
+
+
+
+namespace gem5
+{
+
+PipelineCore::PipelineCore()
+{
+    reset();
+}
+
+void
+PipelineCore::configureFrontend(uint32_t fifoDepth, uint32_t burstBytes)
+{
+    frontend.configure({fifoDepth, burstBytes});
+}
+
+void
+PipelineCore::configureFakeVeu(
+    uint32_t latencyCycles, uint32_t responseData)
+{
+    fakeVeu.setResponseLatencyCycles(latencyCycles);
+    fakeVeu.setResponseData(responseData);
+    useFakeVeuEndpoint();
+}
+
+void
+PipelineCore::attachVeuEndpoint(brs::VeuEndpoint &endpoint)
+{
+    veuEndpoint = &endpoint;
+    veuEndpoint->reset();
+}
+
+void
+PipelineCore::useFakeVeuEndpoint()
+{
+    veuEndpoint = &fakeVeu;
+    veuEndpoint->reset();
+}
+
+void
+PipelineCore::reset()
+{
+    std::memset(regs, 0, sizeof(regs));
+    pc = text_start;
+    cycle = 0;
+    forward_count = 0;       //stats
+    retired_inst_count = 0;  //stats
+    stall_count = 0;         //stats
+    flush_count = 0;
+    halt_requested = false;
+    done_flag = false; 
+    fetch_waiting = false;
+    fetch_response_valid = false;
+    fetch_response_addr = 0;
+    fetch_response_inst = 0;
+    fetch_block_response_valid = false;
+    fetch_block_response = {};
+    mem_stall = false;
+    mem_req_issued = false;
+    data_waiting = false;
+    data_response_valid = false;
+    data_response_addr = 0;
+    data_response_value = 0;
+    data_response_is_store = false;
+    veu_stall = false;
+    veuResponse = {};
+    veuCbuOutput = {};
+    veuIssue = {};
+    veu_issue_count = 0;
+    veu_complete_count = 0;
+    veuCbu.reset();
+    if (veuEndpoint) {
+        veuEndpoint->reset();
+    }
+    frontend.reset(pc);
+
+    redirect_pc = false;
+    redirect_target = 0;
+    flush_idex = false;
+        
+
+    ifid_cur = {};
+    ifid_next = {};
+    idex_cur = {};
+    idex_next = {};
+    exmem_cur = {};
+    exmem_next = {};
+    memwb_cur = {};
+    memwb_next = {};
+
+    program = {};
+
+    const char *trace_env = std::getenv("BRS_RETIRE_TRACE");
+    retire_trace_enable =  (trace_env && *trace_env && std::string(trace_env) != "0");
+
+
+    const char *hex_path = std::getenv("BRS_PROGRAM_HEX");
+
+      if (hex_path && *hex_path) {
+          if (!program.loadHexFile(hex_path)) {
+              std::cerr << "Failed to load program hex: "
+                        << hex_path << std::endl;
+              std::abort();
+          }
+      } else {
+          //program.loadAddiTest();
+            //program.loadBeqFlushTakenTest();
+            //program.loadBeqNotTakenTest();
+            //program.loadJalTest();
+            //program.loadLuiBasicTest();
+            //program.loadAuipcBasicTest();
+            program.loadOriBasicTest();
+            //program.loadAndiBasicTest();
+            //program.loadXoriBasicTest();
+            //program.loadSltiBasicTest();
+            //program.loadSltiuBasicTest();
+            //program.loadOrBasicTest();
+            //program.loadAndBasicTest();
+            //program.loadXorBasicTest();
+            //program.loadSltBasicTest();
+            //program.loadSltuBasicTest();
+      }
+
+}
+
+void
+PipelineCore::reset(uint32_t start_pc, uint32_t end_pc)
+{
+    text_start = start_pc;
+    text_end = end_pc;
+    reset();
+}
+
+
+
+int32_t
+PipelineCore::signExtend12(uint32_t imm12)
+{
+    if (imm12 & 0x800) {
+        return static_cast<int32_t>(imm12 | 0xFFFFF000u);
+    }
+    return static_cast<int32_t>(imm12);
+}
+int32_t
+PipelineCore::signExtend13(uint32_t imm13)
+{
+    if (imm13 & 0x1000) {
+        return static_cast<int32_t>(imm13 | 0xFFFFE000u);
+    }
+    return static_cast<int32_t>(imm13);
+}
+int32_t
+PipelineCore::signExtend21(uint32_t imm21)
+{
+    if (imm21 & 0x100000) {
+        return static_cast<int32_t>(imm21 | 0xFFE00000u);
+    }
+    return static_cast<int32_t>(imm21);
+}
+
+//统计
+uint64_t
+PipelineCore::getForwardCount() const
+{
+    return forward_count;
+}
+uint64_t
+PipelineCore::getRetiredInstCount() const
+{
+    return retired_inst_count;
+}
+uint64_t
+PipelineCore::getStallCount() const
+{
+    return stall_count;
+}
+uint64_t
+PipelineCore::getFlushCount() const
+{
+    return flush_count;
+}
+
+uint64_t
+PipelineCore::getIbusReqCount() const
+{
+    return frontend.getIbusReqCount();
+}
+
+uint64_t
+PipelineCore::getFetchFifoFlushCount() const
+{
+    return frontend.getFifoFlushCount();
+}
+
+uint64_t
+PipelineCore::getAlignedInstrCount() const
+{
+    return frontend.getAlignedInstrCount();
+}
+
+
+bool
+PipelineCore::pipelineEmpty() const
+{
+    return !ifid_cur.valid && !idex_cur.valid &&
+           !exmem_cur.valid && !memwb_cur.valid;
+}
+
+void
+PipelineCore::acceptFetchedInst(uint32_t addr, uint32_t inst)
+{
+    fetch_waiting = false;
+    fetch_response_valid = true;
+    fetch_response_addr = addr;
+    fetch_response_inst = inst;
+}
+
+void
+PipelineCore::acceptFetchedBlock(const FetchBlock &block)
+{
+    fetch_waiting = false;
+    fetch_block_response_valid = true;
+    fetch_block_response = block;
+}
+
+void
+PipelineCore::commitNext()
+{
+    if (!mem_stall) {
+        if (!freezeFetchDecodeForExecuteStall()) {
+            ifid_cur = ifid_next;
+            idex_cur = idex_next;
+        }
+        exmem_cur = exmem_next;
+    }
+    memwb_cur = memwb_next;
+}
+
+bool
+PipelineCore::freezeFetchDecodeForExecuteStall() const
+{
+    // Spirit RTL path:
+    //   IEU: cbu_valid && !cbu_complete -> ie2sc.stall_req
+    //   SCU: stall_from_ie              -> stall = b111
+    //   IFU/IDU: stall bits hold fetch/decode state while CBU waits.
+    //
+    // This software pipeline models that execute-stage freeze with veu_stall:
+    // the current VEU instruction remains in ID/EX, IF/ID is preserved, and
+    // no younger instruction is decoded/fetched until the CBU completes.
+    return veu_stall;
+}
+
+void
+PipelineCore::stepOneCycle()
+{
+    if (done_flag) {
+        return;
+    }
+
+    redirect_pc = false;
+    redirect_target = 0;
+    flush_idex = false;
+    mem_stall = false;
+    veu_stall = false;
+    veuIssue = {};
+    veuResponse = veuEndpoint ? veuEndpoint->evaluate() : brs::VeuResponse{};
+    veuCbuOutput = veuCbu.evaluate(veuResponse);
+
+    //stall
+    const HazardDecision hz = hazardUnit.resolve(ifid_cur, idex_cur);
+    stall_pc   = hz.stall_pc;
+    stall_ifid = hz.stall_ifid;
+    bubble_idex = hz.bubble_idex;
+
+    if (bubble_idex) {
+        ++stall_count;
+    }
+
+    stageWB();
+    stageMEM();
+
+    if (!mem_stall) {
+        stageEX();
+        if (!freezeFetchDecodeForExecuteStall()) {
+            stageID();
+            stageIF();
+        } else {
+            ++stall_count;
+        }
+    }
+
+    veuCbu.clock(veuIssue, veuResponse);
+    if (veuEndpoint) {
+        veuEndpoint->clock(veuCbuOutput.request);
+    }
+
+    commitNext();
+
+    cycle++;
+    regs[0] = 0;
+
+
+    if (requestTimingFetch) {
+        pc = frontend.getPC();
+    }
+
+    const bool reachedTextEnd = (requestTimingFetch || fetchInstr) ?
+        (pc >= text_end) :
+        ((((pc - text_start) >> 2) >= program.program_words));
+
+    if ((reachedTextEnd && pipelineEmpty()) ||
+        (halt_requested && pipelineEmpty())) {
+        done_flag = true;
+    }
+}
+
+void
+PipelineCore::acceptDataResponse(uint32_t addr, uint32_t data, bool is_store)
+{
+    data_waiting = false;
+    data_response_valid = true;
+    data_response_addr = addr;
+    data_response_value = data;
+    data_response_is_store = is_store;
+}
+
+//差分
+    void
+    PipelineCore::traceRetire(uint32_t pc, uint32_t instr,
+                              bool has_rd, uint8_t rd, uint32_t data)
+    {
+        if (!retire_trace_enable) {
+            return;
+        }
+
+        std::ios old_state(nullptr);
+        old_state.copyfmt(std::cout);
+
+        std::cout << "RETIRE "
+                  << "pc=0x" << std::hex << std::setw(8) << std::setfill('0') << pc
+                  << " instr=0x" << std::hex << std::setw(8) << std::setfill('0') << instr;
+
+        if (has_rd) {
+            std::cout << " rd=x" << std::dec << static_cast<unsigned>(rd)
+                      << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << data;
+        }
+
+        std::cout << std::endl;
+        std::cout.copyfmt(old_state);
+    }
+
+    void
+    PipelineCore::traceStore(uint32_t pc, uint32_t instr,
+                            uint32_t addr, uint32_t data)
+    {
+        if (!retire_trace_enable) {
+            return;
+        }
+
+        std::ios old_state(nullptr);
+        old_state.copyfmt(std::cout);
+
+        std::cout << "STORE  "
+                  << "pc=0x" << std::hex << std::setw(8) << std::setfill('0') << pc
+                  << " instr=0x" << std::hex << std::setw(8) << std::setfill('0') << instr
+                  << " addr=0x" << std::hex << std::setw(8) << std::setfill('0') << addr
+                  << " data=0x" << std::hex << std::setw(8) << std::setfill('0') << data
+                  << std::endl;
+
+        std::cout.copyfmt(old_state);
+    }
+
+
+bool PipelineCore::done() const { return done_flag; }
+uint64_t PipelineCore::getCycle() const { return cycle; }
+uint32_t PipelineCore::getPC() const { return pc; }
+uint32_t PipelineCore::getReg(int idx) const { return regs[idx]; }
+bool PipelineCore::ifidValid() const { return ifid_cur.valid; }
+bool PipelineCore::idexValid() const { return idex_cur.valid; }
+bool PipelineCore::exmemValid() const { return exmem_cur.valid; }
+bool PipelineCore::memwbValid() const { return memwb_cur.valid; }
+
+} // namespace gem5

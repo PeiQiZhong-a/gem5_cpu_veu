@@ -1,0 +1,28 @@
+from m5.params import *
+from m5.proxy import *
+from m5.objects.ClockedObject import ClockedObject
+
+class PipelineMiniCPU(ClockedObject):
+    type = 'PipelineMiniCPU'
+    cxx_header = "brs/pipeline_mini_cpu.hh"
+    cxx_class = "gem5::PipelineMiniCPU"
+    system = Param.System(Parent.any, "System this CPU belongs to")
+    program_file = Param.String("", "Path to workload hex file")
+    elf_file = Param.String("", "Path to ELF binary to load into memory")
+    preloaded_program = Param.Bool(False, "Use an already-initialized instruction memory image")
+    preloaded_program_size = Param.Addr(0, "Instruction memory image size in bytes")
+
+    dmem_hex_file = Param.String("", "Spirit-style text hex file for DMEM initialization")
+    dmem_hex_format = Param.String("auto", "DMEM hex format: auto, byte, or word")
+
+    max_cycles = Param.UInt64(20, "Maximum cycles to run")
+
+    text_base    = Param.Addr(0x80000000, "Code base address")
+    dmem_base    = Param.Addr(0x80200000, "DMEM base address")
+
+    icache_enabled = Param.Bool(True, "Enable the simple direct-mapped I-cache")
+    icache_size = Param.UInt32(4096, "Simple I-cache capacity in bytes")
+    icache_line_size = Param.UInt32(64, "Simple I-cache line size in bytes")
+
+    inst_port = RequestPort("Instruction fetch port")
+    data_port = RequestPort("Data access port")
