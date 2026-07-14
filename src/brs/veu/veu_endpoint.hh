@@ -19,6 +19,11 @@ class VeuEndpoint
     virtual void reset() = 0;
     virtual VeuResponse evaluate() const = 0;
     virtual void clock(const VeuRequest &request) = 0;
+
+    // Optional TCM master and crossbar-lock sideband. FakeVEU does not access
+    // memory, so defaults keep existing endpoints source-compatible.
+    virtual VeuMemoryOutput evaluateMemory() const { return {}; }
+    virtual void clockMemory(const VeuMemoryResponse &) {}
 };
 
 } // namespace brs

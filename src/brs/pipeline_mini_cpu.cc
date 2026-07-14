@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -50,6 +51,17 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       pipeStats(this),
       instRequestorId(p.system->getRequestorId(this, "inst")),
       dataRequestorId(p.system->getRequestorId(this, "data")),
+      tbMemoryEnabled(p.tb_memory_enabled),
+      tbImemImageFile(p.tb_imem_image_file),
+      tbDmemImageFile(p.tb_dmem_image_file),
+      tbCrossbar(brs::TbCrossbarModel::Config{
+          p.tb_ibus_response_delay,
+          p.tb_dbus_response_delay,
+          p.tb_veu_pipeline_stages,
+          static_cast<uint32_t>(p.tb_inst_base),
+          static_cast<uint32_t>(p.tb_inst_size),
+          static_cast<uint32_t>(p.tb_data_base),
+          static_cast<uint32_t>(p.tb_data_size)}),
       instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
       dataPort(name() + ".data_port", this, CpuRequestPort::PortKind::Data),
       icacheEnabled(p.icache_enabled),
@@ -63,6 +75,16 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     core.configureFrontend(p.instr_fifo_depth, p.frontend_burst_bytes);
     core.configureFakeVeu(
         p.fake_veu_latency, p.fake_veu_response_data);
+
+    fatal_if(tbMemoryEnabled && icacheEnabled,
+             "RTL-testbench memory mode requires the gem5-side I-cache to be disabled");
+    fatal_if(tbMemoryEnabled && !elfFile.empty(),
+             "RTL-testbench memory mode requires a raw or hex instruction image, not ELF physProxy preload");
+    fatal_if(p.tb_inst_base > 0xffffffffULL ||
+             p.tb_data_base > 0xffffffffULL ||
+             p.tb_inst_size > 0xffffffffULL ||
+             p.tb_data_size > 0xffffffffULL,
+             "RTL-testbench address map must fit in the 32-bit RTL bus");
 
     if (icacheEnabled) {
         fatal_if(icacheLineSize < frontendBurstBytes,
@@ -182,6 +204,11 @@ PipelineMiniCPU::fillICacheLine(Addr blockAddr, const uint8_t *data,
 bool
 PipelineMiniCPU::fetchInstrFunctional(uint32_t addr, uint32_t &inst)
 {
+    if (tbMemoryEnabled) {
+        inst = tbCrossbar.readWord(addr);
+        return true;
+    }
+
     auto req = std::make_shared<Request>(
         addr, 4, Request::INST_FETCH, instRequestorId);
     auto pkt = new Packet(req, MemCmd::ReadReq);
@@ -205,7 +232,8 @@ PipelineMiniCPU::requestInstrTiming(uint32_t addr)
         return true;
     }
 
-    if (pendingInstFetch != nullptr) {
+    if ((tbMemoryEnabled && tbInstOutstanding) ||
+        (!tbMemoryEnabled && pendingInstFetch != nullptr)) {
         return false;
     }
 
@@ -214,6 +242,20 @@ PipelineMiniCPU::requestInstrTiming(uint32_t addr)
         (fetchAddr / frontendBurstBytes) * frontendBurstBytes;
     const unsigned fetchSize = icacheEnabled ? icacheLineSize :
         frontendBurstBytes;
+
+    if (tbMemoryEnabled) {
+        panic_if(fetchSize != 16,
+                 "RTL-testbench IBus supports one 16-byte beat, got %u",
+                 fetchSize);
+        pendingInstAddr = reqAddr;
+        pendingInstFetchAddr = fetchAddr;
+        tbIbusPulse = {};
+        tbIbusPulse.valid = true;
+        tbIbusPulse.address = static_cast<uint32_t>(reqAddr);
+        tbIbusPulse.read = true;
+        tbInstOutstanding = true;
+        return true;
+    }
 
     auto req = std::make_shared<Request>(
         reqAddr, fetchSize, Request::INST_FETCH, instRequestorId);
@@ -232,6 +274,23 @@ PipelineMiniCPU::requestInstrTiming(uint32_t addr)
     }
 
     return true;
+}
+
+void
+PipelineMiniCPU::completeTbFetch(const brs::TbBusResponse &response)
+{
+    panic_if(!tbInstOutstanding,
+             "RTL-testbench IBus returned without an outstanding fetch");
+
+    FetchBlock block;
+    block.fetchAddr = static_cast<uint32_t>(pendingInstFetchAddr);
+    block.blockAddr = static_cast<uint32_t>(pendingInstAddr);
+    block.words = response.readData;
+    core.acceptFetchedBlock(block);
+
+    tbInstOutstanding = false;
+    pendingInstAddr = 0;
+    pendingInstFetchAddr = 0;
 }
 
 bool
@@ -290,8 +349,50 @@ bool
 PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
                                    bool isWrite, uint32_t writeData)
 {
-    if (pendingDataReq != nullptr) {
+    if ((tbMemoryEnabled && tbDataOutstanding) ||
+        (!tbMemoryEnabled && pendingDataReq != nullptr)) {
         return false;
+    }
+
+    if (tbMemoryEnabled) {
+        panic_if(size != 1 && size != 2 && size != 4,
+                 "Unsupported RTL-testbench data access size: %u", size);
+        const unsigned byteInWord = addr & 0x3;
+        panic_if(byteInWord + size > 4,
+                 "RTL DBus access crosses a 32-bit word: addr=%#x size=%u",
+                 addr, size);
+
+        pendingDataAddr = addr;
+        pendingDataSize = size;
+        pendingDataIsWrite = isWrite;
+        pendingDataWriteValue = writeData;
+        tbDbusPulse = {};
+        tbDbusPulse.valid = true;
+        tbDbusPulse.address = addr;
+        tbDbusPulse.read = !isWrite;
+        tbDbusPulse.write = isWrite;
+
+        if (isWrite) {
+            const unsigned blockByte = addr & 0xf;
+            for (unsigned byte = 0; byte < size; ++byte) {
+                const unsigned destination = blockByte + byte;
+                const unsigned word = destination / 4;
+                const unsigned shift = (destination % 4) * 8;
+                tbDbusPulse.writeStrobe |= uint16_t{1} << destination;
+                tbDbusPulse.writeData[word] |=
+                    ((writeData >> (byte * 8)) & 0xff) << shift;
+            }
+        }
+
+        tbDataOutstanding = true;
+        if (isWrite && size == 4 && addr == 0x4001e004 &&
+            (writeData == 2 || writeData == 4)) {
+            // aerith_tb_top.sv observes this request directly, outside the
+            // crossbar decode, and terminates on the same rising edge.
+            tbDoneRequested = true;
+            tbDoneValue = writeData;
+        }
+        return true;
     }
 
     Request::Flags flags;
@@ -330,6 +431,31 @@ PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
     }
 
     return true;
+}
+
+void
+PipelineMiniCPU::completeTbData(const brs::TbBusResponse &response)
+{
+    panic_if(!tbDataOutstanding,
+             "RTL-testbench DBus returned without an outstanding request");
+
+    uint32_t data = 0;
+    if (!pendingDataIsWrite) {
+        const unsigned word = (pendingDataAddr >> 2) & 0x3;
+        const unsigned shift = (pendingDataAddr & 0x3) * 8;
+        data = response.readData[word] >> shift;
+        if (pendingDataSize < 4) {
+            data &= (uint32_t{1} << (pendingDataSize * 8)) - 1;
+        }
+    }
+
+    core.acceptDataResponse(static_cast<uint32_t>(pendingDataAddr),
+                            data, pendingDataIsWrite);
+    tbDataOutstanding = false;
+    pendingDataAddr = 0;
+    pendingDataSize = 0;
+    pendingDataIsWrite = false;
+    pendingDataWriteValue = 0;
 }
 
 bool
@@ -422,6 +548,11 @@ PipelineMiniCPU::preloadProgramFunctional()
 
     for (uint32_t i = 0; i < img.program_words; ++i) {
         Addr addr = textBase + i * 4;
+        if (tbMemoryEnabled) {
+            tbCrossbar.writeWord(static_cast<uint32_t>(addr),
+                                 img.instr_mem[i]);
+            continue;
+        }
         auto req = std::make_shared<Request>(
             addr, 4, Request::INST_FETCH, instRequestorId);
         auto pkt = new Packet(req, MemCmd::WriteReq);
@@ -461,13 +592,20 @@ void
 PipelineMiniCPU::preloadDataFunctional()
 {
     DataImage img;
-    if (!img.loadHexFile(dmemHexFile)) {
+    const bool loaded = tbMemoryEnabled ?
+        img.loadReadmemh32File(dmemHexFile) :
+        img.loadHexFile(dmemHexFile);
+    if (!loaded) {
         fatal("Failed to load DMEM hex file: %s", dmemHexFile);
     }
 
     const size_t totalBytes = img.data.size();
     for (size_t i = 0; i < totalBytes; ++i) {
         Addr addr = dmemBase + i;
+        if (tbMemoryEnabled) {
+            tbCrossbar.writeByte(static_cast<uint32_t>(addr), img.data[i]);
+            continue;
+        }
         auto req = std::make_shared<Request>(
             addr, 1, 0, dataRequestorId);
         auto pkt = new Packet(req, MemCmd::WriteReq);
@@ -481,9 +619,80 @@ PipelineMiniCPU::preloadDataFunctional()
            static_cast<unsigned long long>(totalBytes), dmemBase, dmemHexFile);
 }
 
+Addr
+PipelineMiniCPU::preloadTbRawImage(const std::string &path, Addr base)
+{
+    std::ifstream input(path, std::ios::binary);
+    fatal_if(!input.is_open(), "Failed to open RTL-testbench raw image: %s",
+             path);
+
+    Addr size = 0;
+    char byte = 0;
+    while (input.get(byte)) {
+        fatal_if(base + size > 0xffffffffULL,
+                 "RTL-testbench raw image exceeds the 32-bit address bus: %s",
+                 path);
+        tbCrossbar.writeByte(static_cast<uint32_t>(base + size),
+                             static_cast<uint8_t>(byte));
+        ++size;
+    }
+    fatal_if(!input.eof(), "Failed while reading RTL-testbench image: %s",
+             path);
+
+    inform("preloadTbRawImage: wrote %llu bytes at %#x from %s",
+           static_cast<unsigned long long>(size), base, path);
+    return size;
+}
+
+void
+PipelineMiniCPU::processTbMemoryCycle(const brs::VeuMemoryOutput &veu)
+{
+    // All sequential RTL blocks sample their old input pins on the same edge.
+    // Feed the VEU the response that was already visible before this edge;
+    // the crossbar response produced below becomes visible on the next edge.
+    core.clockVeuMemory(tbVeuResponsePins);
+
+    brs::TbCrossbarInputs inputs;
+    inputs.ibus = tbIbusPulse;
+    inputs.dbus = tbDbusPulse;
+
+    inputs.veu.valid = veu.request.valid;
+    inputs.veu.address = veu.request.address;
+    inputs.veu.read = veu.request.valid && !veu.request.isWrite();
+    inputs.veu.write = veu.request.valid && veu.request.isWrite();
+    inputs.veu.writeStrobe = veu.request.writeStrobe;
+    inputs.veu.writeData = veu.request.writeData;
+    inputs.lockStart = veu.lockStart;
+    inputs.lockFinish = veu.lockFinish;
+
+    const brs::TbCrossbarOutputs outputs = tbCrossbar.clock(inputs);
+    tbIbusPulse = {};
+    tbDbusPulse = {};
+
+    if (outputs.ibus.valid) {
+        completeTbFetch(outputs.ibus);
+    }
+    if (outputs.dbus.valid) {
+        completeTbData(outputs.dbus);
+    }
+
+    tbVeuResponsePins.valid = outputs.veu.valid;
+    tbVeuResponsePins.readData = outputs.veu.readData;
+    tbVeuResponsePins.lockActive = outputs.lockActive;
+}
+
 void
 PipelineMiniCPU::startup()
 {
+    if (tbMemoryEnabled) {
+        if (!tbImemImageFile.empty()) {
+            preloadedProgramSize = preloadTbRawImage(tbImemImageFile, textBase);
+        }
+        if (!tbDmemImageFile.empty()) {
+            preloadTbRawImage(tbDmemImageFile, dmemBase);
+        }
+    }
+
     if (!elfFile.empty()) {
         preloadElf();
     } else if (!programFile.empty()) {
@@ -512,7 +721,24 @@ PipelineMiniCPU::processTick()
         return;
     }
 
+    // Sample the VEU's current-cycle pins before either endpoint is clocked.
+    // The CPU request callbacks below likewise represent signals driven during
+    // this cycle and captured by the crossbar at its closing edge.
+    const brs::VeuMemoryOutput veuMemory = tbMemoryEnabled ?
+        core.evaluateVeuMemory() : brs::VeuMemoryOutput{};
     core.stepOneCycle();
+    if (tbMemoryEnabled) {
+        // The core drives its one-cycle request pulses during this cycle. The
+        // crossbar captures them on this edge; registered responses are made
+        // visible to PipelineCore on the following CPU cycle.
+        processTbMemoryCycle(veuMemory);
+        if (tbDoneRequested) {
+            exitSimLoop(tbDoneValue == 2 ?
+                "Aerith RTL testbench DONE (PASS)" :
+                "Aerith RTL testbench DONE (ERROR)");
+            return;
+        }
+    }
 
     pipeStats.cycle_count = core.getCycle();
     pipeStats.retired_inst_count = core.getRetiredInstCount();

@@ -19,6 +19,7 @@
 #include "brs/pipeline/pipeline_core.hh"
 #include "brs/pipeline/program_image.hh"
 #include "brs/pipeline_stats.hh"
+#include "brs/memory/tb_crossbar_model.hh"
 
 namespace gem5
 {
@@ -65,6 +66,18 @@ class PipelineMiniCPU : public ClockedObject
     RequestorID instRequestorId;
     RequestorID dataRequestorId;
 
+    bool tbMemoryEnabled;
+    std::string tbImemImageFile;
+    std::string tbDmemImageFile;
+    brs::TbCrossbarModel tbCrossbar;
+    brs::TbBusRequest tbIbusPulse;
+    brs::TbBusRequest tbDbusPulse;
+    bool tbInstOutstanding = false;
+    bool tbDataOutstanding = false;
+    bool tbDoneRequested = false;
+    uint32_t tbDoneValue = 0;
+    brs::VeuMemoryResponse tbVeuResponsePins;
+
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
     PacketPtr pendingInstFetch = nullptr;
@@ -98,15 +111,19 @@ class PipelineMiniCPU : public ClockedObject
     bool fetchInstrFunctional(uint32_t addr, uint32_t &inst);
     bool requestInstrTiming(uint32_t addr);
     bool completeTimingFetch(PacketPtr pkt);
+    void completeTbFetch(const brs::TbBusResponse &response);
     void retryInstFetch();
     bool requestDataTiming(uint32_t addr, unsigned size,
                            bool isWrite, uint32_t writeData);
     bool completeTimingData(PacketPtr pkt);
+    void completeTbData(const brs::TbBusResponse &response);
     void retryDataRequest();
     void preloadElf();
     void preloadProgramFunctional();
     void usePreloadedProgram();
     void preloadDataFunctional();
+    Addr preloadTbRawImage(const std::string &path, Addr base);
+    void processTbMemoryCycle(const brs::VeuMemoryOutput &veu);
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);

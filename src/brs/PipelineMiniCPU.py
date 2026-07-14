@@ -12,7 +12,25 @@ class PipelineMiniCPU(ClockedObject):
     preloaded_program = Param.Bool(False, "Use an already-initialized instruction memory image")
     preloaded_program_size = Param.Addr(0, "Instruction memory image size in bytes")
 
-    dmem_hex_file = Param.String("", "Spirit-style text hex file for DMEM initialization (byte granularity)")
+    dmem_hex_file = Param.String(
+        "",
+        "DMEM text image: byte tokens for spirit-like memory, or 32-bit "
+        "$readmemh words for the Aerith full-system RTL testbench",
+    )
+
+    tb_memory_enabled = Param.Bool(
+        False,
+        "Route CPU IBus, DBus, and the VEU TCM master through the Aerith full-system RTL-testbench crossbar",
+    )
+    tb_imem_image_file = Param.String("", "Raw image loaded into the internal testbench instruction SRAM")
+    tb_dmem_image_file = Param.String("", "Raw image loaded into the internal testbench data SRAM")
+    tb_ibus_response_delay = Param.UInt32(2, "crossbar.sv IBUS_RESP_DELAY")
+    tb_dbus_response_delay = Param.UInt32(2, "crossbar.sv DBUS_RESP_DELAY")
+    tb_veu_pipeline_stages = Param.UInt32(3, "crossbar.sv VEU_PIPELINE_STAGES")
+    tb_inst_base = Param.Addr(0x00000000, "Aerith testbench instruction SRAM base")
+    tb_inst_size = Param.Addr(0x00040000, "Aerith testbench instruction SRAM size")
+    tb_data_base = Param.Addr(0x20010000, "Aerith testbench data SRAM base")
+    tb_data_size = Param.Addr(0x00040000, "Aerith testbench data SRAM size")
 
     max_cycles = Param.UInt64(20, "Maximum cycles to run")
     reset_cycles = Param.UInt64(

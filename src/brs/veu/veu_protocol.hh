@@ -1,6 +1,7 @@
 #ifndef __BRS_VEU_PROTOCOL_HH__
 #define __BRS_VEU_PROTOCOL_HH__
 
+#include <array>
 #include <cstdint>
 
 namespace gem5
@@ -98,6 +99,34 @@ struct VeuResponse
 {
     bool valid = false;
     uint32_t readData = 0;
+};
+
+// VEU-to-TCM signals exposed by the RTL VEU wrapper. The frozen Aerith
+// testbench uses one 128-bit beat (four 32-bit words) per request.
+struct VeuMemoryRequest
+{
+    bool valid = false;
+    uint32_t address = 0;
+    uint16_t writeStrobe = 0;
+    std::array<uint32_t, 4> writeData{};
+
+    bool isWrite() const { return writeStrobe != 0; }
+};
+
+struct VeuMemoryOutput
+{
+    VeuMemoryRequest request;
+    bool lockStart = false;
+    bool lockFinish = false;
+};
+
+struct VeuMemoryResponse
+{
+    // The RTL return port has fixed timing and no valid signal. valid is kept
+    // here so cycle models and test endpoints can identify the return edge.
+    bool valid = false;
+    std::array<uint32_t, 4> readData{};
+    bool lockActive = false;
 };
 
 constexpr bool

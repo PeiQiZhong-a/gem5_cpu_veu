@@ -28,6 +28,8 @@ class PipelineCore
     void configureFakeVeu(uint32_t latencyCycles, uint32_t responseData);
     void attachVeuEndpoint(brs::VeuEndpoint &endpoint);
     void useFakeVeuEndpoint();
+    brs::VeuMemoryOutput evaluateVeuMemory() const;
+    void clockVeuMemory(const brs::VeuMemoryResponse &response);
     void stepOneCycle();
 
     bool done() const;

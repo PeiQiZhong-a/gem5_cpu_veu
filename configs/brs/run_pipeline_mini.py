@@ -38,9 +38,14 @@ parser.add_argument(
 parser.add_argument("--mem-size", default="64MiB")
 parser.add_argument(
     "--mem-system",
-    choices=["ddr3", "simple", "split", "spirit-like"],
+    choices=[
+        "ddr3", "simple", "split", "spirit-like",
+        "rtl-aerith-tb", "rtl-tb", "rtl-veu-tb",
+    ],
     default="spirit-like",
-    help="Memory platform: original DDR3, single fixed-latency SimpleMemory, split IMEM/DMEM SimpleMemory, or Spirit-like separated IMEM/DMEM.",
+    help=("Memory platform. rtl-aerith-tb is the full CPU+VEU+crossbar "
+          "testbench; rtl-tb is its compatibility alias. rtl-veu-tb names "
+          "the separate standalone VEU testbench and is not interchangeable."),
 )
 parser.add_argument(
     "--mem-latency",
@@ -62,7 +67,8 @@ parser.add_argument(
 parser.add_argument(
     "--dmem-hex",
     default="",
-    help="Spirit-style text hex file to initialize spirit-like DMEM (byte granularity, each hex token = 1 byte). Loaded by CPU via functional port.",
+    help=("DMEM text image. spirit-like uses one byte per token; "
+          "rtl-aerith-tb matches $readmemh with one 32-bit word per token."),
 )
 parser.add_argument(
     "--imem-base",
@@ -104,19 +110,32 @@ parser.add_argument("--frontend-burst-bytes", type=int, default=16)
 parser.add_argument("--instr-fifo-depth", type=int, default=12)
 args = parser.parse_args()
 
+if args.mem_system == "rtl-veu-tb":
+    parser.error(
+        "rtl-veu-tb is the standalone VEU testbench (direct load/store "
+        "arrays, no CPU crossbar). It requires a real VEU endpoint and a "
+        "separate timing model; use rtl-aerith-tb for the current full-system "
+        "cycle comparison."
+    )
+
+rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
+
 
 def parse_addr(value):
     return int(value, 0)
 
 
-if args.mem_system == "spirit-like" and args.binary:
+if (args.mem_system == "spirit-like" or rtl_tb_mode) and args.binary:
     parser.error(
-        "--mem-system spirit-like uses --imem-image/--program-file and "
+        "This memory mode uses --imem-image/--program-file and "
         "optional --dmem-image instead of --binary ELF preload"
     )
 
-if args.mem_system == "spirit-like" and args.imem_image and args.program_file:
-    parser.error("Use only one of raw --imem-image or hex --program-file in spirit-like mode")
+if (args.mem_system == "spirit-like" or rtl_tb_mode) and args.imem_image and args.program_file:
+    parser.error("Use only one of raw --imem-image or hex --program-file")
+
+if rtl_tb_mode and not (args.imem_image or args.program_file):
+    parser.error("Aerith RTL-testbench mode requires --imem-image or --program-file")
 
 if args.mem_system == "spirit-like" and parse_addr(args.imem_base) != parse_addr(args.dmem_base):
     parser.error("spirit-like mode requires --imem-base and --dmem-base to be identical")
@@ -127,8 +146,8 @@ if args.mem_system == "spirit-like" and toMemorySize(args.imem_size) != toMemory
 if args.dmem_hex and args.dmem_image:
     parser.error("Use only one of --dmem-hex or raw --dmem-image")
 
-if args.dmem_hex and args.mem_system != "spirit-like":
-    parser.error("--dmem-hex is currently supported only with --mem-system spirit-like")
+if args.dmem_hex and args.mem_system != "spirit-like" and not rtl_tb_mode:
+    parser.error("--dmem-hex is supported only with spirit-like or rtl-tb memory")
 
 if args.reset_cycles < 0:
     parser.error("--reset-cycles must be non-negative")
@@ -145,7 +164,25 @@ system.clk_domain.voltage_domain = VoltageDomain()
 
 system.mem_mode = "timing"
 
-if args.mem_system == "spirit-like":
+if rtl_tb_mode:
+    rtl_inst_base = 0x00000000
+    rtl_inst_size = 0x00040000
+    rtl_data_base = 0x20010000
+    rtl_data_size = 0x00040000
+    system.mem_ranges = [
+        AddrRange(start=rtl_inst_base, size=rtl_inst_size),
+        AddrRange(start=rtl_data_base, size=rtl_data_size),
+    ]
+    pipeline_program_file = args.program_file
+    pipeline_elf_file = ""
+    pipeline_text_base = rtl_inst_base
+    pipeline_preloaded_program = bool(args.imem_image)
+    # PipelineMiniCPU replaces this placeholder with the raw file's byte size.
+    pipeline_preloaded_program_size = 1 if args.imem_image else 0
+    pipeline_dmem_hex_file = args.dmem_hex
+    pipeline_dmem_base = rtl_data_base
+    dmem_image_file = args.dmem_image
+elif args.mem_system == "spirit-like":
     imem_base = parse_addr(args.imem_base)
     spirit_local_range = AddrRange(start=imem_base, size=args.imem_size)
     system.mem_ranges = [spirit_local_range]
@@ -188,6 +225,16 @@ system.pipeline = PipelineMiniCPU(
     icache_line_size=args.icache_line_size,
     frontend_burst_bytes=args.frontend_burst_bytes,
     instr_fifo_depth=args.instr_fifo_depth,
+    tb_memory_enabled=rtl_tb_mode,
+    tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
+    tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
+    tb_ibus_response_delay=2,
+    tb_dbus_response_delay=2,
+    tb_veu_pipeline_stages=3,
+    tb_inst_base=0x00000000,
+    tb_inst_size=0x00040000,
+    tb_data_base=0x20010000,
+    tb_data_size=0x00040000,
 )
 system.pipeline.clk_domain = system.clk_domain
 
@@ -246,6 +293,19 @@ elif args.mem_system == "split":
         image_file=dmem_image,
     )
     system.dmem.port = system.dbus.mem_side_ports
+
+elif rtl_tb_mode:
+    # Mandatory gem5 port connections. Runtime requests and image contents
+    # bypass these stubs and use PipelineMiniCPU's shared cycle model.
+    system.membus = NoncoherentXBar()
+    system.pipeline.inst_port = system.membus.cpu_side_ports
+    system.pipeline.data_port = system.membus.cpu_side_ports
+    system.system_port = system.membus.cpu_side_ports
+
+    system.imem_stub = SimpleMemory(range=system.mem_ranges[0])
+    system.imem_stub.port = system.membus.mem_side_ports
+    system.dmem_stub = SimpleMemory(range=system.mem_ranges[1])
+    system.dmem_stub.port = system.membus.mem_side_ports
 
 elif args.mem_system == "spirit-like":
     imem_latency = args.imem_latency if args.imem_latency else args.mem_latency
@@ -324,6 +384,13 @@ elif args.mem_system == "spirit-like":
         print("DMEM hex: {} (loaded by CPU via dataPort)".format(args.dmem_hex))
     else:
         print("DMEM image: {}".format(dmem_image_file if dmem_image_file else "<none>"))
+elif rtl_tb_mode:
+    print("RTL IMEM range: 0x00000000..0x0003ffff")
+    print("RTL DMEM decode: 0x20010000..0x2004ffff (128 KiB SRAM backing)")
+    print("RTL UART range: 0x40000000..0x40000fff")
+    print("RTL DONE monitor: 0x4001e004")
+    print("RTL response stages: IBus=2 DBus=2 VEU=3")
+    print("Shared arbitration priority: VEU > IBus > DBus")
 print("Internal I-cache: {}".format("enabled" if args.icache_enabled else "disabled"))
 
 exit_event = m5.simulate()

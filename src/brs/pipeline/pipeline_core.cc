@@ -264,6 +264,21 @@ PipelineCore::freezeFetchDecodeForExecuteStall() const
     return veu_stall || mdu_stall;
 }
 
+brs::VeuMemoryOutput
+PipelineCore::evaluateVeuMemory() const
+{
+    return veuEndpoint ? veuEndpoint->evaluateMemory() :
+        brs::VeuMemoryOutput{};
+}
+
+void
+PipelineCore::clockVeuMemory(const brs::VeuMemoryResponse &response)
+{
+    if (veuEndpoint) {
+        veuEndpoint->clockMemory(response);
+    }
+}
+
 void
 PipelineCore::stepOneCycle()
 {

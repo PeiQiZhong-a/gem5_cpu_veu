@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -305,6 +306,72 @@ struct DataImage
         }
 
         return !data.empty();
+    }
+
+    // Match Verilog $readmemh on a logic [31:0] memory. Each token is one
+    // 32-bit word and is laid out as little-endian bytes in the CPU address
+    // space. @address directives select the next word index.
+    bool loadReadmemh32File(const std::string &path)
+    {
+        clear();
+
+        std::ifstream fin(path);
+        if (!fin.is_open()) {
+            return false;
+        }
+
+        size_t wordIndex = 0;
+        bool loadedWord = false;
+        std::string line;
+        try {
+            while (std::getline(fin, line)) {
+                auto pos = line.find('#');
+                if (pos != std::string::npos)
+                    line = line.substr(0, pos);
+                pos = line.find("//");
+                if (pos != std::string::npos)
+                    line = line.substr(0, pos);
+
+                std::istringstream iss(line);
+                std::string token;
+                while (iss >> token) {
+                    token.erase(
+                        std::remove_if(token.begin(), token.end(),
+                            [](unsigned char c){ return c == '_'; }),
+                        token.end());
+                    if (token.empty()) {
+                        continue;
+                    }
+                    if (token.front() == '@') {
+                        if (token.size() == 1) {
+                            return false;
+                        }
+                        wordIndex = std::stoull(token.substr(1), nullptr, 16);
+                        continue;
+                    }
+
+                    const uint64_t value = std::stoull(token, nullptr, 16);
+                    if (value > 0xffffffffULL) {
+                        return false;
+                    }
+                    const size_t byteIndex = wordIndex * 4;
+                    if (data.size() < byteIndex + 4) {
+                        data.resize(byteIndex + 4, 0);
+                    }
+                    for (unsigned byte = 0; byte < 4; ++byte) {
+                        data[byteIndex + byte] = static_cast<uint8_t>(
+                            value >> (byte * 8));
+                    }
+                    ++wordIndex;
+                    loadedWord = true;
+                }
+            }
+        } catch (const std::exception &) {
+            clear();
+            return false;
+        }
+
+        return loadedWord;
     }
 };
 
