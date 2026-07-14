@@ -407,7 +407,7 @@ class Executable(TopLevelBase):
     '''Base class for creating an executable from sources.'''
 
     def path(self, env):
-        return self.dir.File(env.subst(self.target + '.${ENV_LABEL}'))
+        return self.dir.File(self.target + '.${ENV_LABEL}')
 
     def declare(self, env, objs=None):
         if objs is None:

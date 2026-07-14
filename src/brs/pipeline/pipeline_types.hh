@@ -45,6 +45,15 @@ enum class InstrKind
     SLT,
     SLTU,
 
+    MUL,
+    MULH,
+    MULHSU,
+    MULHU,
+    DIV,
+    DIVU,
+    REM,
+    REMU,
+
     LB,
     LBU,
     LH,
@@ -66,7 +75,15 @@ enum class AluOp
 {
     NONE,
     ADD,
-    SUB
+    SUB,
+    MUL,
+    MULH,
+    MULHSU,
+    MULHU,
+    DIV,
+    DIVU,
+    REM,
+    REMU
 };
 
 enum class WbSel

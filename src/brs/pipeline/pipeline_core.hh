@@ -54,7 +54,8 @@ class PipelineCore
     }
     bool veuBusy() const { return veuCbu.busy(); }
     bool veuStalled() const { return veu_stall; }
-    bool spiritExecuteStalled() const { return veu_stall; }
+    bool mduStalled() const { return mdu_stall; }
+    bool spiritExecuteStalled() const { return veu_stall || mdu_stall; }
     bool haltRequested() const { return halt_requested; }
 
     bool ifidValid() const;
@@ -109,6 +110,10 @@ class PipelineCore
     bool data_response_is_store = false;
 
     bool veu_stall = false;
+    bool mdu_stall = false;
+    bool mdu_busy = false;
+    uint32_t mdu_cycles_remaining = 0;
+    uint32_t mdu_result = 0;
     brs::VeuCbu veuCbu;
     brs::FakeVeu fakeVeu;
     brs::VeuEndpoint *veuEndpoint = &fakeVeu;

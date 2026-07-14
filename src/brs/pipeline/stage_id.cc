@@ -96,7 +96,7 @@ PipelineCore::stageID()
       idex_next.reg_write = true;
       idex_next.wb_sel = WbSel::ALU;
     }
-  //add
+//add
     else if (opcode == 0x33 && funct3 == 0x0 && funct7 == 0x00) {
       idex_next.valid = true;
       idex_next.pc = ifid_cur.pc;
@@ -110,6 +110,75 @@ PipelineCore::stageID()
       idex_next.alu_op = AluOp::ADD;
       idex_next.reg_write = true;
       idex_next.wb_sel = WbSel::ALU;
+    }
+  // rv32m
+    else if (opcode == 0x33 && funct7 == 0x01) {
+      idex_next.valid = true;
+      idex_next.pc = ifid_cur.pc;
+      idex_next.instr = instr;
+      idex_next.rd = static_cast<uint8_t>(rd);
+      idex_next.rs1 = static_cast<uint8_t>(rs1);
+      idex_next.rs2 = static_cast<uint8_t>(rs2);
+      idex_next.rs1_val = regs[rs1];
+      idex_next.rs2_val = regs[rs2];
+      idex_next.reg_write = true;
+      idex_next.wb_sel = WbSel::ALU;
+
+      switch (funct3) {
+        case 0x0:
+          idex_next.kind = InstrKind::MUL;
+          idex_next.alu_op = AluOp::MUL;
+          idex_next.mdu_op1_is_signed = true;
+          idex_next.mdu_op2_is_signed = true;
+          break;
+        case 0x1:
+          idex_next.kind = InstrKind::MULH;
+          idex_next.alu_op = AluOp::MULH;
+          idex_next.mdu_op1_is_signed = true;
+          idex_next.mdu_op2_is_signed = true;
+          idex_next.mdu_output_is_high = true;
+          break;
+        case 0x2:
+          idex_next.kind = InstrKind::MULHSU;
+          idex_next.alu_op = AluOp::MULHSU;
+          idex_next.mdu_op1_is_signed = true;
+          idex_next.mdu_output_is_high = true;
+          break;
+        case 0x3:
+          idex_next.kind = InstrKind::MULHU;
+          idex_next.alu_op = AluOp::MULHU;
+          idex_next.mdu_output_is_high = true;
+          break;
+        case 0x4:
+          idex_next.kind = InstrKind::DIV;
+          idex_next.alu_op = AluOp::DIV;
+          idex_next.mdu_op_is_div = true;
+          idex_next.mdu_op1_is_signed = true;
+          idex_next.mdu_op2_is_signed = true;
+          break;
+        case 0x5:
+          idex_next.kind = InstrKind::DIVU;
+          idex_next.alu_op = AluOp::DIVU;
+          idex_next.mdu_op_is_div = true;
+          break;
+        case 0x6:
+          idex_next.kind = InstrKind::REM;
+          idex_next.alu_op = AluOp::REM;
+          idex_next.mdu_op_is_div = true;
+          idex_next.mdu_op1_is_signed = true;
+          idex_next.mdu_op2_is_signed = true;
+          idex_next.mdu_output_is_high = true;
+          break;
+        case 0x7:
+          idex_next.kind = InstrKind::REMU;
+          idex_next.alu_op = AluOp::REMU;
+          idex_next.mdu_op_is_div = true;
+          idex_next.mdu_output_is_high = true;
+          break;
+        default:
+          idex_next = {};
+          return;
+      }
     }
   //sub
     else if (opcode == 0x33 && funct3 == 0x0 && funct7 == 0x20) {

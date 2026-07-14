@@ -73,6 +73,10 @@ PipelineCore::reset()
     data_response_value = 0;
     data_response_is_store = false;
     veu_stall = false;
+    mdu_stall = false;
+    mdu_busy = false;
+    mdu_cycles_remaining = 0;
+    mdu_result = 0;
     veuResponse = {};
     veuCbuOutput = {};
     veuIssue = {};
@@ -250,14 +254,14 @@ bool
 PipelineCore::freezeFetchDecodeForExecuteStall() const
 {
     // Spirit RTL path:
-    //   IEU: cbu_valid && !cbu_complete -> ie2sc.stall_req
-    //   SCU: stall_from_ie              -> stall = b111
-    //   IFU/IDU: stall bits hold fetch/decode state while CBU waits.
+    //   IEU: long-latency unit not ready -> ie2sc.stall_req
+    //   SCU: stall_from_ie               -> stall = b111
+    //   IFU/IDU: stall bits hold fetch/decode state while EX waits.
     //
-    // This software pipeline models that execute-stage freeze with veu_stall:
-    // the current VEU instruction remains in ID/EX, IF/ID is preserved, and
-    // no younger instruction is decoded/fetched until the CBU completes.
-    return veu_stall;
+    // This software pipeline models that execute-stage freeze here:
+    // the current long-latency instruction remains in ID/EX, IF/ID is preserved, and
+    // no younger instruction is decoded/fetched until the CBU/MDU completes.
+    return veu_stall || mdu_stall;
 }
 
 void
@@ -272,6 +276,7 @@ PipelineCore::stepOneCycle()
     flush_idex = false;
     mem_stall = false;
     veu_stall = false;
+    mdu_stall = false;
     veuIssue = {};
     veuResponse = veuEndpoint ? veuEndpoint->evaluate() : brs::VeuResponse{};
     veuCbuOutput = veuCbu.evaluate(veuResponse);

@@ -43,6 +43,10 @@ struct IDEX
     uint32_t veu_start = 0;
 
     AluOp alu_op = AluOp::NONE;
+    bool mdu_op_is_div = false;
+    bool mdu_op1_is_signed = false;
+    bool mdu_op2_is_signed = false;
+    bool mdu_output_is_high = false;
     bool reg_write = false;
     bool mem_read = false;
     bool mem_write = false;
