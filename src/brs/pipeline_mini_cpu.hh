@@ -2,6 +2,7 @@
 #define __BRS_PIPELINE_MINI_CPU_HH__
 
 #include <cstdint>
+#include <array>
 #include <functional>
 #include <memory>
 #include <string>
@@ -33,7 +34,8 @@ class PipelineMiniCPU : public ClockedObject
         enum class PortKind
         {
             Inst,
-            Data
+            Data,
+            Veu
         };
 
       private:
@@ -65,6 +67,7 @@ class PipelineMiniCPU : public ClockedObject
     PipelineStats pipeStats;
     RequestorID instRequestorId;
     RequestorID dataRequestorId;
+    RequestorID veuRequestorId;
 
     bool tbMemoryEnabled;
     std::string tbImemImageFile;
@@ -80,6 +83,7 @@ class PipelineMiniCPU : public ClockedObject
 
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
+    CpuRequestPort veuPort;
     PacketPtr pendingInstFetch = nullptr;
     bool instFetchRetry = false;
     Addr pendingInstAddr = 0;
@@ -91,6 +95,11 @@ class PipelineMiniCPU : public ClockedObject
     unsigned pendingDataSize = 0;
     bool pendingDataIsWrite = false;
     uint32_t pendingDataWriteValue = 0;
+
+    PacketPtr pendingVeuReq = nullptr;
+    bool veuReqRetry = false;
+    Addr pendingVeuAddr = 0;
+    bool pendingVeuIsWrite = false;
 
     struct ICacheLine
     {
@@ -118,6 +127,9 @@ class PipelineMiniCPU : public ClockedObject
     bool completeTimingData(PacketPtr pkt);
     void completeTbData(const brs::TbBusResponse &response);
     void retryDataRequest();
+    bool requestVeuTiming(const brs::TimingVeuMemoryRequest &request);
+    bool completeTimingVeu(PacketPtr pkt);
+    void retryVeuRequest();
     void preloadElf();
     void preloadProgramFunctional();
     void usePreloadedProgram();

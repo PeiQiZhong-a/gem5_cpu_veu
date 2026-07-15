@@ -35,6 +35,16 @@ parser.add_argument(
     default=0,
     help="Fixed FakeVEU csr_rdata value (decimal or 0x-prefixed).",
 )
+parser.add_argument(
+    "--veu-model",
+    choices=["fake", "timing"],
+    default="fake",
+    help="VEU backend model. fake preserves current tests; timing runs the VEU state-machine model.",
+)
+parser.add_argument("--veu-input-fifo-depth", type=int, default=4)
+parser.add_argument("--veu-execute-latency", type=int, default=3)
+parser.add_argument("--veu-startup-cycles", type=int, default=0)
+parser.add_argument("--veu-finish-cycles", type=int, default=0)
 parser.add_argument("--mem-size", default="64MiB")
 parser.add_argument(
     "--mem-system",
@@ -155,6 +165,15 @@ if args.reset_cycles < 0:
 if args.fake_veu_latency < 1:
     parser.error("--fake-veu-latency must be at least one cycle")
 
+if args.veu_input_fifo_depth < 1:
+    parser.error("--veu-input-fifo-depth must be at least one")
+
+if args.veu_execute_latency < 1:
+    parser.error("--veu-execute-latency must be at least one")
+
+if args.veu_startup_cycles < 0 or args.veu_finish_cycles < 0:
+    parser.error("--veu-startup-cycles and --veu-finish-cycles must be non-negative")
+
 
 system = System()
 
@@ -213,6 +232,11 @@ system.pipeline = PipelineMiniCPU(
     reset_cycles=args.reset_cycles,
     fake_veu_latency=args.fake_veu_latency,
     fake_veu_response_data=args.fake_veu_response_data,
+    veu_model=args.veu_model,
+    veu_input_fifo_depth=args.veu_input_fifo_depth,
+    veu_execute_latency=args.veu_execute_latency,
+    veu_startup_cycles=args.veu_startup_cycles,
+    veu_finish_cycles=args.veu_finish_cycles,
     program_file=pipeline_program_file,
     elf_file=pipeline_elf_file,
     preloaded_program=pipeline_preloaded_program,
@@ -242,6 +266,7 @@ if args.mem_system == "ddr3":
     system.membus = SystemXBar()
     system.pipeline.inst_port = system.membus.cpu_side_ports
     system.pipeline.data_port = system.membus.cpu_side_ports
+    system.pipeline.veu_port = system.membus.cpu_side_ports
     system.system_port = system.membus.cpu_side_ports
 
     system.mem_ctrl = MemCtrl()
@@ -253,6 +278,7 @@ elif args.mem_system == "simple":
     system.membus = SystemXBar()
     system.pipeline.inst_port = system.membus.cpu_side_ports
     system.pipeline.data_port = system.membus.cpu_side_ports
+    system.pipeline.veu_port = system.membus.cpu_side_ports
     system.system_port = system.membus.cpu_side_ports
 
     system.memory = SimpleMemory(
@@ -271,6 +297,7 @@ elif args.mem_system == "split":
 
     system.pipeline.inst_port = system.ibus.cpu_side_ports
     system.pipeline.data_port = system.dbus.cpu_side_ports
+    system.pipeline.veu_port = system.dbus.cpu_side_ports
 
     # Keep the system port on IMEM so PipelineMiniCPU::preloadElf() writes code
     # through system->physProxy into the globally visible instruction memory.
@@ -297,9 +324,15 @@ elif args.mem_system == "split":
 elif rtl_tb_mode:
     # Mandatory gem5 port connections. Runtime requests and image contents
     # bypass these stubs and use PipelineMiniCPU's shared cycle model.
-    system.membus = NoncoherentXBar()
+    system.membus = NoncoherentXBar(
+        frontend_latency=0,
+        forward_latency=0,
+        response_latency=0,
+        width=args.frontend_burst_bytes,
+    )
     system.pipeline.inst_port = system.membus.cpu_side_ports
     system.pipeline.data_port = system.membus.cpu_side_ports
+    system.pipeline.veu_port = system.membus.cpu_side_ports
     system.system_port = system.membus.cpu_side_ports
 
     system.imem_stub = SimpleMemory(range=system.mem_ranges[0])
@@ -329,6 +362,7 @@ elif args.mem_system == "spirit-like":
 
     system.pipeline.inst_port = system.ibus.cpu_side_ports
     system.pipeline.data_port = system.dbus.cpu_side_ports
+    system.pipeline.veu_port = system.dbus.cpu_side_ports
 
     # Runtime access remains strictly split: IBUS reaches only IMEM and DBUS
     # reaches only DMEM. IMEM and DMEM intentionally share the same local
@@ -360,8 +394,14 @@ m5.instantiate()
 print("Beginning PipelineMiniCPU simulation!")
 print("Clock frequency: {}".format(args.clock_frequency))
 print("Reset cycles: {}".format(args.reset_cycles))
+print("VEU model: {}".format(args.veu_model))
 print("FakeVEU latency: {} cycles".format(args.fake_veu_latency))
 print("FakeVEU response data: {:#x}".format(args.fake_veu_response_data))
+if args.veu_model == "timing":
+    print("TimingVEU FIFO depth: {}".format(args.veu_input_fifo_depth))
+    print("TimingVEU execute latency: {} cycles".format(args.veu_execute_latency))
+    print("TimingVEU startup cycles: {}".format(args.veu_startup_cycles))
+    print("TimingVEU finish cycles: {}".format(args.veu_finish_cycles))
 print("Memory system: {}".format(args.mem_system))
 if args.mem_system == "simple":
     print("Memory latency: {}".format(args.mem_latency))

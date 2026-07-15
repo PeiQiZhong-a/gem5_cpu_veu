@@ -17,6 +17,7 @@ Source('pipeline/memory_backend_local.cc')
 Source('memory/tb_crossbar_model.cc')
 Source('veu/veu_cbu.cc')
 Source('veu/fake_veu.cc')
+Source('veu/timing_veu.cc')
 
 GTest('brs_frontend_fetch_unit.test',
       'pipeline/frontend_fetch_unit.test.cc',
@@ -53,11 +54,17 @@ GTest('brs_fake_veu.test',
       'veu/fake_veu.cc',
       'veu/veu_cbu.cc')
 
+GTest('brs_timing_veu.test',
+      'veu/timing_veu.test.cc',
+      'veu/timing_veu.cc')
+
 GTest('brs_veu_issue.test',
       'pipeline/veu_issue.test.cc')
 
 GTest('brs_pipeline_veu_stall.test',
       'pipeline/pipeline_veu_stall.test.cc',
+      'pipeline/pipeline_veu_async.test.cc',
+      'pipeline/pipeline_veu_dmem_lock.test.cc',
       'pipeline/pipeline_core.cc',
       'pipeline/stage_if.cc',
       'pipeline/stage_id.cc',
@@ -70,7 +77,8 @@ GTest('brs_pipeline_veu_stall.test',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
       'veu/veu_cbu.cc',
-      'veu/fake_veu.cc')
+      'veu/fake_veu.cc',
+      'veu/timing_veu.cc')
 
 GTest('brs_pipeline_rv32m.test',
       'pipeline/pipeline_rv32m.test.cc',
@@ -86,7 +94,8 @@ GTest('brs_pipeline_rv32m.test',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
       'veu/veu_cbu.cc',
-      'veu/fake_veu.cc')
+      'veu/fake_veu.cc',
+      'veu/timing_veu.cc')
 
 GTest('brs_pipeline_veu_writeback.test',
       'pipeline/pipeline_veu_writeback.test.cc',
@@ -102,7 +111,8 @@ GTest('brs_pipeline_veu_writeback.test',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
       'veu/veu_cbu.cc',
-      'veu/fake_veu.cc')
+      'veu/fake_veu.cc',
+      'veu/timing_veu.cc')
 
 GTest('brs_pipeline_veu_end_to_end.test',
       'pipeline/pipeline_veu_end_to_end.test.cc',
@@ -118,4 +128,5 @@ GTest('brs_pipeline_veu_end_to_end.test',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
       'veu/veu_cbu.cc',
-      'veu/fake_veu.cc')
+      'veu/fake_veu.cc',
+      'veu/timing_veu.cc')

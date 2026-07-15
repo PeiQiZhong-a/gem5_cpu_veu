@@ -21,6 +21,9 @@ PipelineMiniCPU::CpuRequestPort::recvTimingResp(PacketPtr pkt)
     if (kind == PortKind::Inst) {
         return owner->completeTimingFetch(pkt);
     }
+    if (kind == PortKind::Veu) {
+        return owner->completeTimingVeu(pkt);
+    }
     return owner->completeTimingData(pkt);
 }
 
@@ -29,6 +32,8 @@ PipelineMiniCPU::CpuRequestPort::recvReqRetry()
 {
     if (kind == PortKind::Inst) {
         owner->retryInstFetch();
+    } else if (kind == PortKind::Veu) {
+        owner->retryVeuRequest();
     } else {
         owner->retryDataRequest();
     }
@@ -51,6 +56,7 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       pipeStats(this),
       instRequestorId(p.system->getRequestorId(this, "inst")),
       dataRequestorId(p.system->getRequestorId(this, "data")),
+      veuRequestorId(p.system->getRequestorId(this, "veu")),
       tbMemoryEnabled(p.tb_memory_enabled),
       tbImemImageFile(p.tb_imem_image_file),
       tbDmemImageFile(p.tb_dmem_image_file),
@@ -64,6 +70,7 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
           static_cast<uint32_t>(p.tb_data_size)}),
       instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
       dataPort(name() + ".data_port", this, CpuRequestPort::PortKind::Data),
+      veuPort(name() + ".veu_port", this, CpuRequestPort::PortKind::Veu),
       icacheEnabled(p.icache_enabled),
       icacheSize(p.icache_size),
       icacheLineSize(p.icache_line_size),
@@ -75,6 +82,24 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     core.configureFrontend(p.instr_fifo_depth, p.frontend_burst_bytes);
     core.configureFakeVeu(
         p.fake_veu_latency, p.fake_veu_response_data);
+    brs::VeuTimingConfig veuConfig;
+    veuConfig.inputFifoDepth = p.veu_input_fifo_depth;
+    veuConfig.executeLatency = p.veu_execute_latency;
+    veuConfig.startupCycles = p.veu_startup_cycles;
+    veuConfig.finishCycles = p.veu_finish_cycles;
+    core.configureTimingVeu(veuConfig);
+    core.setTimingVeuMemoryRequestCallback(
+        [this](const brs::TimingVeuMemoryRequest &request) {
+            return requestVeuTiming(request);
+        });
+    if (p.veu_model == "timing") {
+        core.useTimingVeuEndpoint();
+    } else if (p.veu_model == "fake") {
+        core.useFakeVeuEndpoint();
+    } else {
+        fatal("Unsupported veu_model '%s': expected fake or timing",
+              p.veu_model.c_str());
+    }
 
     fatal_if(tbMemoryEnabled && icacheEnabled,
              "RTL-testbench memory mode requires the gem5-side I-cache to be disabled");
@@ -83,8 +108,11 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     fatal_if(p.tb_inst_base > 0xffffffffULL ||
              p.tb_data_base > 0xffffffffULL ||
              p.tb_inst_size > 0xffffffffULL ||
-             p.tb_data_size > 0xffffffffULL,
+              p.tb_data_size > 0xffffffffULL,
              "RTL-testbench address map must fit in the 32-bit RTL bus");
+    fatal_if(tbMemoryEnabled && p.veu_model == "timing",
+             "TimingVEU uses a 256-bit gem5 memory port and is not compatible "
+             "with the 128-bit Aerith RTL-testbench VEU TCM pins");
 
     if (icacheEnabled) {
         fatal_if(icacheLineSize < frontendBurstBytes,
@@ -112,6 +140,9 @@ PipelineMiniCPU::getPort(const std::string &if_name, PortID idx)
     }
     if (if_name == "data_port") {
         return dataPort;
+    }
+    if (if_name == "veu_port") {
+        return veuPort;
     }
     return ClockedObject::getPort(if_name, idx);
 }
@@ -508,6 +539,78 @@ PipelineMiniCPU::retryDataRequest()
     }
 }
 
+bool
+PipelineMiniCPU::requestVeuTiming(
+    const brs::TimingVeuMemoryRequest &request)
+{
+    if (pendingVeuReq != nullptr) {
+        return false;
+    }
+
+    Request::Flags flags;
+    auto req = std::make_shared<Request>(
+        request.addr, brs::VeuVectorBytes, flags, veuRequestorId);
+    auto pkt = new Packet(req, request.isWrite ? MemCmd::WriteReq :
+                          MemCmd::ReadReq);
+    pkt->allocate();
+
+    if (request.isWrite) {
+        std::memcpy(pkt->getPtr<uint8_t>(), request.data.data(),
+                    brs::VeuVectorBytes);
+    }
+
+    pendingVeuAddr = request.addr;
+    pendingVeuIsWrite = request.isWrite;
+    pendingVeuReq = pkt;
+    veuReqRetry = false;
+
+    if (veuPort.sendTimingReq(pkt)) {
+        pendingVeuReq = nullptr;
+    } else {
+        veuReqRetry = true;
+    }
+
+    return true;
+}
+
+bool
+PipelineMiniCPU::completeTimingVeu(PacketPtr pkt)
+{
+    panic_if(pkt->isError(), "Timing VEU data access failed: %s",
+             pkt->print());
+
+    if (pendingVeuIsWrite) {
+        core.acceptVeuMemoryWrite(static_cast<uint32_t>(pendingVeuAddr));
+    } else {
+        std::array<uint8_t, brs::VeuVectorBytes> data = {};
+        const uint8_t *bytes = pkt->getConstPtr<uint8_t>();
+        std::copy(bytes, bytes + brs::VeuVectorBytes, data.begin());
+        core.acceptVeuMemoryRead(static_cast<uint32_t>(pendingVeuAddr), data);
+    }
+
+    pendingVeuReq = nullptr;
+    veuReqRetry = false;
+    pendingVeuAddr = 0;
+    pendingVeuIsWrite = false;
+
+    delete pkt;
+    return true;
+}
+
+void
+PipelineMiniCPU::retryVeuRequest()
+{
+    if (!pendingVeuReq || !veuReqRetry) {
+        return;
+    }
+
+    PacketPtr pkt = pendingVeuReq;
+    if (veuPort.sendTimingReq(pkt)) {
+        pendingVeuReq = nullptr;
+        veuReqRetry = false;
+    }
+}
+
 void
 PipelineMiniCPU::preloadElf()
 {
@@ -750,6 +853,22 @@ PipelineMiniCPU::processTick()
     pipeStats.ibus_req_count = core.getIbusReqCount();
     pipeStats.fetch_fifo_flush_count = core.getFetchFifoFlushCount();
     pipeStats.aligned_instr_count = core.getAlignedInstrCount();
+    pipeStats.veu_issue_count = core.getVeuIssueCount();
+    pipeStats.veu_complete_count = core.getVeuCompleteCount();
+    pipeStats.veu_csr_handshake_cycles = core.getVeuCsrHandshakeCycles();
+    pipeStats.rv_dmem_blocked_by_veu_cycles =
+        core.getRvDmemBlockedByVeuCycles();
+    pipeStats.veu_operation_start_count =
+        core.getTimingVeuOperationStarts();
+    pipeStats.veu_operation_complete_count =
+        core.getTimingVeuOperationCompletes();
+    pipeStats.veu_busy_cycles = core.getTimingVeuBusyCycles();
+    pipeStats.veu_load_wait_cycles = core.getTimingVeuLoadWaitCycles();
+    pipeStats.veu_execute_cycles = core.getTimingVeuExecuteCycles();
+    pipeStats.veu_store_wait_cycles = core.getTimingVeuStoreWaitCycles();
+    pipeStats.veu_chunks = core.getTimingVeuChunks();
+    pipeStats.veu_memory_reads = core.getTimingVeuMemoryReads();
+    pipeStats.veu_memory_writes = core.getTimingVeuMemoryWrites();
 
     std::cout
         << "[PipelineMiniCPU] cycle=" << core.getCycle()

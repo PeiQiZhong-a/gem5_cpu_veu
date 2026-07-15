@@ -1,0 +1,20 @@
+RV-VEU VADD E2E PASS
+
+Results:
+  lane0 actual=0x0000000b expected=0x0000000b
+  lane7 actual=0x00000058 expected=0x00000058
+
+Stats:
+  veu_issue_count=8
+  veu_complete_count=8
+  veu_csr_handshake_cycles=16
+  rv_dmem_blocked_by_veu_cycles=0
+  veu_operation_start_count=1
+  veu_operation_complete_count=1
+  veu_busy_cycles=14
+  veu_chunks=1
+  veu_memory_reads=2
+  veu_memory_writes=1
+  cycle_count=57
+  stall_count=20
+  flush_count=2

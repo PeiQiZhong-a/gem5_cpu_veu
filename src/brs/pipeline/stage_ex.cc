@@ -220,6 +220,7 @@ PipelineCore::stageEX()
             ++veu_complete_count;
         } else {
             exmem_next = {};
+            ++veu_csr_handshake_cycles;
             if (veuCbuOutput.ready) {
                 veuIssue = makeVeuCbuIssue(
                     idex_cur, op_a, op_b, op_c);
@@ -285,7 +286,7 @@ PipelineCore::stageEX()
           mdu_busy = false;
           mdu_result = 0;
           break;
-          
+
       case InstrKind::LB:
       case InstrKind::LBU:
       case InstrKind::LH:

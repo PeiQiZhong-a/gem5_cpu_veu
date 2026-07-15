@@ -45,6 +45,26 @@ class PipelineMiniCPU(ClockedObject):
         0,
         "Fixed csr_rdata returned by FakeVEU",
     )
+    veu_model = Param.String(
+        "fake",
+        "VEU backend model: fake or timing",
+    )
+    veu_input_fifo_depth = Param.UInt32(
+        4,
+        "TimingVEU input FIFO depth in 256-bit chunks",
+    )
+    veu_execute_latency = Param.UInt32(
+        3,
+        "TimingVEU execute latency per 256-bit chunk in CPU cycles",
+    )
+    veu_startup_cycles = Param.UInt32(
+        0,
+        "TimingVEU startup cycles before issuing the first load",
+    )
+    veu_finish_cycles = Param.UInt32(
+        0,
+        "TimingVEU finish cycles before reporting completion",
+    )
 
     text_base    = Param.Addr(0x80000000, "Code base address")
     dmem_base    = Param.Addr(0x80200000, "DMEM base address")
@@ -60,3 +80,4 @@ class PipelineMiniCPU(ClockedObject):
 
     inst_port = RequestPort("Instruction fetch port")
     data_port = RequestPort("Data access port")
+    veu_port = RequestPort("VEU data access port")

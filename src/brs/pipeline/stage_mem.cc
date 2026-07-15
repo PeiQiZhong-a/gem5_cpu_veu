@@ -74,6 +74,13 @@ PipelineCore::stageMEM()
     const bool isStore = isStoreInstr(exmem_cur.kind);
 
     if (isLoad || isStore) {
+        if (timingVeuOwnsSharedDmem()) {
+            mem_stall = true;
+            ++stall_count;
+            ++rv_dmem_blocked_by_veu_cycles;
+            return;
+        }
+
         const unsigned size = memAccessSize(exmem_cur.kind);
         panic_if(!requestTimingData,
                  "Timing data backend is not configured for memory access");
