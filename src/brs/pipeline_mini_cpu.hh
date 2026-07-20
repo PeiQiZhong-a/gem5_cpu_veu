@@ -98,8 +98,17 @@ class PipelineMiniCPU : public ClockedObject
 
     PacketPtr pendingVeuReq = nullptr;
     bool veuReqRetry = false;
-    Addr pendingVeuAddr = 0;
-    bool pendingVeuIsWrite = false;
+    uint64_t veuPacketsInFlight = 0;
+
+    struct VeuSenderState : public Packet::SenderState
+    {
+        uint64_t transactionId;
+        bool isWrite;
+
+        VeuSenderState(uint64_t transactionId, bool isWrite)
+          : transactionId(transactionId), isWrite(isWrite)
+        {}
+    };
 
     struct ICacheLine
     {

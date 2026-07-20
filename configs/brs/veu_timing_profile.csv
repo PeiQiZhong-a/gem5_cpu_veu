@@ -1,0 +1,17 @@
+profile_id,op,mode,scalar_en,mask_class,source_set,vfu_latency,vfu_ii,write_policy,fifo_depth,max_outstanding_reads,vsu_latency
+rtl_vadd_vector,vadd,*,0,*,src1+src2,1,1,per_chunk,4,4,1
+rtl_vadd_scalar,vadd,*,1,*,src2,1,1,per_chunk,4,4,1
+rtl_vsub,vsub,*,0,*,src1+src2,1,1,per_chunk,4,4,1
+rtl_vmin,vmin,*,0,*,src1+src2,2,1,per_chunk,4,4,1
+rtl_vmax,vmax,*,0,*,src1+src2,2,1,per_chunk,4,4,1
+compat_vredmin,vredmin,*,0,*,src1,3,1,final_only,4,4,1
+compat_vredmax,vredmax,*,0,*,src1,3,1,final_only,4,4,1
+rtl_vand,vand,*,0,*,src1+src2,1,1,per_chunk,4,4,1
+rtl_vor,vor,*,0,*,src1+src2,1,1,per_chunk,4,4,1
+rtl_vxor,vxor,*,0,*,src1+src2,1,1,per_chunk,4,4,1
+rtl_vmul,vmul,*,0,*,src1+src2,3,1,per_chunk,4,4,1
+rtl_vmv,vmv,*,0,*,src1,1,1,per_chunk,4,4,1
+rtl_vssrl_scalar,vssrl,*,1,*,src2,1,1,per_chunk,4,4,1
+rtl_vssra_scalar,vssra,*,1,*,src2,1,1,per_chunk,4,4,1
+rtl_vnclip_scalar,vnclip,*,1,*,src2,1,1,per_chunk,4,4,1
+rtl_vredsum,vredsum,*,0,*,src1,1,1,final_only,4,4,1

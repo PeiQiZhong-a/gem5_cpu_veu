@@ -1,0 +1,17 @@
+{
+  "case": "vmul",
+  "op": "vmul",
+  "vlen": 256,
+  "chunks": 1,
+  "expected_reads": 2,
+  "expected_writes": 1,
+  "read_addresses": [
+    256,
+    768
+  ],
+  "write_addresses": [
+    1280
+  ],
+  "expected_base": 1792,
+  "max_cycles": 10000
+}

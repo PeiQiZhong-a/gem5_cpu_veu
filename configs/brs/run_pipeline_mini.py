@@ -43,6 +43,10 @@ parser.add_argument(
 )
 parser.add_argument("--veu-input-fifo-depth", type=int, default=4)
 parser.add_argument("--veu-execute-latency", type=int, default=3)
+parser.add_argument("--veu-execute-ii", type=int, default=1)
+parser.add_argument("--veu-vsu-latency", type=int, default=1)
+parser.add_argument("--veu-timing-profile", default="")
+parser.add_argument("--veu-cycle-trace", default="")
 parser.add_argument("--veu-startup-cycles", type=int, default=0)
 parser.add_argument("--veu-finish-cycles", type=int, default=0)
 parser.add_argument("--mem-size", default="64MiB")
@@ -171,6 +175,12 @@ if args.veu_input_fifo_depth < 1:
 if args.veu_execute_latency < 1:
     parser.error("--veu-execute-latency must be at least one")
 
+if args.veu_execute_ii < 1:
+    parser.error("--veu-execute-ii must be at least one")
+
+if args.veu_vsu_latency < 1:
+    parser.error("--veu-vsu-latency must be at least one")
+
 if args.veu_startup_cycles < 0 or args.veu_finish_cycles < 0:
     parser.error("--veu-startup-cycles and --veu-finish-cycles must be non-negative")
 
@@ -235,6 +245,10 @@ system.pipeline = PipelineMiniCPU(
     veu_model=args.veu_model,
     veu_input_fifo_depth=args.veu_input_fifo_depth,
     veu_execute_latency=args.veu_execute_latency,
+    veu_execute_ii=args.veu_execute_ii,
+    veu_vsu_latency=args.veu_vsu_latency,
+    veu_timing_profile=args.veu_timing_profile,
+    veu_cycle_trace=args.veu_cycle_trace,
     veu_startup_cycles=args.veu_startup_cycles,
     veu_finish_cycles=args.veu_finish_cycles,
     program_file=pipeline_program_file,
@@ -400,6 +414,10 @@ print("FakeVEU response data: {:#x}".format(args.fake_veu_response_data))
 if args.veu_model == "timing":
     print("TimingVEU FIFO depth: {}".format(args.veu_input_fifo_depth))
     print("TimingVEU execute latency: {} cycles".format(args.veu_execute_latency))
+    print("TimingVEU execute II: {} cycles".format(args.veu_execute_ii))
+    print("TimingVEU VSU latency: {} cycles".format(args.veu_vsu_latency))
+    print("TimingVEU profile: {}".format(args.veu_timing_profile or "<default>"))
+    print("TimingVEU cycle trace: {}".format(args.veu_cycle_trace or "<disabled>"))
     print("TimingVEU startup cycles: {}".format(args.veu_startup_cycles))
     print("TimingVEU finish cycles: {}".format(args.veu_finish_cycles))
 print("Memory system: {}".format(args.mem_system))

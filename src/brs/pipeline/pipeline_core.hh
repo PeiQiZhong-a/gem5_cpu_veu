@@ -34,9 +34,10 @@ class PipelineCore
     void attachVeuEndpoint(brs::VeuEndpoint &endpoint);
     void useFakeVeuEndpoint();
     void useTimingVeuEndpoint();
-    void acceptVeuMemoryRead(uint32_t addr,
+    void acceptVeuMemoryRead(uint64_t transactionId,
                              const std::array<uint8_t, brs::VeuVectorBytes> &data);
-    void acceptVeuMemoryWrite(uint32_t addr);
+    void acceptVeuMemoryWrite(uint64_t transactionId);
+    void noteVeuMemoryRetry() { timingVeu.noteMemoryRetry(); }
     brs::VeuMemoryOutput evaluateVeuMemory() const;
     void clockVeuMemory(const brs::VeuMemoryResponse &response);
     void stepOneCycle();
@@ -110,7 +111,7 @@ class PipelineCore
     bool spiritExecuteStalled() const { return veu_stall || mdu_stall; }
     bool timingVeuOwnsSharedDmem() const
     {
-        return veuEndpoint == &timingVeu && timingVeu.operationBusy();
+        return veuEndpoint == &timingVeu && timingVeu.lockIsActive();
     }
     bool haltRequested() const { return halt_requested; }
 

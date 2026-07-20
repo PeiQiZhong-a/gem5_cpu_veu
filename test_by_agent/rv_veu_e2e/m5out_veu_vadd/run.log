@@ -1,12 +1,12 @@
 Global frequency set at 1000000000000 ticks per second
 warn: No dot file generated. Please install pydot to generate the dot file and pdf.
-src/brs/pipeline_mini_cpu.cc:579: info: preloadDataFunctional: wrote 800 bytes to DMEM at 0 from test_by_agent/rv_veu_e2e/data_mem.hex
+src/brs/pipeline_mini_cpu.cc:742: info: preloadDataFunctional: wrote 800 bytes to DMEM at 0 from test_by_agent/rv_veu_e2e/data_mem.hex
 gem5 Simulator System.  https://www.gem5.org
 gem5 is copyrighted software; use the --copyright option for details.
 
 gem5 version 25.1.0.1
-gem5 compiled Jul 14 2026 16:08:57
-gem5 started Jul 14 2026 16:48:36
+gem5 compiled Jul 18 2026 16:36:49
+gem5 started Jul 18 2026 16:40:49
 gem5 executing on LAPTOP-47H052EL, pid 11
 command line: ./build/RISCV/gem5.opt -d test_by_agent/rv_veu_e2e/m5out_veu_vadd configs/brs/run_pipeline_mini.py --mem-system spirit-like --veu-model timing --program-file test_by_agent/rv_veu_e2e/instr_mem.hex --dmem-hex test_by_agent/rv_veu_e2e/data_mem.hex --imem-base 0x0 --dmem-base 0x0 --no-icache --max-cycles 300
 
@@ -19,6 +19,10 @@ FakeVEU latency: 1 cycles
 FakeVEU response data: 0x0
 TimingVEU FIFO depth: 4
 TimingVEU execute latency: 3 cycles
+TimingVEU execute II: 1 cycles
+TimingVEU VSU latency: 1 cycles
+TimingVEU profile: <default>
+TimingVEU cycle trace: <disabled>
 TimingVEU startup cycles: 0
 TimingVEU finish cycles: 0
 Memory system: spirit-like

@@ -70,15 +70,16 @@ PipelineCore::useTimingVeuEndpoint()
 
 void
 PipelineCore::acceptVeuMemoryRead(
-    uint32_t addr, const std::array<uint8_t, brs::VeuVectorBytes> &data)
+    uint64_t transactionId,
+    const std::array<uint8_t, brs::VeuVectorBytes> &data)
 {
-    timingVeu.completeMemoryRead(addr, data);
+    timingVeu.completeMemoryRead(transactionId, data);
 }
 
 void
-PipelineCore::acceptVeuMemoryWrite(uint32_t addr)
+PipelineCore::acceptVeuMemoryWrite(uint64_t transactionId)
 {
-    timingVeu.completeMemoryWrite(addr);
+    timingVeu.completeMemoryWrite(transactionId);
 }
 
 void

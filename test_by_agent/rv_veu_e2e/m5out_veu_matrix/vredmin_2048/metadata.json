@@ -1,0 +1,23 @@
+{
+  "case": "vredmin",
+  "op": "vredmin",
+  "vlen": 2048,
+  "chunks": 8,
+  "expected_reads": 8,
+  "expected_writes": 1,
+  "read_addresses": [
+    256,
+    288,
+    320,
+    352,
+    384,
+    416,
+    448,
+    480
+  ],
+  "write_addresses": [
+    1280
+  ],
+  "expected_base": 1792,
+  "max_cycles": 10000
+}

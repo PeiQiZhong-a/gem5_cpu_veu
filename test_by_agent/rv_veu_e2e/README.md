@@ -1,57 +1,72 @@
-# RV-VEU VADD End-to-End Test
+# RV-VEU Timing-Profile End-to-End Matrix
 
-This test checks the full path from the RV pipeline to the timing VEU model:
+This test exercises the complete RV pipeline to TimingVeu path:
 
 ```text
-RV fetch -> RV decode VEU instruction -> CBU CSR handshake -> RV continues
--> TimingVeu DMEM read/VADD/DMEM write in background
--> RV polls VEUSTATUS busy -> RV loads result
+RV fetch/decode -> VEU CSR handshake -> TimingVeu memory traffic
+-> VFU/VSU -> VEU writeback -> RV polls VEUSTATUS -> RV validates every result word
 ```
 
-Run it from the repository root:
+Run the matrix from the repository root:
 
 ```sh
 bash test_by_agent/rv_veu_e2e/run.sh
 ```
 
-The script generates:
+## Coverage
 
-- `instr_mem.hex`: RV program with VEU CSR setup, `vadd`, status polling, result loads, and `ebreak`.
-- `data_mem.hex`: byte-format DMEM image with input vectors at `0x100` and `0x200`.
-
-The gem5 output directory is:
+The runner executes the 16 timing-profile variants in
+`configs/brs/veu_timing_profile.csv` at both `VLEN=256` and `VLEN=2048` bits:
 
 ```text
-test_by_agent/rv_veu_e2e/m5out_veu_vadd/
+vadd_vector, vadd_scalar, vsub, vmin, vmax,
+vredmin, vredmax, vand, vor, vxor, vmv,
+vssrl_scalar, vssra_scalar, vnclip_scalar, vredsum, vmul
 ```
 
-Important outputs:
+This is 32 independent gem5 runs. `256` bits covers one 32-byte chunk;
+`2048` bits covers eight chunks. All tests use a full write mask. Partial and
+zero-mask behavior remains covered by the TimingVeu unit tests.
 
-- `run.log`: gem5 stdout/stderr and RV retire trace.
-- `stats.txt`: gem5 statistics.
-- `result_summary.txt`: parsed PASS/FAIL result, lane values, and VEU stats.
+`vredmin` and `vredmax` match their checked-in compatibility profile rows;
+they are profile hits but are not claims of RTL cycle calibration.
 
-Expected result:
+## What each case checks
+
+The generator writes deterministic source vectors and an independent expected
+result. After VEU completes, the RV program reads every 32-bit word of the
+destination vector, ORs any mismatch into `x10`, and ends with `ebreak`.
+The verifier requires final `x10=0` and also checks:
+
+- exactly one VEU operation starts and finishes;
+- chunk, read, and write counts match the operation source/write policy;
+- profile hit is one, profile miss/fallback is zero;
+- no illegal operation, unexpected response, or remaining outstanding read;
+- outstanding reads never exceed four;
+- trace request/response transaction IDs match;
+- trace read/write addresses match all expected 32-byte chunks;
+- simulation exits before its 10,000-cycle limit.
+
+## Outputs
+
+All generated inputs and gem5 outputs are under:
 
 ```text
-RV-VEU VADD E2E PASS
-
-Results:
-  lane0 actual=0x0000000b expected=0x0000000b
-  lane7 actual=0x00000058 expected=0x00000058
-
-Stats:
-  veu_issue_count=<configuration, vadd, and polling VEU instructions>
-  veu_complete_count=<same as veu_issue_count>
-  veu_csr_handshake_cycles=<RV cycles stalled for CSR handshakes>
-  rv_dmem_blocked_by_veu_cycles=<RV load/store cycles blocked by TimingVeu DMem ownership>
-  veu_operation_start_count=1
-  veu_operation_complete_count=1
-  veu_busy_cycles=<VEU background operation cycles>
-  veu_chunks=1
-  veu_memory_reads=2
-  veu_memory_writes=1
-  cycle_count=<full polling test cycles>
-  stall_count=<all RV pipeline stalls>
-  flush_count=<taken polling branches>
+test_by_agent/rv_veu_e2e/m5out_veu_matrix/
 ```
+
+Important files are:
+
+- `summary.csv`: one PASS/FAIL row for every operation and VLEN.
+- `<case>_<vlen>/instr_mem.hex`, `data_mem.hex`, `metadata.json`: generated
+  self-checking program, input memory, and expected structural metadata.
+- `<case>_<vlen>/run.log`: gem5 log and RV retire trace.
+- `<case>_<vlen>/stats.txt`: aggregate gem5 and VEU statistics.
+- `<case>_<vlen>/veu_cycle_trace.csv`: VEU events, transaction IDs, FIFO,
+  outstanding read, status, and lock states.
+- `<case>_<vlen>/verify.log`: failure reason when a case does not pass.
+
+The runner always passes the normalized timing profile and emits a separate
+cycle trace for every case. This matrix validates model functionality and
+internal timing/transaction consistency; it does not compare gem5 cycles or
+traces against RTL.

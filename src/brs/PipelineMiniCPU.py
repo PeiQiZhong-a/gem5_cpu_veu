@@ -57,6 +57,22 @@ class PipelineMiniCPU(ClockedObject):
         3,
         "TimingVEU execute latency per 256-bit chunk in CPU cycles",
     )
+    veu_execute_ii = Param.UInt32(
+        1,
+        "TimingVEU default VFU initiation interval in CPU cycles",
+    )
+    veu_vsu_latency = Param.UInt32(
+        1,
+        "TimingVEU VSU latency in CPU cycles",
+    )
+    veu_timing_profile = Param.String(
+        "",
+        "Normalized TimingVEU per-operation timing profile CSV",
+    )
+    veu_cycle_trace = Param.String(
+        "",
+        "Optional TimingVEU structural cycle trace CSV output",
+    )
     veu_startup_cycles = Param.UInt32(
         0,
         "TimingVEU startup cycles before issuing the first load",

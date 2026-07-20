@@ -89,10 +89,14 @@ TEST(PipelineVeuDmemLockTest, DefersRvLoadUntilVeuStoreCompletes)
     core.setTimingVeuMemoryRequestCallback(
         [&](const brs::TimingVeuMemoryRequest &request) {
             if (request.isWrite) {
-                memory[request.addr] = request.data;
-                core.acceptVeuMemoryWrite(request.addr);
+                for (unsigned byte = 0; byte < brs::VeuVectorBytes; ++byte) {
+                    if (request.writeStrobe & (uint32_t{1} << byte))
+                        memory[request.address][byte] = request.data[byte];
+                }
+                core.acceptVeuMemoryWrite(request.transactionId);
             } else {
-                core.acceptVeuMemoryRead(request.addr, memory[request.addr]);
+                core.acceptVeuMemoryRead(request.transactionId,
+                                         memory[request.address]);
             }
             return true;
         });

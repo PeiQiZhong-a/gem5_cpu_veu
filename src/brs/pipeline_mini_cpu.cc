@@ -85,9 +85,17 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     brs::VeuTimingConfig veuConfig;
     veuConfig.inputFifoDepth = p.veu_input_fifo_depth;
     veuConfig.executeLatency = p.veu_execute_latency;
+    veuConfig.executeII = p.veu_execute_ii;
+    veuConfig.vsuLatency = p.veu_vsu_latency;
     veuConfig.startupCycles = p.veu_startup_cycles;
     veuConfig.finishCycles = p.veu_finish_cycles;
-    core.configureTimingVeu(veuConfig);
+    veuConfig.timingProfilePath = p.veu_timing_profile;
+    veuConfig.cycleTracePath = p.veu_cycle_trace;
+    try {
+        core.configureTimingVeu(veuConfig);
+    } catch (const std::exception &error) {
+        fatal("Invalid TimingVEU configuration: %s", error.what());
+    }
     core.setTimingVeuMemoryRequestCallback(
         [this](const brs::TimingVeuMemoryRequest &request) {
             return requestVeuTiming(request);
@@ -549,25 +557,34 @@ PipelineMiniCPU::requestVeuTiming(
 
     Request::Flags flags;
     auto req = std::make_shared<Request>(
-        request.addr, brs::VeuVectorBytes, flags, veuRequestorId);
+        request.address, brs::VeuVectorBytes, flags, veuRequestorId);
+    if (request.isWrite) {
+        std::vector<bool> byteEnable(brs::VeuVectorBytes, false);
+        for (unsigned byte = 0; byte < brs::VeuVectorBytes; ++byte) {
+            byteEnable[byte] = request.writeStrobe & (uint32_t{1} << byte);
+        }
+        req->setByteEnable(byteEnable);
+    }
     auto pkt = new Packet(req, request.isWrite ? MemCmd::WriteReq :
                           MemCmd::ReadReq);
     pkt->allocate();
+    pkt->pushSenderState(
+        new VeuSenderState(request.transactionId, request.isWrite));
 
     if (request.isWrite) {
         std::memcpy(pkt->getPtr<uint8_t>(), request.data.data(),
                     brs::VeuVectorBytes);
     }
 
-    pendingVeuAddr = request.addr;
-    pendingVeuIsWrite = request.isWrite;
     pendingVeuReq = pkt;
     veuReqRetry = false;
+    ++veuPacketsInFlight;
 
     if (veuPort.sendTimingReq(pkt)) {
         pendingVeuReq = nullptr;
     } else {
         veuReqRetry = true;
+        core.noteVeuMemoryRetry();
     }
 
     return true;
@@ -579,20 +596,24 @@ PipelineMiniCPU::completeTimingVeu(PacketPtr pkt)
     panic_if(pkt->isError(), "Timing VEU data access failed: %s",
              pkt->print());
 
-    if (pendingVeuIsWrite) {
-        core.acceptVeuMemoryWrite(static_cast<uint32_t>(pendingVeuAddr));
+    auto *senderState = dynamic_cast<VeuSenderState *>(pkt->senderState);
+    panic_if(!senderState, "Timing VEU response has no sender state");
+    pkt->popSenderState();
+
+    if (senderState->isWrite) {
+        core.acceptVeuMemoryWrite(senderState->transactionId);
     } else {
         std::array<uint8_t, brs::VeuVectorBytes> data = {};
         const uint8_t *bytes = pkt->getConstPtr<uint8_t>();
         std::copy(bytes, bytes + brs::VeuVectorBytes, data.begin());
-        core.acceptVeuMemoryRead(static_cast<uint32_t>(pendingVeuAddr), data);
+        core.acceptVeuMemoryRead(senderState->transactionId, data);
     }
 
-    pendingVeuReq = nullptr;
-    veuReqRetry = false;
-    pendingVeuAddr = 0;
-    pendingVeuIsWrite = false;
+    panic_if(veuPacketsInFlight == 0,
+             "Timing VEU response count underflow");
+    --veuPacketsInFlight;
 
+    delete senderState;
     delete pkt;
     return true;
 }
@@ -869,6 +890,36 @@ PipelineMiniCPU::processTick()
     pipeStats.veu_chunks = core.getTimingVeuChunks();
     pipeStats.veu_memory_reads = core.getTimingVeuMemoryReads();
     pipeStats.veu_memory_writes = core.getTimingVeuMemoryWrites();
+    pipeStats.veu_status_active_cycles =
+        core.timingVeu.statusActiveCycleCount();
+    pipeStats.veu_lock_active_cycles =
+        core.timingVeu.lockActiveCycleCount();
+    pipeStats.veu_current_outstanding_reads =
+        core.timingVeu.currentOutstandingReadCount();
+    pipeStats.veu_max_outstanding_reads =
+        core.timingVeu.maxOutstandingReadCount();
+    pipeStats.veu_fifo1_max_occupancy = core.timingVeu.fifoMaxOccupancy(0);
+    pipeStats.veu_fifo2_max_occupancy = core.timingVeu.fifoMaxOccupancy(1);
+    pipeStats.veu_fifo3_max_occupancy = core.timingVeu.fifoMaxOccupancy(2);
+    pipeStats.veu_fifo_empty_stalls = core.timingVeu.fifoEmptyStallCount();
+    pipeStats.veu_fifo_full_stalls = core.timingVeu.fifoFullStallCount();
+    pipeStats.veu_vfu_accepted = core.timingVeu.vfuAcceptedCount();
+    pipeStats.veu_vfu_completed = core.timingVeu.vfuCompletedCount();
+    pipeStats.veu_vfu_max_in_flight = core.timingVeu.maxVfuInFlightCount();
+    pipeStats.veu_vfu_ii_stalls = core.timingVeu.vfuIIStallCount();
+    pipeStats.veu_vsu_queue_stalls = core.timingVeu.vsuQueueStallCount();
+    pipeStats.veu_store_priority_cycles = core.timingVeu.storePriorityCount();
+    pipeStats.veu_reads_blocked_by_store = core.timingVeu.readBlockedByStoreCount();
+    pipeStats.veu_masked_writes = core.timingVeu.maskedWriteCount();
+    pipeStats.veu_zero_mask_skipped_writes =
+        core.timingVeu.zeroMaskSkippedWriteCount();
+    pipeStats.veu_retries = core.timingVeu.retryCount();
+    pipeStats.veu_unexpected_responses = core.timingVeu.unexpectedResponseCount();
+    pipeStats.veu_profile_hits = core.timingVeu.profileHitCount();
+    pipeStats.veu_profile_misses = core.timingVeu.profileMissCount();
+    pipeStats.veu_profile_fallbacks = core.timingVeu.profileFallbackCount();
+    pipeStats.veu_zero_length_noops = core.timingVeu.zeroLengthNoopCount();
+    pipeStats.veu_illegal_operations = core.timingVeu.illegalOperationCount();
 
     std::cout
         << "[PipelineMiniCPU] cycle=" << core.getCycle()
@@ -891,7 +942,8 @@ PipelineMiniCPU::processTick()
         << " align=" << core.getAlignedInstrCount()
         << std::endl;
 
-    if (core.done()) {
+    if (core.done() && pendingVeuReq == nullptr &&
+        veuPacketsInFlight == 0 && core.timingVeu.quiescent()) {
         exitSimLoop("PipelineMiniCPU completed test");
         return;
     }
