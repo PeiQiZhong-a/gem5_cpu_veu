@@ -1,0 +1,19 @@
+{
+  "case": "vadd_vector",
+  "op": "vadd",
+  "vlen": 256,
+  "chunks": 1,
+  "expected_reads": 2,
+  "expected_writes": 1,
+  "read_addresses": [
+    689045536,
+    689045792
+  ],
+  "write_addresses": [
+    689046560
+  ],
+  "expected_base": 689047072,
+  "data_base": 689045504,
+  "config": 1792,
+  "max_cycles": 10000
+}

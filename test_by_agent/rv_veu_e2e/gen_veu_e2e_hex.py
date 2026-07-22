@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import struct
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
@@ -26,6 +26,25 @@ SRC1 = 0x100
 SRC2 = 0x300
 DEST = 0x500
 EXPECTED = 0x700
+
+
+@dataclass(frozen=True)
+class MemoryLayout:
+    data_base: int
+    src1: int
+    src2: int
+    dest: int
+    expected: int
+
+
+LOCAL_LAYOUT = MemoryLayout(0, SRC1, SRC2, DEST, EXPECTED)
+DUT_KUI_LAYOUT = MemoryLayout(
+    0x29120000,
+    0x29120020,
+    0x29120120,
+    0x29120420,
+    0x29120620,
+)
 
 
 @dataclass(frozen=True)
@@ -129,7 +148,9 @@ def signed_byte(value: int) -> int:
     return value if value < 0x80 else value - 0x100
 
 
-def make_sources(byte_count: int) -> tuple[bytearray, bytearray]:
+def make_sources(byte_count: int, rtl_vadd: bool = False) -> tuple[bytearray, bytearray]:
+    if rtl_vadd:
+        return bytearray([0xFD]) * byte_count, bytearray([0x01]) * byte_count
     # Both signed and unsigned patterns contain non-trivial boundary values.
     source1 = bytearray((0x83 + 17 * index) & 0xFF for index in range(byte_count))
     source2 = bytearray((0xF2 - 11 * index) & 0xFF for index in range(byte_count))
@@ -191,25 +212,28 @@ def write_byte_hex(path: Path, data: bytearray) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
-def source_bases(case: Case) -> list[int]:
+def source_bases(case: Case, layout: MemoryLayout = LOCAL_LAYOUT) -> list[int]:
     if case.source_set == "src1+src2":
-        return [SRC1, SRC2]
+        return [layout.src1, layout.src2]
     if case.source_set == "src1":
-        return [SRC1]
+        return [layout.src1]
     if case.source_set == "src2":
-        return [SRC2]
+        return [layout.src2]
     raise ValueError(f"unsupported source set: {case.source_set}")
 
 
-def build_program(case: Case, vlen: int, expected: bytearray) -> list[int]:
+def build_program(
+    case: Case, vlen: int, expected: bytearray,
+    layout: MemoryLayout = LOCAL_LAYOUT,
+) -> list[int]:
     scalar_enabled = bool(case.config & 0x800)
-    source1_register = case.scalar if scalar_enabled else SRC1
-    source2_register = SRC2 if case.source_set != "src1" else 0
+    source1_register = case.scalar if scalar_enabled else layout.src1
+    source2_register = layout.src2 if case.source_set != "src1" else 0
 
     words: list[int] = []
     words += emit_load_imm(1, source1_register)
     words += emit_load_imm(2, source2_register)
-    words += emit_load_imm(3, DEST)
+    words += emit_load_imm(3, layout.dest)
     words += emit_load_imm(4, case.config)
     words += emit_load_imm(5, vlen)
     words += emit_load_imm(6, 0xFFFFFFFF)
@@ -223,8 +247,8 @@ def build_program(case: Case, vlen: int, expected: bytearray) -> list[int]:
         encode_andi(11, 11, 1),
         encode_bne(11, 0, -8),
     ]
-    words += emit_load_imm(8, DEST)
-    words += emit_load_imm(9, EXPECTED)
+    words += emit_load_imm(8, layout.dest)
+    words += emit_load_imm(9, layout.expected)
     words += [
         encode_addi(10, 0, 0),
     ]
@@ -247,11 +271,15 @@ def build_program(case: Case, vlen: int, expected: bytearray) -> list[int]:
     return words
 
 
-def build_metadata(case: Case, vlen: int) -> dict[str, object]:
+def build_metadata(
+    case: Case, vlen: int, layout: MemoryLayout = LOCAL_LAYOUT,
+) -> dict[str, object]:
     chunks = vlen // 256
-    bases = source_bases(case)
+    bases = source_bases(case, layout)
     reads = [base + chunk * 32 for base in bases for chunk in range(chunks)]
-    writes = [DEST] if case.reduction else [DEST + chunk * 32 for chunk in range(chunks)]
+    writes = [layout.dest] if case.reduction else [
+        layout.dest + chunk * 32 for chunk in range(chunks)
+    ]
     return {
         "case": case.name,
         "op": case.op,
@@ -261,15 +289,25 @@ def build_metadata(case: Case, vlen: int) -> dict[str, object]:
         "expected_writes": len(writes),
         "read_addresses": reads,
         "write_addresses": writes,
-        "expected_base": EXPECTED,
+        "expected_base": layout.expected,
+        "data_base": layout.data_base,
+        "config": case.config,
         "max_cycles": 10000,
     }
 
 
-def generate(case: Case, vlen: int, outdir: Path) -> None:
+def generate(
+    case: Case, vlen: int, outdir: Path,
+    layout: MemoryLayout = LOCAL_LAYOUT,
+) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     byte_count = vlen // 8
-    source1, source2 = make_sources(byte_count)
+    rtl_vadd = layout == DUT_KUI_LAYOUT
+    if rtl_vadd and case.name != "vadd_vector":
+        raise ValueError("dut-kui layout currently supports only vadd_vector")
+    if rtl_vadd:
+        case = replace(case, config=0x700)
+    source1, source2 = make_sources(byte_count, rtl_vadd=rtl_vadd)
     functional_result = expected_result(case, source1, source2)
     expected = bytearray([0xA5]) * byte_count
     if case.reduction:
@@ -279,16 +317,22 @@ def generate(case: Case, vlen: int, outdir: Path) -> None:
     else:
         expected = functional_result
 
-    memory = bytearray(EXPECTED + byte_count)
-    memory[SRC1:SRC1 + byte_count] = source1
-    memory[SRC2:SRC2 + byte_count] = source2
-    memory[DEST:DEST + byte_count] = bytes([0xA5]) * byte_count
-    memory[EXPECTED:EXPECTED + byte_count] = expected
+    def offset(address: int) -> int:
+        return address - layout.data_base
 
-    write_word_hex(outdir / "instr_mem.hex", build_program(case, vlen, expected))
+    memory = bytearray(offset(layout.expected) + byte_count)
+    memory[offset(layout.src1):offset(layout.src1) + byte_count] = source1
+    memory[offset(layout.src2):offset(layout.src2) + byte_count] = source2
+    memory[offset(layout.dest):offset(layout.dest) + byte_count] = \
+        bytes([0xA5]) * byte_count
+    memory[offset(layout.expected):offset(layout.expected) + byte_count] = expected
+
+    write_word_hex(
+        outdir / "instr_mem.hex", build_program(case, vlen, expected, layout)
+    )
     write_byte_hex(outdir / "data_mem.hex", memory)
     (outdir / "metadata.json").write_text(
-        json.dumps(build_metadata(case, vlen), indent=2) + "\n",
+        json.dumps(build_metadata(case, vlen, layout), indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -298,6 +342,10 @@ def main() -> None:
     parser.add_argument("--case", choices=sorted(CASE_BY_NAME))
     parser.add_argument("--vlen", type=int, choices=(256, 2048))
     parser.add_argument("--outdir", type=Path)
+    parser.add_argument(
+        "--layout", choices=("local", "dut-kui"), default="local",
+        help="Architectural data address layout; default preserves existing tests",
+    )
     parser.add_argument("--list-cases", action="store_true")
     args = parser.parse_args()
 
@@ -307,7 +355,8 @@ def main() -> None:
         return
     if args.case is None or args.vlen is None or args.outdir is None:
         parser.error("--case, --vlen, and --outdir are required unless --list-cases is used")
-    generate(CASE_BY_NAME[args.case], args.vlen, args.outdir)
+    layout = DUT_KUI_LAYOUT if args.layout == "dut-kui" else LOCAL_LAYOUT
+    generate(CASE_BY_NAME[args.case], args.vlen, args.outdir, layout)
 
 
 if __name__ == "__main__":

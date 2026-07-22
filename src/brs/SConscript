@@ -14,6 +14,7 @@ Source('pipeline/stage_wb.cc')
 Source('pipeline/hazard_unit.cc')
 Source('pipeline/forwarding_unit.cc')
 Source('pipeline/memory_backend_local.cc')
+Source('memory/dut_kui_memory_model.cc')
 Source('memory/tb_crossbar_model.cc')
 Source('veu/veu_cbu.cc')
 Source('veu/fake_veu.cc')
@@ -32,6 +33,10 @@ GTest('brs_compressed_decode.test',
 GTest('brs_tb_crossbar_model.test',
       'memory/tb_crossbar_model.test.cc',
       'memory/tb_crossbar_model.cc')
+
+GTest('brs_dut_kui_memory_model.test',
+      'memory/dut_kui_memory_model.test.cc',
+      'memory/dut_kui_memory_model.cc')
 
 GTest('brs_program_image.test',
       'pipeline/program_image.test.cc')

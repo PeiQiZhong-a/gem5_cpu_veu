@@ -70,3 +70,19 @@ The runner always passes the normalized timing profile and emits a separate
 cycle trace for every case. This matrix validates model functionality and
 internal timing/transaction consistency; it does not compare gem5 cycles or
 traces against RTL.
+
+## Current dut_kui memory path: focused VADD
+
+The focused runner routes TimingVEU through the internal cycle model of the
+current `dut_kui` 256-bit SRAM path instead of gem5 `SimpleMemory`:
+
+```sh
+bash test_by_agent/rv_veu_e2e/run_dut_kui_vadd.sh
+```
+
+It runs non-scalar VADD at VLEN 256 and 2048 with config `0x700`, the current
+RTL data base `0x29120000`, and the checked RTL input pattern `0xfd + 0x01`.
+The RV program checks every destination word. The timing verifier additionally
+requires four-cycle VEU read returns and one-cycle write completion, then writes
+a gem5/RTL comparison to `m5out_dut_kui_vadd/timing_compare.csv` using the
+checked-in `yinglong_veu_timing_fixed2` report as the RTL reference.

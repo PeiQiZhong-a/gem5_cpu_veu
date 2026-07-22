@@ -20,6 +20,7 @@
 #include "brs/pipeline/pipeline_core.hh"
 #include "brs/pipeline/program_image.hh"
 #include "brs/pipeline_stats.hh"
+#include "brs/memory/dut_kui_memory_model.hh"
 #include "brs/memory/tb_crossbar_model.hh"
 
 namespace gem5
@@ -70,9 +71,11 @@ class PipelineMiniCPU : public ClockedObject
     RequestorID veuRequestorId;
 
     bool tbMemoryEnabled;
+    std::string tbMemoryPlatform;
     std::string tbImemImageFile;
     std::string tbDmemImageFile;
     brs::TbCrossbarModel tbCrossbar;
+    brs::DutKuiMemoryModel dutKuiMemory;
     brs::TbBusRequest tbIbusPulse;
     brs::TbBusRequest tbDbusPulse;
     bool tbInstOutstanding = false;
@@ -135,6 +138,8 @@ class PipelineMiniCPU : public ClockedObject
                            bool isWrite, uint32_t writeData);
     bool completeTimingData(PacketPtr pkt);
     void completeTbData(const brs::TbBusResponse &response);
+    void completeDutKuiFetch(const brs::DutKuiIbusResponse &response);
+    void completeDutKuiData(const brs::DutKuiDbusResponse &response);
     void retryDataRequest();
     bool requestVeuTiming(const brs::TimingVeuMemoryRequest &request);
     bool completeTimingVeu(PacketPtr pkt);
@@ -145,6 +150,9 @@ class PipelineMiniCPU : public ClockedObject
     void preloadDataFunctional();
     Addr preloadTbRawImage(const std::string &path, Addr base);
     void processTbMemoryCycle(const brs::VeuMemoryOutput &veu);
+    void processDutKuiMemoryCycle();
+    bool legacyTbMemoryEnabled() const;
+    bool dutKuiMemoryEnabled() const;
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);

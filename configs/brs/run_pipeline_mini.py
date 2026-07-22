@@ -54,12 +54,13 @@ parser.add_argument(
     "--mem-system",
     choices=[
         "ddr3", "simple", "split", "spirit-like",
-        "rtl-aerith-tb", "rtl-tb", "rtl-veu-tb",
+        "rtl-aerith-tb", "rtl-tb", "rtl-dut-kui-tb", "rtl-veu-tb",
     ],
     default="spirit-like",
-    help=("Memory platform. rtl-aerith-tb is the full CPU+VEU+crossbar "
+    help=("Memory platform. rtl-aerith-tb is the legacy full CPU+VEU+crossbar "
           "testbench; rtl-tb is its compatibility alias. rtl-veu-tb names "
-          "the separate standalone VEU testbench and is not interchangeable."),
+          "the separate standalone VEU testbench and is not interchangeable. "
+          "rtl-dut-kui-tb models the current 32-bit DBus and 256-bit VEU SRAM path."),
 )
 parser.add_argument(
     "--mem-latency",
@@ -82,7 +83,8 @@ parser.add_argument(
     "--dmem-hex",
     default="",
     help=("DMEM text image. spirit-like uses one byte per token; "
-          "rtl-aerith-tb matches $readmemh with one 32-bit word per token."),
+          "rtl-dut-kui-tb also uses byte tokens; rtl-aerith-tb matches "
+          "$readmemh with one 32-bit word per token."),
 )
 parser.add_argument(
     "--imem-base",
@@ -132,7 +134,9 @@ if args.mem_system == "rtl-veu-tb":
         "cycle comparison."
     )
 
-rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
+legacy_rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
+dut_kui_tb_mode = args.mem_system == "rtl-dut-kui-tb"
+rtl_tb_mode = legacy_rtl_tb_mode or dut_kui_tb_mode
 
 
 def parse_addr(value):
@@ -196,7 +200,7 @@ system.mem_mode = "timing"
 if rtl_tb_mode:
     rtl_inst_base = 0x00000000
     rtl_inst_size = 0x00040000
-    rtl_data_base = 0x20010000
+    rtl_data_base = 0x29120000 if dut_kui_tb_mode else 0x20010000
     rtl_data_size = 0x00040000
     system.mem_ranges = [
         AddrRange(start=rtl_inst_base, size=rtl_inst_size),
@@ -264,6 +268,7 @@ system.pipeline = PipelineMiniCPU(
     frontend_burst_bytes=args.frontend_burst_bytes,
     instr_fifo_depth=args.instr_fifo_depth,
     tb_memory_enabled=rtl_tb_mode,
+    tb_memory_platform="dut-kui" if dut_kui_tb_mode else "aerith-legacy",
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
     tb_ibus_response_delay=2,
@@ -271,7 +276,7 @@ system.pipeline = PipelineMiniCPU(
     tb_veu_pipeline_stages=3,
     tb_inst_base=0x00000000,
     tb_inst_size=0x00040000,
-    tb_data_base=0x20010000,
+    tb_data_base=rtl_data_base if rtl_tb_mode else 0x20010000,
     tb_data_size=0x00040000,
 )
 system.pipeline.clk_domain = system.clk_domain

@@ -14,13 +14,17 @@ class PipelineMiniCPU(ClockedObject):
 
     dmem_hex_file = Param.String(
         "",
-        "DMEM text image: byte tokens for spirit-like memory, or 32-bit "
-        "$readmemh words for the Aerith full-system RTL testbench",
+        "DMEM text image: byte tokens for spirit-like/dut-kui memory, or "
+        "32-bit $readmemh words for the legacy Aerith full-system testbench",
     )
 
     tb_memory_enabled = Param.Bool(
         False,
         "Route CPU IBus, DBus, and the VEU TCM master through the Aerith full-system RTL-testbench crossbar",
+    )
+    tb_memory_platform = Param.String(
+        "aerith-legacy",
+        "Internal RTL-testbench memory platform: aerith-legacy or dut-kui",
     )
     tb_imem_image_file = Param.String("", "Raw image loaded into the internal testbench instruction SRAM")
     tb_dmem_image_file = Param.String("", "Raw image loaded into the internal testbench data SRAM")
