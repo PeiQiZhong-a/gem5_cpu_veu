@@ -22,6 +22,9 @@ PipelineMiniCPU::CpuRequestPort::recvTimingResp(PacketPtr pkt)
     if (kind == PortKind::Inst) {
         return owner->completeTimingFetch(pkt);
     }
+    if (kind == PortKind::Veu) {
+        return owner->completeTimingVeu(pkt);
+    }
     return owner->completeTimingData(pkt);
 }
 
@@ -30,6 +33,8 @@ PipelineMiniCPU::CpuRequestPort::recvReqRetry()
 {
     if (kind == PortKind::Inst) {
         owner->retryInstFetch();
+    } else if (kind == PortKind::Veu) {
+        owner->retryVeuRequest();
     } else {
         owner->retryDataRequest();
     }
@@ -52,7 +57,9 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       pipeStats(this),
       instRequestorId(p.system->getRequestorId(this, "inst")),
       dataRequestorId(p.system->getRequestorId(this, "data")),
+      veuRequestorId(p.system->getRequestorId(this, "veu")),
       tbMemoryEnabled(p.tb_memory_enabled),
+      tbMemoryPlatform(p.tb_memory_platform),
       tbImemImageFile(p.tb_imem_image_file),
       tbDmemImageFile(p.tb_dmem_image_file),
       tbInstBase(p.tb_inst_base),
@@ -67,21 +74,27 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
           static_cast<uint32_t>(p.tb_inst_size),
           static_cast<uint32_t>(p.tb_data_base),
           static_cast<uint32_t>(p.tb_data_size)}),
+      dutKuiMemory(),
       cycleTraceFile(p.cycle_trace_file),
       instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
       dataPort(name() + ".data_port", this, CpuRequestPort::PortKind::Data),
+      veuPort(name() + ".veu_port", this, CpuRequestPort::PortKind::Veu),
       icacheEnabled(p.icache_enabled),
       icacheSize(p.icache_size),
       icacheLineSize(p.icache_line_size),
       icacheNumLines(0),
       frontendBurstBytes(p.frontend_burst_bytes)
 {
+    fatal_if(tbMemoryEnabled && tbMemoryPlatform != "aerith-legacy" &&
+             tbMemoryPlatform != "dut-kui",
+             "Unsupported RTL-testbench memory platform '%s'",
+             tbMemoryPlatform.c_str());
     fatal_if(frontendBurstBytes != 16,
              "PipelineMiniCPU frontend currently models 16-byte RV-NEW bursts");
     core.configureFrontend(p.instr_fifo_depth, p.frontend_burst_bytes);
-    // aerith_tb_top.sv never terminates at the end of the loaded image.  It
-    // keeps fetching until the DONE monitor or the absolute testbench timeout.
-    core.configureTextEndTermination(!tbMemoryEnabled);
+    // aerith_tb_top.sv keeps fetching until the DONE monitor or its absolute
+    // timeout; the dut-kui and ordinary gem5 modes terminate at text end.
+    core.configureTextEndTermination(!legacyTbMemoryEnabled());
     core.configureFakeVeu(
         p.fake_veu_latency, p.fake_veu_response_data);
     core.setInterruptInputs(
@@ -89,6 +102,32 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     core.setDebugInputs(
         p.debug_halt, p.debug_halt_on_reset, p.debug_resume, p.debug_data0);
     core.setDebugInstruction(p.debug_instr, p.debug_instr_valid);
+    brs::VeuTimingConfig veuConfig;
+    veuConfig.inputFifoDepth = p.veu_input_fifo_depth;
+    veuConfig.executeLatency = p.veu_execute_latency;
+    veuConfig.executeII = p.veu_execute_ii;
+    veuConfig.vsuLatency = p.veu_vsu_latency;
+    veuConfig.startupCycles = p.veu_startup_cycles;
+    veuConfig.finishCycles = p.veu_finish_cycles;
+    veuConfig.timingProfilePath = p.veu_timing_profile;
+    veuConfig.cycleTracePath = p.veu_cycle_trace;
+    try {
+        core.configureTimingVeu(veuConfig);
+    } catch (const std::exception &error) {
+        fatal("Invalid TimingVEU configuration: %s", error.what());
+    }
+    core.setTimingVeuMemoryRequestCallback(
+        [this](const brs::TimingVeuMemoryRequest &request) {
+            return requestVeuTiming(request);
+        });
+    if (p.veu_model == "timing") {
+        core.useTimingVeuEndpoint();
+    } else if (p.veu_model == "fake") {
+        core.useFakeVeuEndpoint();
+    } else {
+        fatal("Unsupported veu_model '%s': expected fake or timing",
+              p.veu_model.c_str());
+    }
 
     fatal_if(tbMemoryEnabled && icacheEnabled,
              "RTL-testbench memory mode requires the gem5-side I-cache to be disabled");
@@ -97,8 +136,11 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     fatal_if(p.tb_inst_base > 0xffffffffULL ||
              p.tb_data_base > 0xffffffffULL ||
              p.tb_inst_size > 0xffffffffULL ||
-             p.tb_data_size > 0xffffffffULL,
+              p.tb_data_size > 0xffffffffULL,
              "RTL-testbench address map must fit in the 32-bit RTL bus");
+    fatal_if(legacyTbMemoryEnabled() && p.veu_model == "timing",
+             "TimingVEU uses a 256-bit gem5 memory port and is not compatible "
+             "with the 128-bit Aerith RTL-testbench VEU TCM pins");
 
     if (icacheEnabled) {
         fatal_if(icacheLineSize < frontendBurstBytes,
@@ -127,7 +169,22 @@ PipelineMiniCPU::getPort(const std::string &if_name, PortID idx)
     if (if_name == "data_port") {
         return dataPort;
     }
+    if (if_name == "veu_port") {
+        return veuPort;
+    }
     return ClockedObject::getPort(if_name, idx);
+}
+
+bool
+PipelineMiniCPU::legacyTbMemoryEnabled() const
+{
+    return tbMemoryEnabled && tbMemoryPlatform == "aerith-legacy";
+}
+
+bool
+PipelineMiniCPU::dutKuiMemoryEnabled() const
+{
+    return tbMemoryEnabled && tbMemoryPlatform == "dut-kui";
 }
 
 Addr
@@ -218,8 +275,12 @@ PipelineMiniCPU::fillICacheLine(Addr blockAddr, const uint8_t *data,
 bool
 PipelineMiniCPU::fetchInstrFunctional(uint32_t addr, uint32_t &inst)
 {
-    if (tbMemoryEnabled) {
+    if (legacyTbMemoryEnabled()) {
         inst = tbCrossbar.readWord(addr);
+        return true;
+    }
+    if (dutKuiMemoryEnabled()) {
+        inst = dutKuiMemory.readWord(addr);
         return true;
     }
 
@@ -257,7 +318,21 @@ PipelineMiniCPU::requestInstrTiming(uint32_t addr)
     const unsigned fetchSize = icacheEnabled ? icacheLineSize :
         frontendBurstBytes;
 
-    if (tbMemoryEnabled) {
+    if (dutKuiMemoryEnabled()) {
+        panic_if(fetchSize != 16,
+                 "dut_kui IBus supports one 16-byte beat, got %u",
+                 fetchSize);
+        pendingInstAddr = reqAddr;
+        pendingInstFetchAddr = fetchAddr;
+        if (!dutKuiMemory.acceptIbus(
+                {static_cast<uint32_t>(reqAddr)})) {
+            return false;
+        }
+        tbInstOutstanding = true;
+        return true;
+    }
+
+    if (legacyTbMemoryEnabled()) {
         panic_if(fetchSize != 16,
                  "RTL-testbench IBus supports one 16-byte beat, got %u",
                  fetchSize);
@@ -288,6 +363,22 @@ PipelineMiniCPU::requestInstrTiming(uint32_t addr)
     }
 
     return true;
+}
+
+void
+PipelineMiniCPU::completeDutKuiFetch(
+    const brs::DutKuiIbusResponse &response)
+{
+    panic_if(!tbInstOutstanding,
+             "dut_kui IBus returned without an outstanding fetch");
+    FetchBlock block;
+    block.fetchAddr = static_cast<uint32_t>(pendingInstFetchAddr);
+    block.blockAddr = static_cast<uint32_t>(pendingInstAddr);
+    block.words = response.readData;
+    core.acceptFetchedBlock(block);
+    tbInstOutstanding = false;
+    pendingInstAddr = 0;
+    pendingInstFetchAddr = 0;
 }
 
 void
@@ -368,7 +459,35 @@ PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
         return false;
     }
 
-    if (tbMemoryEnabled) {
+    if (dutKuiMemoryEnabled()) {
+        panic_if(size != 1 && size != 2 && size != 4,
+                 "Unsupported dut_kui data access size: %u", size);
+        const unsigned byteInWord = addr & 0x3;
+        panic_if(byteInWord + size > 4,
+                 "dut_kui DBus access crosses a 32-bit word: addr=%#x size=%u",
+                 addr, size);
+
+        brs::DutKuiDbusRequest request;
+        request.address = addr;
+        if (isWrite) {
+            request.writeStrobe = static_cast<uint8_t>(
+                ((uint32_t{1} << size) - 1) << byteInWord);
+            request.writeData = writeData << (byteInWord * 8);
+        }
+        if (!dutKuiMemory.acceptDbus(
+                request, core.timingVeuOwnsSharedDmem())) {
+            return false;
+        }
+
+        pendingDataAddr = addr;
+        pendingDataSize = size;
+        pendingDataIsWrite = isWrite;
+        pendingDataWriteValue = writeData;
+        tbDataOutstanding = true;
+        return true;
+    }
+
+    if (legacyTbMemoryEnabled()) {
         panic_if(size != 1 && size != 2 && size != 4,
                  "Unsupported RTL-testbench data access size: %u", size);
         pendingDataAddr = addr;
@@ -465,6 +584,32 @@ PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
 }
 
 void
+PipelineMiniCPU::completeDutKuiData(
+    const brs::DutKuiDbusResponse &response)
+{
+    panic_if(!tbDataOutstanding,
+             "dut_kui DBus returned without an outstanding request");
+    panic_if(response.isWrite != pendingDataIsWrite,
+             "dut_kui DBus response type does not match outstanding request");
+
+    uint32_t data = 0;
+    if (!pendingDataIsWrite) {
+        const unsigned shift = (pendingDataAddr & 0x3) * 8;
+        data = response.readData >> shift;
+        if (pendingDataSize < 4) {
+            data &= (uint32_t{1} << (pendingDataSize * 8)) - 1;
+        }
+    }
+    core.acceptDataResponse(static_cast<uint32_t>(pendingDataAddr),
+                            data, pendingDataIsWrite);
+    tbDataOutstanding = false;
+    pendingDataAddr = 0;
+    pendingDataSize = 0;
+    pendingDataIsWrite = false;
+    pendingDataWriteValue = 0;
+}
+
+void
 PipelineMiniCPU::completeTbData(const brs::TbBusResponse &response)
 {
     panic_if(!tbDataOutstanding,
@@ -525,6 +670,108 @@ PipelineMiniCPU::retryDataRequest()
     }
 }
 
+bool
+PipelineMiniCPU::requestVeuTiming(
+    const brs::TimingVeuMemoryRequest &request)
+{
+    if (dutKuiMemoryEnabled()) {
+        fatal_if(request.address > 0xffffffffULL,
+                 "dut_kui VEU request address exceeds 32 bits: %#llx",
+                 static_cast<unsigned long long>(request.address));
+        brs::DutKuiVeuRequest tbRequest;
+        tbRequest.transactionId = request.transactionId;
+        tbRequest.address = static_cast<uint32_t>(request.address);
+        tbRequest.isWrite = request.isWrite;
+        tbRequest.writeStrobe = request.writeStrobe;
+        tbRequest.data = request.data;
+        if (!dutKuiMemory.acceptVeu(tbRequest)) {
+            core.noteVeuMemoryRetry();
+            return false;
+        }
+        return true;
+    }
+
+    if (pendingVeuReq != nullptr) {
+        return false;
+    }
+
+    Request::Flags flags;
+    auto req = std::make_shared<Request>(
+        request.address, brs::VeuVectorBytes, flags, veuRequestorId);
+    if (request.isWrite) {
+        std::vector<bool> byteEnable(brs::VeuVectorBytes, false);
+        for (unsigned byte = 0; byte < brs::VeuVectorBytes; ++byte) {
+            byteEnable[byte] = request.writeStrobe & (uint32_t{1} << byte);
+        }
+        req->setByteEnable(byteEnable);
+    }
+    auto pkt = new Packet(req, request.isWrite ? MemCmd::WriteReq :
+                          MemCmd::ReadReq);
+    pkt->allocate();
+    pkt->pushSenderState(
+        new VeuSenderState(request.transactionId, request.isWrite));
+
+    if (request.isWrite) {
+        std::memcpy(pkt->getPtr<uint8_t>(), request.data.data(),
+                    brs::VeuVectorBytes);
+    }
+
+    pendingVeuReq = pkt;
+    veuReqRetry = false;
+    ++veuPacketsInFlight;
+
+    if (veuPort.sendTimingReq(pkt)) {
+        pendingVeuReq = nullptr;
+    } else {
+        veuReqRetry = true;
+        core.noteVeuMemoryRetry();
+    }
+
+    return true;
+}
+
+bool
+PipelineMiniCPU::completeTimingVeu(PacketPtr pkt)
+{
+    panic_if(pkt->isError(), "Timing VEU data access failed: %s",
+             pkt->print());
+
+    auto *senderState = dynamic_cast<VeuSenderState *>(pkt->senderState);
+    panic_if(!senderState, "Timing VEU response has no sender state");
+    pkt->popSenderState();
+
+    if (senderState->isWrite) {
+        core.acceptVeuMemoryWrite(senderState->transactionId);
+    } else {
+        std::array<uint8_t, brs::VeuVectorBytes> data = {};
+        const uint8_t *bytes = pkt->getConstPtr<uint8_t>();
+        std::copy(bytes, bytes + brs::VeuVectorBytes, data.begin());
+        core.acceptVeuMemoryRead(senderState->transactionId, data);
+    }
+
+    panic_if(veuPacketsInFlight == 0,
+             "Timing VEU response count underflow");
+    --veuPacketsInFlight;
+
+    delete senderState;
+    delete pkt;
+    return true;
+}
+
+void
+PipelineMiniCPU::retryVeuRequest()
+{
+    if (!pendingVeuReq || !veuReqRetry) {
+        return;
+    }
+
+    PacketPtr pkt = pendingVeuReq;
+    if (veuPort.sendTimingReq(pkt)) {
+        pendingVeuReq = nullptr;
+        veuReqRetry = false;
+    }
+}
+
 void
 PipelineMiniCPU::preloadElf()
 {
@@ -579,9 +826,14 @@ PipelineMiniCPU::preloadProgramFunctional()
 
     for (uint32_t i = 0; i < img.program_words; ++i) {
         Addr addr = textBase + i * 4;
-        if (tbMemoryEnabled) {
+        if (legacyTbMemoryEnabled()) {
             tbCrossbar.writeWord(static_cast<uint32_t>(addr),
                                  img.instr_mem[i]);
+            continue;
+        }
+        if (dutKuiMemoryEnabled()) {
+            dutKuiMemory.writeWord(static_cast<uint32_t>(addr),
+                                   img.instr_mem[i]);
             continue;
         }
         auto req = std::make_shared<Request>(
@@ -623,9 +875,8 @@ void
 PipelineMiniCPU::preloadDataFunctional()
 {
     DataImage img;
-    const bool loaded = tbMemoryEnabled ?
-        img.loadReadmemh32File(dmemHexFile) :
-        img.loadHexFile(dmemHexFile);
+    const bool loaded = legacyTbMemoryEnabled() ?
+        img.loadReadmemh32File(dmemHexFile) : img.loadHexFile(dmemHexFile);
     if (!loaded) {
         fatal("Failed to load DMEM hex file: %s", dmemHexFile);
     }
@@ -639,8 +890,12 @@ PipelineMiniCPU::preloadDataFunctional()
     }
     for (size_t i = 0; i < totalBytes; ++i) {
         Addr addr = dmemBase + i;
-        if (tbMemoryEnabled) {
+        if (legacyTbMemoryEnabled()) {
             tbCrossbar.writeByte(static_cast<uint32_t>(addr), img.data[i]);
+            continue;
+        }
+        if (dutKuiMemoryEnabled()) {
+            dutKuiMemory.writeByte(static_cast<uint32_t>(addr), img.data[i]);
             continue;
         }
         auto req = std::make_shared<Request>(
@@ -673,8 +928,13 @@ PipelineMiniCPU::preloadTbRawImage(
         fatal_if(base + size > 0xffffffffULL,
                  "RTL-testbench raw image exceeds the 32-bit address bus: %s",
                  path);
-        tbCrossbar.writeByte(static_cast<uint32_t>(base + size),
-                             static_cast<uint8_t>(byte));
+        if (dutKuiMemoryEnabled()) {
+            dutKuiMemory.writeByte(static_cast<uint32_t>(base + size),
+                                   static_cast<uint8_t>(byte));
+        } else {
+            tbCrossbar.writeByte(static_cast<uint32_t>(base + size),
+                                 static_cast<uint8_t>(byte));
+        }
         ++size;
     }
     fatal_if(!input.eof(), "Failed while reading RTL-testbench image: %s",
@@ -808,25 +1068,49 @@ PipelineMiniCPU::writeTbCycleTrace(
 }
 
 void
+PipelineMiniCPU::processDutKuiMemoryCycle()
+{
+    const brs::DutKuiMemoryOutputs outputs =
+        dutKuiMemory.clock(core.timingVeuOwnsSharedDmem());
+    if (outputs.ibus.valid) {
+        completeDutKuiFetch(outputs.ibus);
+    }
+    if (outputs.dbus.valid) {
+        completeDutKuiData(outputs.dbus);
+    }
+    if (outputs.veuRead.valid) {
+        core.acceptVeuMemoryRead(outputs.veuRead.transactionId,
+                                 outputs.veuRead.readData);
+    }
+    if (outputs.veuWrite.valid) {
+        core.acceptVeuMemoryWrite(outputs.veuWrite.transactionId);
+    }
+}
+
+void
 PipelineMiniCPU::startup()
 {
     if (tbMemoryEnabled) {
-        // Both RTL SRAM arrays start at zero before their image loaders run.
-        // Clearing the shared sparse backing store gives raw-byte and
-        // $readmemh-word paths identical zero-fill outside loaded bytes.
-        tbCrossbar.clearMemory();
-        uartLog.open(simout.resolve("uart.log"),
-                     std::ios::out | std::ios::binary | std::ios::trunc);
-        fatal_if(!uartLog.is_open(), "Failed to open RTL UART log");
-        if (!cycleTraceFile.empty()) {
-            cycleTrace.open(simout.resolve(cycleTraceFile),
-                            std::ios::out | std::ios::trunc);
-            fatal_if(!cycleTrace.is_open(),
-                     "Failed to open cycle trace file: %s", cycleTraceFile);
-            cycleTrace << "# brs-cycle-trace-v1 source=gem5 "
-                       << "sampling=posedge-pre-nba reset_edges="
-                       << resetCyclesRemaining << '\n';
-            cycleTrace.flush();
+        if (legacyTbMemoryEnabled()) {
+            // The legacy RTL SRAM arrays start at zero before their image
+            // loaders run. The cycle trace mirrors aerith_tb_top.sv pins.
+            tbCrossbar.clearMemory();
+            uartLog.open(simout.resolve("uart.log"),
+                         std::ios::out | std::ios::binary | std::ios::trunc);
+            fatal_if(!uartLog.is_open(), "Failed to open RTL UART log");
+            if (!cycleTraceFile.empty()) {
+                cycleTrace.open(simout.resolve(cycleTraceFile),
+                                std::ios::out | std::ios::trunc);
+                fatal_if(!cycleTrace.is_open(),
+                         "Failed to open cycle trace file: %s",
+                         cycleTraceFile);
+                cycleTrace << "# brs-cycle-trace-v1 source=gem5 "
+                           << "sampling=posedge-pre-nba reset_edges="
+                           << resetCyclesRemaining << '\n';
+                cycleTrace.flush();
+            }
+        } else {
+            dutKuiMemory.reset();
         }
         if (!tbImemImageFile.empty()) {
             preloadedProgramSize = preloadTbRawImage(
@@ -880,10 +1164,10 @@ PipelineMiniCPU::processTick()
     // Sample the VEU's current-cycle pins before either endpoint is clocked.
     // The CPU request callbacks below likewise represent signals driven during
     // this cycle and captured by the crossbar at its closing edge.
-    const brs::VeuMemoryOutput veuMemory = tbMemoryEnabled ?
+    const brs::VeuMemoryOutput veuMemory = legacyTbMemoryEnabled() ?
         core.evaluateVeuMemory() : brs::VeuMemoryOutput{};
     core.stepOneCycle();
-    if (tbMemoryEnabled) {
+    if (legacyTbMemoryEnabled()) {
         // The core drives its one-cycle request pulses during this cycle. The
         // crossbar captures them on this edge; registered responses are made
         // visible to PipelineCore on the following CPU cycle.
@@ -894,6 +1178,8 @@ PipelineMiniCPU::processTick()
                 "Aerith RTL testbench DONE (ERROR)");
             return;
         }
+    } else if (dutKuiMemoryEnabled()) {
+        processDutKuiMemoryCycle();
     }
 
     pipeStats.cycle_count = core.getCycle();
@@ -906,6 +1192,52 @@ PipelineMiniCPU::processTick()
     pipeStats.ibus_req_count = core.getIbusReqCount();
     pipeStats.fetch_fifo_flush_count = core.getFetchFifoFlushCount();
     pipeStats.aligned_instr_count = core.getAlignedInstrCount();
+    pipeStats.veu_issue_count = core.getVeuIssueCount();
+    pipeStats.veu_complete_count = core.getVeuCompleteCount();
+    pipeStats.veu_csr_handshake_cycles = core.getVeuCsrHandshakeCycles();
+    pipeStats.rv_dmem_blocked_by_veu_cycles =
+        core.getRvDmemBlockedByVeuCycles();
+    pipeStats.veu_operation_start_count =
+        core.getTimingVeuOperationStarts();
+    pipeStats.veu_operation_complete_count =
+        core.getTimingVeuOperationCompletes();
+    pipeStats.veu_busy_cycles = core.getTimingVeuBusyCycles();
+    pipeStats.veu_load_wait_cycles = core.getTimingVeuLoadWaitCycles();
+    pipeStats.veu_execute_cycles = core.getTimingVeuExecuteCycles();
+    pipeStats.veu_store_wait_cycles = core.getTimingVeuStoreWaitCycles();
+    pipeStats.veu_chunks = core.getTimingVeuChunks();
+    pipeStats.veu_memory_reads = core.getTimingVeuMemoryReads();
+    pipeStats.veu_memory_writes = core.getTimingVeuMemoryWrites();
+    pipeStats.veu_status_active_cycles =
+        core.timingVeu.statusActiveCycleCount();
+    pipeStats.veu_lock_active_cycles =
+        core.timingVeu.lockActiveCycleCount();
+    pipeStats.veu_current_outstanding_reads =
+        core.timingVeu.currentOutstandingReadCount();
+    pipeStats.veu_max_outstanding_reads =
+        core.timingVeu.maxOutstandingReadCount();
+    pipeStats.veu_fifo1_max_occupancy = core.timingVeu.fifoMaxOccupancy(0);
+    pipeStats.veu_fifo2_max_occupancy = core.timingVeu.fifoMaxOccupancy(1);
+    pipeStats.veu_fifo3_max_occupancy = core.timingVeu.fifoMaxOccupancy(2);
+    pipeStats.veu_fifo_empty_stalls = core.timingVeu.fifoEmptyStallCount();
+    pipeStats.veu_fifo_full_stalls = core.timingVeu.fifoFullStallCount();
+    pipeStats.veu_vfu_accepted = core.timingVeu.vfuAcceptedCount();
+    pipeStats.veu_vfu_completed = core.timingVeu.vfuCompletedCount();
+    pipeStats.veu_vfu_max_in_flight = core.timingVeu.maxVfuInFlightCount();
+    pipeStats.veu_vfu_ii_stalls = core.timingVeu.vfuIIStallCount();
+    pipeStats.veu_vsu_queue_stalls = core.timingVeu.vsuQueueStallCount();
+    pipeStats.veu_store_priority_cycles = core.timingVeu.storePriorityCount();
+    pipeStats.veu_reads_blocked_by_store = core.timingVeu.readBlockedByStoreCount();
+    pipeStats.veu_masked_writes = core.timingVeu.maskedWriteCount();
+    pipeStats.veu_zero_mask_skipped_writes =
+        core.timingVeu.zeroMaskSkippedWriteCount();
+    pipeStats.veu_retries = core.timingVeu.retryCount();
+    pipeStats.veu_unexpected_responses = core.timingVeu.unexpectedResponseCount();
+    pipeStats.veu_profile_hits = core.timingVeu.profileHitCount();
+    pipeStats.veu_profile_misses = core.timingVeu.profileMissCount();
+    pipeStats.veu_profile_fallbacks = core.timingVeu.profileFallbackCount();
+    pipeStats.veu_zero_length_noops = core.timingVeu.zeroLengthNoopCount();
+    pipeStats.veu_illegal_operations = core.timingVeu.illegalOperationCount();
 
     std::cout
         << "[PipelineMiniCPU] cycle=" << core.getCycle()
@@ -928,7 +1260,8 @@ PipelineMiniCPU::processTick()
         << " align=" << core.getAlignedInstrCount()
         << std::endl;
 
-    if (!tbMemoryEnabled && core.done()) {
+    if (!legacyTbMemoryEnabled() && core.done() && pendingVeuReq == nullptr &&
+        veuPacketsInFlight == 0 && core.timingVeu.quiescent()) {
         exitSimLoop("PipelineMiniCPU completed test");
         return;
     }
@@ -937,7 +1270,7 @@ PipelineMiniCPU::processTick()
         elapsedClockEdges : core.getCycle();
     if (timeoutCycles >= maxCycles) {
         exitSimLoop(tbMemoryEnabled ?
-            "Aerith RTL testbench timeout" :
+            "RTL testbench timeout" :
             "PipelineMiniCPU hit max_cycles");
         return;
     }

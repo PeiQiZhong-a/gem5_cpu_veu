@@ -14,13 +14,17 @@ class PipelineMiniCPU(ClockedObject):
 
     dmem_hex_file = Param.String(
         "",
-        "DMEM text image: byte tokens for spirit-like memory, or 32-bit "
-        "$readmemh words for the Aerith full-system RTL testbench",
+        "DMEM text image: byte tokens for spirit-like/dut-kui memory, or "
+        "32-bit $readmemh words for the legacy Aerith full-system testbench",
     )
 
     tb_memory_enabled = Param.Bool(
         False,
         "Route CPU IBus, DBus, and the VEU TCM master through the Aerith full-system RTL-testbench crossbar",
+    )
+    tb_memory_platform = Param.String(
+        "aerith-legacy",
+        "Internal RTL-testbench memory platform: aerith-legacy or dut-kui",
     )
     tb_imem_image_file = Param.String("", "Raw image loaded into the internal testbench instruction SRAM")
     tb_dmem_image_file = Param.String("", "Raw image loaded into the internal testbench data SRAM")
@@ -59,6 +63,42 @@ class PipelineMiniCPU(ClockedObject):
     debug_instr_valid = Param.Bool(False, "Injected debug instruction valid")
     cycle_trace_file = Param.String(
         "", "Optional per-cycle RTL-comparison trace written in gem5 output")
+    veu_model = Param.String(
+        "fake",
+        "VEU backend model: fake or timing",
+    )
+    veu_input_fifo_depth = Param.UInt32(
+        4,
+        "TimingVEU input FIFO depth in 256-bit chunks",
+    )
+    veu_execute_latency = Param.UInt32(
+        3,
+        "TimingVEU execute latency per 256-bit chunk in CPU cycles",
+    )
+    veu_execute_ii = Param.UInt32(
+        1,
+        "TimingVEU default VFU initiation interval in CPU cycles",
+    )
+    veu_vsu_latency = Param.UInt32(
+        1,
+        "TimingVEU VSU latency in CPU cycles",
+    )
+    veu_timing_profile = Param.String(
+        "",
+        "Normalized TimingVEU per-operation timing profile CSV",
+    )
+    veu_cycle_trace = Param.String(
+        "",
+        "Optional TimingVEU structural cycle trace CSV output",
+    )
+    veu_startup_cycles = Param.UInt32(
+        0,
+        "TimingVEU startup cycles before issuing the first load",
+    )
+    veu_finish_cycles = Param.UInt32(
+        0,
+        "TimingVEU finish cycles before reporting completion",
+    )
 
     text_base    = Param.Addr(0x80000000, "Code base address")
     dmem_base    = Param.Addr(0x80200000, "DMEM base address")
@@ -74,3 +114,4 @@ class PipelineMiniCPU(ClockedObject):
 
     inst_port = RequestPort("Instruction fetch port")
     data_port = RequestPort("Data access port")
+    veu_port = RequestPort("VEU data access port")

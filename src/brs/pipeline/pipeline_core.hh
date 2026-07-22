@@ -2,6 +2,7 @@
 #define __BRS_PIPELINE_CORE_HH__
 
 #include <cstdint>
+#include <array>
 #include <functional>
 
 #include "brs/pipeline/frontend_fetch_unit.hh"
@@ -11,6 +12,7 @@
 #include "brs/pipeline/pipeline_regs.hh"
 #include "brs/pipeline/program_image.hh"
 #include "brs/veu/fake_veu.hh"
+#include "brs/veu/timing_veu.hh"
 #include "brs/veu/veu_cbu.hh"
 #include "brs/veu/veu_endpoint.hh"
 
@@ -43,8 +45,16 @@ class PipelineCore
                         uint32_t data0 = 0);
     void setDebugInstruction(uint32_t instruction, bool valid);
     void configureFakeVeu(uint32_t latencyCycles, uint32_t responseData);
+    void configureTimingVeu(const brs::VeuTimingConfig &config);
+    void setTimingVeuMemoryRequestCallback(
+        brs::TimingVeu::MemoryRequestFn callback);
     void attachVeuEndpoint(brs::VeuEndpoint &endpoint);
     void useFakeVeuEndpoint();
+    void useTimingVeuEndpoint();
+    void acceptVeuMemoryRead(uint64_t transactionId,
+                             const std::array<uint8_t, brs::VeuVectorBytes> &data);
+    void acceptVeuMemoryWrite(uint64_t transactionId);
+    void noteVeuMemoryRetry() { timingVeu.noteMemoryRetry(); }
     brs::VeuMemoryOutput evaluateVeuMemory() const;
     void clockVeuMemory(const brs::VeuMemoryResponse &response);
     void stepOneCycle();
@@ -65,6 +75,47 @@ class PipelineCore
     uint64_t getAlignedInstrCount() const;
     uint64_t getVeuIssueCount() const { return veu_issue_count; }
     uint64_t getVeuCompleteCount() const { return veu_complete_count; }
+    uint64_t getVeuCsrHandshakeCycles() const
+    {
+        return veu_csr_handshake_cycles;
+    }
+    uint64_t getRvDmemBlockedByVeuCycles() const
+    {
+        return rv_dmem_blocked_by_veu_cycles;
+    }
+    uint64_t getTimingVeuOperationStarts() const
+    {
+        return timingVeu.startedOperationCount();
+    }
+    uint64_t getTimingVeuOperationCompletes() const
+    {
+        return timingVeu.completedOperationCount();
+    }
+    uint64_t getTimingVeuBusyCycles() const
+    {
+        return timingVeu.busyCycleCount();
+    }
+    uint64_t getTimingVeuLoadWaitCycles() const
+    {
+        return timingVeu.loadWaitCycleCount();
+    }
+    uint64_t getTimingVeuExecuteCycles() const
+    {
+        return timingVeu.executeCycleCount();
+    }
+    uint64_t getTimingVeuStoreWaitCycles() const
+    {
+        return timingVeu.storeWaitCycleCount();
+    }
+    uint64_t getTimingVeuChunks() const { return timingVeu.chunkCount(); }
+    uint64_t getTimingVeuMemoryReads() const
+    {
+        return timingVeu.memoryReadCount();
+    }
+    uint64_t getTimingVeuMemoryWrites() const
+    {
+        return timingVeu.memoryWriteCount();
+    }
     uint64_t getFakeVeuAcceptedRequestCount() const
     {
         return fakeVeu.acceptedRequestCount();
@@ -81,6 +132,10 @@ class PipelineCore
     bool spiritExecuteStalled() const
     {
         return veu_stall || mdu_stall || lsu_stall || fp_stall;
+    }
+    bool timingVeuOwnsSharedDmem() const
+    {
+        return veuEndpoint == &timingVeu && timingVeu.lockIsActive();
     }
     bool haltRequested() const { return halt_requested; }
     bool debugMode() const { return csr_debug_mode; }
@@ -216,12 +271,15 @@ class PipelineCore
     uint32_t mdu_result = 0;
     brs::VeuCbu veuCbu;
     brs::FakeVeu fakeVeu;
+    brs::TimingVeu timingVeu;
     brs::VeuEndpoint *veuEndpoint = &fakeVeu;
     brs::VeuResponse veuResponse;
     brs::VeuCbuOutput veuCbuOutput;
     brs::VeuCbuIssue veuIssue;
     uint64_t veu_issue_count = 0;
     uint64_t veu_complete_count = 0;
+    uint64_t veu_csr_handshake_cycles = 0;
+    uint64_t rv_dmem_blocked_by_veu_cycles = 0;
 
     ProgramImage program;
     LocalMemoryBackend dataMem;

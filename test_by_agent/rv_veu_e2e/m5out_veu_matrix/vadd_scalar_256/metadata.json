@@ -1,0 +1,16 @@
+{
+  "case": "vadd_scalar",
+  "op": "vadd",
+  "vlen": 256,
+  "chunks": 1,
+  "expected_reads": 1,
+  "expected_writes": 1,
+  "read_addresses": [
+    768
+  ],
+  "write_addresses": [
+    1280
+  ],
+  "expected_base": 1792,
+  "max_cycles": 10000
+}

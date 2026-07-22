@@ -46,7 +46,7 @@ TEST(VeuProtocolTest, AlignsVectorLengthLikeAerithVcu)
     EXPECT_EQ(alignVeuLengthBits(1), 256);
     EXPECT_EQ(alignVeuLengthBits(256), 256);
     EXPECT_EQ(alignVeuLengthBits(257), 512);
-    EXPECT_EQ(effectiveVeuLengthAtStart(0), 256);
+    EXPECT_EQ(effectiveVeuLengthAtStart(0), 0);
 }
 
 TEST(VeuProtocolTest, DecodesSpiritCsrInstructions)
@@ -91,9 +91,12 @@ TEST(VeuProtocolTest, MapsInstructionsToSpiritVeStartBits)
 
 TEST(CycleTraceTest, UsesSharedEventNames)
 {
-    EXPECT_STREQ(cycleTraceEventName(CycleTraceEvent::Retire), "RETIRE");
-    EXPECT_STREQ(cycleTraceEventName(CycleTraceEvent::CbuRequest), "CBU_REQ");
-    EXPECT_STREQ(cycleTraceEventName(CycleTraceEvent::VeuFinish), "VEU_FINISH");
+    EXPECT_STREQ(cycleTraceEventName(CycleTraceEvent::OperationStart),
+                 "operation_start");
+    EXPECT_STREQ(cycleTraceEventName(CycleTraceEvent::ReadRequest),
+                 "read_request");
+    EXPECT_STREQ(cycleTraceEventName(CycleTraceEvent::OperationFinish),
+                 "operation_finish");
 }
 
 } // anonymous namespace

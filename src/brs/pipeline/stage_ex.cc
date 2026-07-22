@@ -291,6 +291,7 @@ PipelineCore::stageEX()
             ++veu_complete_count;
         } else {
             exmem_next = {};
+            ++veu_csr_handshake_cycles;
             if (veuCbuOutput.ready) {
                 veuIssue = makeVeuCbuIssue(
                     idex_cur, op_a, op_b, op_c);
@@ -331,6 +332,13 @@ PipelineCore::stageEX()
     const bool isLoad = isLoadInstr(idex_cur.kind);
     const bool isStore = isStoreInstr(idex_cur.kind);
     if (isLoad || isStore) {
+        if (timingVeuOwnsSharedDmem()) {
+            lsu_stall = true;
+            ++rv_dmem_blocked_by_veu_cycles;
+            exmem_next = {};
+            return;
+        }
+
         const uint32_t computedAddress = static_cast<uint32_t>(
             static_cast<int32_t>(op_a) + idex_cur.imm);
         const unsigned size = memAccessSize(idex_cur.kind);
@@ -440,7 +448,7 @@ PipelineCore::stageEX()
           mdu_busy = false;
           mdu_result = 0;
           break;
-          
+
       case InstrKind::LB:
       case InstrKind::LBU:
       case InstrKind::LH:

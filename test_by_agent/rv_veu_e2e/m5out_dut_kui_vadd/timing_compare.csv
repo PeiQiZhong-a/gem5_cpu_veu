@@ -1,0 +1,3 @@
+vlen,status,gem5_first_read,rtl_first_read,gem5_read_returns,rtl_read_returns,gem5_first_write,rtl_first_write,gem5_lock_finish_delta,rtl_lock_finish_delta,gem5_total,rtl_total
+256,PASS,1,5,4;4,4;4,8,13,9,18,9,18
+2048,PASS,1,5,4;4;4;4;4;4;4;4;4;4;4;4;4;4;4;4,4;4;4;4;4;4;4;4;4;4;4;4;4;4;4;4,8,13,28,37,28,37

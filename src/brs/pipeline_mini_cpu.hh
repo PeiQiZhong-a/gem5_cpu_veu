@@ -2,6 +2,7 @@
 #define __BRS_PIPELINE_MINI_CPU_HH__
 
 #include <cstdint>
+#include <array>
 #include <fstream>
 #include <functional>
 #include <memory>
@@ -20,6 +21,7 @@
 #include "brs/pipeline/pipeline_core.hh"
 #include "brs/pipeline/program_image.hh"
 #include "brs/pipeline_stats.hh"
+#include "brs/memory/dut_kui_memory_model.hh"
 #include "brs/memory/tb_crossbar_model.hh"
 
 namespace gem5
@@ -34,7 +36,8 @@ class PipelineMiniCPU : public ClockedObject
         enum class PortKind
         {
             Inst,
-            Data
+            Data,
+            Veu
         };
 
       private:
@@ -67,8 +70,10 @@ class PipelineMiniCPU : public ClockedObject
     PipelineStats pipeStats;
     RequestorID instRequestorId;
     RequestorID dataRequestorId;
+    RequestorID veuRequestorId;
 
     bool tbMemoryEnabled;
+    std::string tbMemoryPlatform;
     std::string tbImemImageFile;
     std::string tbDmemImageFile;
     Addr tbInstBase;
@@ -76,6 +81,7 @@ class PipelineMiniCPU : public ClockedObject
     Addr tbDataBase;
     Addr tbDataStorageSize;
     brs::TbCrossbarModel tbCrossbar;
+    brs::DutKuiMemoryModel dutKuiMemory;
     brs::TbBusRequest tbIbusPulse;
     brs::TbBusRequest tbDbusPulse;
     bool tbInstOutstanding = false;
@@ -89,6 +95,7 @@ class PipelineMiniCPU : public ClockedObject
 
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
+    CpuRequestPort veuPort;
     PacketPtr pendingInstFetch = nullptr;
     bool instFetchRetry = false;
     Addr pendingInstAddr = 0;
@@ -100,6 +107,20 @@ class PipelineMiniCPU : public ClockedObject
     unsigned pendingDataSize = 0;
     bool pendingDataIsWrite = false;
     uint32_t pendingDataWriteValue = 0;
+
+    PacketPtr pendingVeuReq = nullptr;
+    bool veuReqRetry = false;
+    uint64_t veuPacketsInFlight = 0;
+
+    struct VeuSenderState : public Packet::SenderState
+    {
+        uint64_t transactionId;
+        bool isWrite;
+
+        VeuSenderState(uint64_t transactionId, bool isWrite)
+          : transactionId(transactionId), isWrite(isWrite)
+        {}
+    };
 
     struct ICacheLine
     {
@@ -126,7 +147,12 @@ class PipelineMiniCPU : public ClockedObject
                            bool isWrite, uint32_t writeData);
     bool completeTimingData(PacketPtr pkt);
     void completeTbData(const brs::TbBusResponse &response);
+    void completeDutKuiFetch(const brs::DutKuiIbusResponse &response);
+    void completeDutKuiData(const brs::DutKuiDbusResponse &response);
     void retryDataRequest();
+    bool requestVeuTiming(const brs::TimingVeuMemoryRequest &request);
+    bool completeTimingVeu(PacketPtr pkt);
+    void retryVeuRequest();
     void preloadElf();
     void preloadProgramFunctional();
     void usePreloadedProgram();
@@ -139,6 +165,9 @@ class PipelineMiniCPU : public ClockedObject
     void writeTbCycleTrace(
         const brs::TbCrossbarInputs &inputs,
         const brs::TbCrossbarOutputs &outputs);
+    void processDutKuiMemoryCycle();
+    bool legacyTbMemoryEnabled() const;
+    bool dutKuiMemoryEnabled() const;
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);

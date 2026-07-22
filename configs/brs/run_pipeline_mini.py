@@ -27,9 +27,9 @@ parser.add_argument(
 parser.add_argument(
     "--reset-cycles",
     type=int,
-    default=100,
-    help=("Reset clock edges before CPU cycle 1. "
-          "aerith_tb_top.sv holds reset for 100 rising edges."),
+    default=None,
+    help=("Reset clock edges before CPU cycle 1. Defaults to 100 for the "
+          "legacy Aerith RTL testbench and 10 for other memory modes."),
 )
 parser.add_argument(
     "--fake-veu-latency",
@@ -65,17 +65,32 @@ parser.add_argument(
     "--cycle-trace", default="",
     help="Write a machine-readable per-cycle CPU/bus trace to this output file.",
 )
+parser.add_argument(
+    "--veu-model",
+    choices=["fake", "timing"],
+    default="fake",
+    help="VEU backend model. fake preserves current tests; timing runs the VEU state-machine model.",
+)
+parser.add_argument("--veu-input-fifo-depth", type=int, default=4)
+parser.add_argument("--veu-execute-latency", type=int, default=3)
+parser.add_argument("--veu-execute-ii", type=int, default=1)
+parser.add_argument("--veu-vsu-latency", type=int, default=1)
+parser.add_argument("--veu-timing-profile", default="")
+parser.add_argument("--veu-cycle-trace", default="")
+parser.add_argument("--veu-startup-cycles", type=int, default=0)
+parser.add_argument("--veu-finish-cycles", type=int, default=0)
 parser.add_argument("--mem-size", default="64MiB")
 parser.add_argument(
     "--mem-system",
     choices=[
         "ddr3", "simple", "split", "spirit-like",
-        "rtl-aerith-tb", "rtl-tb", "rtl-veu-tb",
+        "rtl-aerith-tb", "rtl-tb", "rtl-dut-kui-tb", "rtl-veu-tb",
     ],
     default="spirit-like",
-    help=("Memory platform. rtl-aerith-tb is the full CPU+VEU+crossbar "
+    help=("Memory platform. rtl-aerith-tb is the legacy full CPU+VEU+crossbar "
           "testbench; rtl-tb is its compatibility alias. rtl-veu-tb names "
-          "the separate standalone VEU testbench and is not interchangeable."),
+          "the separate standalone VEU testbench and is not interchangeable. "
+          "rtl-dut-kui-tb models the current 32-bit DBus and 256-bit VEU SRAM path."),
 )
 parser.add_argument(
     "--mem-latency",
@@ -98,7 +113,8 @@ parser.add_argument(
     "--dmem-hex",
     default="",
     help=("DMEM text image. spirit-like uses one byte per token; "
-          "rtl-aerith-tb matches $readmemh with one 32-bit word per token."),
+          "rtl-dut-kui-tb also uses byte tokens; rtl-aerith-tb matches "
+          "$readmemh with one 32-bit word per token."),
 )
 parser.add_argument(
     "--imem-base",
@@ -148,12 +164,19 @@ if args.mem_system == "rtl-veu-tb":
         "cycle comparison."
     )
 
-rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
+legacy_rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
+dut_kui_tb_mode = args.mem_system == "rtl-dut-kui-tb"
+rtl_tb_mode = legacy_rtl_tb_mode or dut_kui_tb_mode
+
 max_cycles = args.max_cycles
 if max_cycles is None:
     max_cycles = 2_000_000 if rtl_tb_mode else 200
 if max_cycles <= 0:
     parser.error("--max-cycles must be positive")
+
+reset_cycles = args.reset_cycles
+if reset_cycles is None:
+    reset_cycles = 100 if legacy_rtl_tb_mode else 10
 
 
 def parse_addr(value):
@@ -184,11 +207,26 @@ if args.dmem_hex and args.dmem_image:
 if args.dmem_hex and args.mem_system != "spirit-like" and not rtl_tb_mode:
     parser.error("--dmem-hex is supported only with spirit-like or rtl-tb memory")
 
-if args.reset_cycles < 0:
+if reset_cycles < 0:
     parser.error("--reset-cycles must be non-negative")
 
 if args.fake_veu_latency < 1:
     parser.error("--fake-veu-latency must be at least one cycle")
+
+if args.veu_input_fifo_depth < 1:
+    parser.error("--veu-input-fifo-depth must be at least one")
+
+if args.veu_execute_latency < 1:
+    parser.error("--veu-execute-latency must be at least one")
+
+if args.veu_execute_ii < 1:
+    parser.error("--veu-execute-ii must be at least one")
+
+if args.veu_vsu_latency < 1:
+    parser.error("--veu-vsu-latency must be at least one")
+
+if args.veu_startup_cycles < 0 or args.veu_finish_cycles < 0:
+    parser.error("--veu-startup-cycles and --veu-finish-cycles must be non-negative")
 
 
 system = System()
@@ -202,7 +240,7 @@ system.mem_mode = "timing"
 if rtl_tb_mode:
     rtl_inst_base = 0x00000000
     rtl_inst_size = 0x00040000
-    rtl_data_base = 0x20010000
+    rtl_data_base = 0x29120000 if dut_kui_tb_mode else 0x20010000
     rtl_data_size = 0x00040000
     system.mem_ranges = [
         AddrRange(start=rtl_inst_base, size=rtl_inst_size),
@@ -245,7 +283,7 @@ else:
 
 system.pipeline = PipelineMiniCPU(
     max_cycles=max_cycles,
-    reset_cycles=args.reset_cycles,
+    reset_cycles=reset_cycles,
     fake_veu_latency=args.fake_veu_latency,
     fake_veu_response_data=args.fake_veu_response_data,
     irq_external=args.irq_external,
@@ -258,6 +296,15 @@ system.pipeline = PipelineMiniCPU(
     debug_instr=args.debug_instr,
     debug_instr_valid=args.debug_instr_valid,
     cycle_trace_file=args.cycle_trace,
+    veu_model=args.veu_model,
+    veu_input_fifo_depth=args.veu_input_fifo_depth,
+    veu_execute_latency=args.veu_execute_latency,
+    veu_execute_ii=args.veu_execute_ii,
+    veu_vsu_latency=args.veu_vsu_latency,
+    veu_timing_profile=args.veu_timing_profile,
+    veu_cycle_trace=args.veu_cycle_trace,
+    veu_startup_cycles=args.veu_startup_cycles,
+    veu_finish_cycles=args.veu_finish_cycles,
     program_file=pipeline_program_file,
     elf_file=pipeline_elf_file,
     preloaded_program=pipeline_preloaded_program,
@@ -271,6 +318,7 @@ system.pipeline = PipelineMiniCPU(
     frontend_burst_bytes=args.frontend_burst_bytes,
     instr_fifo_depth=args.instr_fifo_depth,
     tb_memory_enabled=rtl_tb_mode,
+    tb_memory_platform="dut-kui" if dut_kui_tb_mode else "aerith-legacy",
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
     tb_ibus_response_delay=2,
@@ -278,7 +326,7 @@ system.pipeline = PipelineMiniCPU(
     tb_veu_pipeline_stages=3,
     tb_inst_base=0x00000000,
     tb_inst_size=0x00040000,
-    tb_data_base=0x20010000,
+    tb_data_base=rtl_data_base if rtl_tb_mode else 0x20010000,
     tb_data_size=0x00040000,
 )
 system.pipeline.clk_domain = system.clk_domain
@@ -287,6 +335,7 @@ if args.mem_system == "ddr3":
     system.membus = SystemXBar()
     system.pipeline.inst_port = system.membus.cpu_side_ports
     system.pipeline.data_port = system.membus.cpu_side_ports
+    system.pipeline.veu_port = system.membus.cpu_side_ports
     system.system_port = system.membus.cpu_side_ports
 
     system.mem_ctrl = MemCtrl()
@@ -298,6 +347,7 @@ elif args.mem_system == "simple":
     system.membus = SystemXBar()
     system.pipeline.inst_port = system.membus.cpu_side_ports
     system.pipeline.data_port = system.membus.cpu_side_ports
+    system.pipeline.veu_port = system.membus.cpu_side_ports
     system.system_port = system.membus.cpu_side_ports
 
     system.memory = SimpleMemory(
@@ -316,6 +366,7 @@ elif args.mem_system == "split":
 
     system.pipeline.inst_port = system.ibus.cpu_side_ports
     system.pipeline.data_port = system.dbus.cpu_side_ports
+    system.pipeline.veu_port = system.dbus.cpu_side_ports
 
     # Keep the system port on IMEM so PipelineMiniCPU::preloadElf() writes code
     # through system->physProxy into the globally visible instruction memory.
@@ -342,9 +393,15 @@ elif args.mem_system == "split":
 elif rtl_tb_mode:
     # Mandatory gem5 port connections. Runtime requests and image contents
     # bypass these stubs and use PipelineMiniCPU's shared cycle model.
-    system.membus = NoncoherentXBar()
+    system.membus = NoncoherentXBar(
+        frontend_latency=0,
+        forward_latency=0,
+        response_latency=0,
+        width=args.frontend_burst_bytes,
+    )
     system.pipeline.inst_port = system.membus.cpu_side_ports
     system.pipeline.data_port = system.membus.cpu_side_ports
+    system.pipeline.veu_port = system.membus.cpu_side_ports
     system.system_port = system.membus.cpu_side_ports
 
     system.imem_stub = SimpleMemory(range=system.mem_ranges[0])
@@ -374,6 +431,7 @@ elif args.mem_system == "spirit-like":
 
     system.pipeline.inst_port = system.ibus.cpu_side_ports
     system.pipeline.data_port = system.dbus.cpu_side_ports
+    system.pipeline.veu_port = system.dbus.cpu_side_ports
 
     # Runtime access remains strictly split: IBUS reaches only IMEM and DBUS
     # reaches only DMEM. IMEM and DMEM intentionally share the same local
@@ -404,13 +462,23 @@ m5.instantiate()
 
 print("Beginning PipelineMiniCPU simulation!")
 print("Clock frequency: {}".format(args.clock_frequency))
-print("Reset cycles: {}".format(args.reset_cycles))
+print("Reset cycles: {}".format(reset_cycles))
 print("Timeout cycles: {} ({})".format(
     max_cycles,
     "total clock edges including reset" if rtl_tb_mode else "active CPU cycles",
 ))
+print("VEU model: {}".format(args.veu_model))
 print("FakeVEU latency: {} cycles".format(args.fake_veu_latency))
 print("FakeVEU response data: {:#x}".format(args.fake_veu_response_data))
+if args.veu_model == "timing":
+    print("TimingVEU FIFO depth: {}".format(args.veu_input_fifo_depth))
+    print("TimingVEU execute latency: {} cycles".format(args.veu_execute_latency))
+    print("TimingVEU execute II: {} cycles".format(args.veu_execute_ii))
+    print("TimingVEU VSU latency: {} cycles".format(args.veu_vsu_latency))
+    print("TimingVEU profile: {}".format(args.veu_timing_profile or "<default>"))
+    print("TimingVEU cycle trace: {}".format(args.veu_cycle_trace or "<disabled>"))
+    print("TimingVEU startup cycles: {}".format(args.veu_startup_cycles))
+    print("TimingVEU finish cycles: {}".format(args.veu_finish_cycles))
 print("Memory system: {}".format(args.mem_system))
 if args.mem_system == "simple":
     print("Memory latency: {}".format(args.mem_latency))

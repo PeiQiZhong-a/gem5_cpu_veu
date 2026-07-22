@@ -7,6 +7,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <iomanip>
+#include <utility>
 
 
 
@@ -73,6 +74,19 @@ PipelineCore::configureFakeVeu(
 }
 
 void
+PipelineCore::configureTimingVeu(const brs::VeuTimingConfig &config)
+{
+    timingVeu.configure(config);
+}
+
+void
+PipelineCore::setTimingVeuMemoryRequestCallback(
+    brs::TimingVeu::MemoryRequestFn callback)
+{
+    timingVeu.setMemoryRequestCallback(std::move(callback));
+}
+
+void
 PipelineCore::attachVeuEndpoint(brs::VeuEndpoint &endpoint)
 {
     veuEndpoint = &endpoint;
@@ -84,6 +98,27 @@ PipelineCore::useFakeVeuEndpoint()
 {
     veuEndpoint = &fakeVeu;
     veuEndpoint->reset();
+}
+
+void
+PipelineCore::useTimingVeuEndpoint()
+{
+    veuEndpoint = &timingVeu;
+    veuEndpoint->reset();
+}
+
+void
+PipelineCore::acceptVeuMemoryRead(
+    uint64_t transactionId,
+    const std::array<uint8_t, brs::VeuVectorBytes> &data)
+{
+    timingVeu.completeMemoryRead(transactionId, data);
+}
+
+void
+PipelineCore::acceptVeuMemoryWrite(uint64_t transactionId)
+{
+    timingVeu.completeMemoryWrite(transactionId);
 }
 
 void
@@ -169,6 +204,8 @@ PipelineCore::reset()
     veuIssue = {};
     veu_issue_count = 0;
     veu_complete_count = 0;
+    veu_csr_handshake_cycles = 0;
+    rv_dmem_blocked_by_veu_cycles = 0;
     veuCbu.reset();
     if (veuEndpoint) {
         veuEndpoint->reset();
@@ -873,7 +910,8 @@ PipelineCore::stepOneCycle()
         const bool reachedTextEnd = (requestTimingFetch || fetchInstr) ?
             (pc >= text_end) :
             ((((pc - text_start) >> 2) >= program.program_words));
-        if (reachedTextEnd && pipelineEmpty()) {
+        const bool veuQuiescent = !timingVeu.operationBusy();
+        if (reachedTextEnd && pipelineEmpty() && veuQuiescent) {
             done_flag = true;
         }
     }

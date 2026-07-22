@@ -1,0 +1,38 @@
+{
+  "case": "vor",
+  "op": "vor",
+  "vlen": 2048,
+  "chunks": 8,
+  "expected_reads": 16,
+  "expected_writes": 8,
+  "read_addresses": [
+    256,
+    288,
+    320,
+    352,
+    384,
+    416,
+    448,
+    480,
+    768,
+    800,
+    832,
+    864,
+    896,
+    928,
+    960,
+    992
+  ],
+  "write_addresses": [
+    1280,
+    1312,
+    1344,
+    1376,
+    1408,
+    1440,
+    1472,
+    1504
+  ],
+  "expected_base": 1792,
+  "max_cycles": 10000
+}

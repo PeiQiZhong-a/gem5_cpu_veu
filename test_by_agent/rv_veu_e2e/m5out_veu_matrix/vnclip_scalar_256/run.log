@@ -1,0 +1,386 @@
+Global frequency set at 1000000000000 ticks per second
+warn: No dot file generated. Please install pydot to generate the dot file and pdf.
+src/brs/pipeline_mini_cpu.cc:742: info: preloadDataFunctional: wrote 1824 bytes to DMEM at 0 from test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/data_mem.hex
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.1.0.1
+gem5 compiled Jul 19 2026 17:27:30
+gem5 started Jul 19 2026 17:31:10
+gem5 executing on LAPTOP-47H052EL, pid 79
+command line: ./build/RISCV/gem5.opt -d test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256 configs/brs/run_pipeline_mini.py --mem-system spirit-like --veu-model timing --veu-timing-profile configs/brs/veu_timing_profile.csv --veu-cycle-trace test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/veu_cycle_trace.csv --program-file test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/instr_mem.hex --dmem-hex test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/data_mem.hex --imem-base 0x0 --dmem-base 0x0 --no-icache --max-cycles 10000
+
+info: Standard input is not a terminal, disabling listeners.
+Beginning PipelineMiniCPU simulation!
+Clock frequency: 100MHz
+Reset cycles: 10
+VEU model: timing
+FakeVEU latency: 1 cycles
+FakeVEU response data: 0x0
+TimingVEU FIFO depth: 4
+TimingVEU execute latency: 3 cycles
+TimingVEU execute II: 1 cycles
+TimingVEU VSU latency: 1 cycles
+TimingVEU profile: configs/brs/veu_timing_profile.csv
+TimingVEU cycle trace: test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/veu_cycle_trace.csv
+TimingVEU startup cycles: 0
+TimingVEU finish cycles: 0
+Memory system: spirit-like
+IMEM range: 0:8192
+DMEM range: 0:8192
+IMEM latency: 10ns
+DMEM latency: 10ns
+IMEM hex: test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/instr_mem.hex
+DMEM hex: test_by_agent/rv_veu_e2e/m5out_veu_matrix/vnclip_scalar_256/data_mem.hex (loaded by CPU via dataPort)
+Internal I-cache: disabled
+[PipelineMiniCPU] cycle=1 pc=0x0 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=1 ibusReq=1 align=0
+[PipelineMiniCPU] cycle=2 pc=0x0 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=1 ibusReq=1 align=0
+[PipelineMiniCPU] cycle=3 pc=0x4 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=1
+[PipelineMiniCPU] cycle=4 pc=0x8 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=2
+[PipelineMiniCPU] cycle=5 pc=0xc IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=3
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=6 pc=0x10 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=4
+[FWD] rs1=1 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=2621440 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=7 pc=0x14 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=1 flush=0 icHit=0 icMiss=3 ibusReq=3 align=5
+RETIRE pc=0x00000000 instr=0x002800b7 rd=x1 data=0x00280000
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=8 pc=0x18 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621440 x2=0 x3=0 x4=0 retiredInst=1 stall=0 fwd=1 flush=0 icHit=0 icMiss=3 ibusReq=3 align=6
+RETIRE pc=0x00000004 instr=0x00508093 rd=x1 data=0x00280005
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=9 pc=0x1c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=0 x3=0 x4=0 retiredInst=2 stall=0 fwd=1 flush=0 icHit=0 icMiss=3 ibusReq=3 align=7
+RETIRE pc=0x00000008 instr=0x30000113 rd=x2 data=0x00000300
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=10 pc=0x20 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=0 x4=0 retiredInst=3 stall=0 fwd=1 flush=0 icHit=0 icMiss=3 ibusReq=3 align=8
+RETIRE pc=0x0000000c instr=0x50000193 rd=x3 data=0x00000500
+[FWD] rs1=4 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=4096 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=11 pc=0x24 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=0 retiredInst=4 stall=0 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=9
+RETIRE pc=0x00000010 instr=0x00001237 rd=x4 data=0x00001000
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=12 pc=0x28 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=4096 retiredInst=5 stall=0 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=10
+RETIRE pc=0x00000014 instr=0x80020213 rd=x4 data=0x00000800
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=13 pc=0x2c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=6 stall=0 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=11
+RETIRE pc=0x00000018 instr=0x10000293 rd=x5 data=0x00000100
+[PipelineMiniCPU] cycle=14 pc=0x2c IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=7 stall=1 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=11
+RETIRE pc=0x0000001c instr=0xfff00313 rd=x6 data=0xffffffff
+[PipelineMiniCPU] cycle=15 pc=0x2c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=8 stall=2 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=11
+[PipelineMiniCPU] cycle=16 pc=0x30 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=8 stall=2 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=12
+[PipelineMiniCPU] cycle=17 pc=0x30 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=8 stall=3 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=12
+RETIRE pc=0x00000020 instr=0x1042200b
+[PipelineMiniCPU] cycle=18 pc=0x30 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=9 stall=4 fwd=2 flush=0 icHit=0 icMiss=4 ibusReq=4 align=12
+[PipelineMiniCPU] cycle=19 pc=0x34 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=9 stall=4 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=13
+[PipelineMiniCPU] cycle=20 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=9 stall=5 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=13
+RETIRE pc=0x00000024 instr=0x1031a00b
+[PipelineMiniCPU] cycle=21 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=10 stall=6 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=13
+[PipelineMiniCPU] cycle=22 pc=0x38 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=10 stall=6 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=14
+[PipelineMiniCPU] cycle=23 pc=0x38 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=10 stall=7 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=14
+RETIRE pc=0x00000028 instr=0x1052a00b
+[PipelineMiniCPU] cycle=24 pc=0x38 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=11 stall=8 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=14
+[PipelineMiniCPU] cycle=25 pc=0x3c IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=11 stall=8 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=15
+[PipelineMiniCPU] cycle=26 pc=0x3c IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=11 stall=9 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=15
+RETIRE pc=0x0000002c instr=0x1063200b
+[PipelineMiniCPU] cycle=27 pc=0x3c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=12 stall=10 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=15
+[PipelineMiniCPU] cycle=28 pc=0x40 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=12 stall=10 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=16
+[PipelineMiniCPU] cycle=29 pc=0x40 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=12 stall=11 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=16
+RETIRE pc=0x00000030 instr=0x1c2083eb rd=x7 data=0x00008001
+[PipelineMiniCPU] cycle=30 pc=0x40 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=13 stall=12 fwd=2 flush=0 icHit=0 icMiss=5 ibusReq=5 align=16
+[PipelineMiniCPU] cycle=31 pc=0x44 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=13 stall=12 fwd=2 flush=0 icHit=0 icMiss=6 ibusReq=6 align=17
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=32769 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=32 pc=0x48 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=13 stall=12 fwd=3 flush=0 icHit=0 icMiss=6 ibusReq=6 align=18
+RETIRE pc=0x00000034 instr=0x1000358b rd=x11 data=0x00008001
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=1 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=33 pc=0x34 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=14 stall=12 fwd=4 flush=1 icHit=0 icMiss=7 ibusReq=7 align=18
+RETIRE pc=0x00000038 instr=0x0015f593 rd=x11 data=0x00000001
+[PipelineMiniCPU] cycle=34 pc=0x34 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=15 stall=12 fwd=4 flush=1 icHit=0 icMiss=7 ibusReq=7 align=18
+RETIRE pc=0x0000003c instr=0xfe059ce3
+[PipelineMiniCPU] cycle=35 pc=0x38 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=12 fwd=4 flush=1 icHit=0 icMiss=8 ibusReq=8 align=19
+[PipelineMiniCPU] cycle=36 pc=0x3c IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=12 fwd=4 flush=1 icHit=0 icMiss=8 ibusReq=8 align=20
+[PipelineMiniCPU] cycle=37 pc=0x40 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=12 fwd=4 flush=1 icHit=0 icMiss=8 ibusReq=8 align=21
+[PipelineMiniCPU] cycle=38 pc=0x40 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=13 fwd=4 flush=1 icHit=0 icMiss=8 ibusReq=8 align=21
+[PipelineMiniCPU] cycle=39 pc=0x40 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=14 fwd=4 flush=1 icHit=0 icMiss=8 ibusReq=8 align=21
+[PipelineMiniCPU] cycle=40 pc=0x44 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=14 fwd=4 flush=1 icHit=0 icMiss=9 ibusReq=9 align=22
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=32768 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=41 pc=0x48 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=16 stall=14 fwd=5 flush=1 icHit=0 icMiss=9 ibusReq=9 align=23
+RETIRE pc=0x00000034 instr=0x1000358b rd=x11 data=0x00008000
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=42 pc=0x4c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=17 stall=14 fwd=6 flush=1 icHit=0 icMiss=9 ibusReq=9 align=24
+RETIRE pc=0x00000038 instr=0x0015f593 rd=x11 data=0x00000000
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=43 pc=0x50 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=18 stall=14 fwd=6 flush=1 icHit=0 icMiss=9 ibusReq=9 align=25
+RETIRE pc=0x0000003c instr=0xfe059ce3
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=44 pc=0x54 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=19 stall=14 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=26
+RETIRE pc=0x00000040 instr=0x50000413 rd=x8 data=0x00000500
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=45 pc=0x58 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=20 stall=14 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=27
+RETIRE pc=0x00000044 instr=0x70000493 rd=x9 data=0x00000700
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=46 pc=0x5c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=21 stall=14 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=28
+RETIRE pc=0x00000048 instr=0x00000513 rd=x10 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1280 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=47 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=22 stall=14 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=29
+RETIRE pc=0x0000004c instr=0x00800593 rd=x11 data=0x00000008
+[PipelineMiniCPU] cycle=48 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=23 stall=16 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=29
+[PipelineMiniCPU] cycle=49 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=23 stall=18 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=29
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1792 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=50 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=23 stall=19 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=29
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28282828
+[PipelineMiniCPU] cycle=51 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=24 stall=20 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=29
+[PipelineMiniCPU] cycle=52 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=24 stall=21 fwd=6 flush=1 icHit=0 icMiss=10 ibusReq=10 align=29
+[PipelineMiniCPU] cycle=53 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=24 stall=21 fwd=6 flush=1 icHit=0 icMiss=11 ibusReq=11 align=30
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=673720360 op_b=673720360 op_c=0
+[PipelineMiniCPU] cycle=54 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=25 stall=21 fwd=7 flush=1 icHit=0 icMiss=11 ibusReq=11 align=31
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=55 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=25 stall=21 fwd=8 flush=1 icHit=0 icMiss=11 ibusReq=11 align=32
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1280 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=56 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=26 stall=21 fwd=8 flush=1 icHit=0 icMiss=11 ibusReq=11 align=33
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1792 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=57 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=27 stall=21 fwd=8 flush=1 icHit=0 icMiss=11 ibusReq=11 align=34
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x00000504
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=8 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=58 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=28 stall=21 fwd=8 flush=1 icHit=0 icMiss=11 ibusReq=11 align=34
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x00000704
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=7 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=59 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=29 stall=21 fwd=9 flush=2 icHit=0 icMiss=12 ibusReq=12 align=34
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000007
+[PipelineMiniCPU] cycle=60 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=30 stall=21 fwd=9 flush=2 icHit=0 icMiss=12 ibusReq=12 align=34
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=61 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=21 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=35
+[PipelineMiniCPU] cycle=62 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=21 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=36
+[PipelineMiniCPU] cycle=63 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=21 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=37
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1284 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=64 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=21 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=38
+[PipelineMiniCPU] cycle=65 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=23 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=38
+[PipelineMiniCPU] cycle=66 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=25 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=38
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1796 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=67 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=31 stall=26 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=38
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28282828
+[PipelineMiniCPU] cycle=68 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=32 stall=27 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=38
+[PipelineMiniCPU] cycle=69 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=32 stall=28 fwd=9 flush=2 icHit=0 icMiss=13 ibusReq=13 align=38
+[PipelineMiniCPU] cycle=70 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=32 stall=28 fwd=9 flush=2 icHit=0 icMiss=14 ibusReq=14 align=39
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=673720360 op_b=673720360 op_c=0
+[PipelineMiniCPU] cycle=71 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=33 stall=28 fwd=10 flush=2 icHit=0 icMiss=14 ibusReq=14 align=40
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=72 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=33 stall=28 fwd=11 flush=2 icHit=0 icMiss=14 ibusReq=14 align=41
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1284 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=73 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=34 stall=28 fwd=11 flush=2 icHit=0 icMiss=14 ibusReq=14 align=42
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1796 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=74 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=35 stall=28 fwd=11 flush=2 icHit=0 icMiss=14 ibusReq=14 align=43
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x00000508
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=7 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=75 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=36 stall=28 fwd=11 flush=2 icHit=0 icMiss=14 ibusReq=14 align=43
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x00000708
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=6 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=76 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=37 stall=28 fwd=12 flush=3 icHit=0 icMiss=15 ibusReq=15 align=43
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000006
+[PipelineMiniCPU] cycle=77 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=38 stall=28 fwd=12 flush=3 icHit=0 icMiss=15 ibusReq=15 align=43
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=78 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=28 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=44
+[PipelineMiniCPU] cycle=79 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=28 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=45
+[PipelineMiniCPU] cycle=80 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=28 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=46
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1288 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=81 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=28 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=47
+[PipelineMiniCPU] cycle=82 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=30 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=47
+[PipelineMiniCPU] cycle=83 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=32 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=47
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1800 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=84 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=39 stall=33 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=47
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28282828
+[PipelineMiniCPU] cycle=85 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=40 stall=34 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=47
+[PipelineMiniCPU] cycle=86 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=40 stall=35 fwd=12 flush=3 icHit=0 icMiss=16 ibusReq=16 align=47
+[PipelineMiniCPU] cycle=87 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=40 stall=35 fwd=12 flush=3 icHit=0 icMiss=17 ibusReq=17 align=48
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=673720360 op_b=673720360 op_c=0
+[PipelineMiniCPU] cycle=88 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=41 stall=35 fwd=13 flush=3 icHit=0 icMiss=17 ibusReq=17 align=49
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=89 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=41 stall=35 fwd=14 flush=3 icHit=0 icMiss=17 ibusReq=17 align=50
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1288 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=90 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=42 stall=35 fwd=14 flush=3 icHit=0 icMiss=17 ibusReq=17 align=51
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1800 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=91 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=43 stall=35 fwd=14 flush=3 icHit=0 icMiss=17 ibusReq=17 align=52
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x0000050c
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=6 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=92 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=44 stall=35 fwd=14 flush=3 icHit=0 icMiss=17 ibusReq=17 align=52
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x0000070c
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=5 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=93 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=45 stall=35 fwd=15 flush=4 icHit=0 icMiss=18 ibusReq=18 align=52
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000005
+[PipelineMiniCPU] cycle=94 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=46 stall=35 fwd=15 flush=4 icHit=0 icMiss=18 ibusReq=18 align=52
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=95 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=35 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=53
+[PipelineMiniCPU] cycle=96 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=35 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=54
+[PipelineMiniCPU] cycle=97 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=35 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=55
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1292 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=98 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=35 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=56
+[PipelineMiniCPU] cycle=99 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=37 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=56
+[PipelineMiniCPU] cycle=100 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=39 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=56
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1804 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=101 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=47 stall=40 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=56
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28282828
+[PipelineMiniCPU] cycle=102 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=48 stall=41 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=56
+[PipelineMiniCPU] cycle=103 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=48 stall=42 fwd=15 flush=4 icHit=0 icMiss=19 ibusReq=19 align=56
+[PipelineMiniCPU] cycle=104 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=48 stall=42 fwd=15 flush=4 icHit=0 icMiss=20 ibusReq=20 align=57
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=673720360 op_b=673720360 op_c=0
+[PipelineMiniCPU] cycle=105 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=49 stall=42 fwd=16 flush=4 icHit=0 icMiss=20 ibusReq=20 align=58
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=106 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=49 stall=42 fwd=17 flush=4 icHit=0 icMiss=20 ibusReq=20 align=59
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1292 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=107 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=50 stall=42 fwd=17 flush=4 icHit=0 icMiss=20 ibusReq=20 align=60
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1804 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=108 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=51 stall=42 fwd=17 flush=4 icHit=0 icMiss=20 ibusReq=20 align=61
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x00000510
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=5 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=109 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=52 stall=42 fwd=17 flush=4 icHit=0 icMiss=20 ibusReq=20 align=61
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x00000710
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=4 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=110 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=53 stall=42 fwd=18 flush=5 icHit=0 icMiss=21 ibusReq=21 align=61
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000004
+[PipelineMiniCPU] cycle=111 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=54 stall=42 fwd=18 flush=5 icHit=0 icMiss=21 ibusReq=21 align=61
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=112 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=42 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=62
+[PipelineMiniCPU] cycle=113 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=42 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=63
+[PipelineMiniCPU] cycle=114 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=42 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=64
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1296 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=115 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=42 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=65
+[PipelineMiniCPU] cycle=116 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=44 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=65
+[PipelineMiniCPU] cycle=117 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=46 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=65
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1808 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=118 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=55 stall=47 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=65
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x21282828
+[PipelineMiniCPU] cycle=119 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=56 stall=48 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=65
+[PipelineMiniCPU] cycle=120 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=56 stall=49 fwd=18 flush=5 icHit=0 icMiss=22 ibusReq=22 align=65
+[PipelineMiniCPU] cycle=121 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=56 stall=49 fwd=18 flush=5 icHit=0 icMiss=23 ibusReq=23 align=66
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x21282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=556279848 op_b=556279848 op_c=0
+[PipelineMiniCPU] cycle=122 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=57 stall=49 fwd=19 flush=5 icHit=0 icMiss=23 ibusReq=23 align=67
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=123 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=57 stall=49 fwd=20 flush=5 icHit=0 icMiss=23 ibusReq=23 align=68
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1296 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=124 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=58 stall=49 fwd=20 flush=5 icHit=0 icMiss=23 ibusReq=23 align=69
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1808 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=125 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=59 stall=49 fwd=20 flush=5 icHit=0 icMiss=23 ibusReq=23 align=70
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x00000514
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=4 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=126 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=60 stall=49 fwd=20 flush=5 icHit=0 icMiss=23 ibusReq=23 align=70
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x00000714
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=3 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=127 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=61 stall=49 fwd=21 flush=6 icHit=0 icMiss=24 ibusReq=24 align=70
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000003
+[PipelineMiniCPU] cycle=128 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=62 stall=49 fwd=21 flush=6 icHit=0 icMiss=24 ibusReq=24 align=70
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=129 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=49 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=71
+[PipelineMiniCPU] cycle=130 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=49 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=72
+[PipelineMiniCPU] cycle=131 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=49 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=73
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1300 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=132 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=49 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=74
+[PipelineMiniCPU] cycle=133 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=51 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=74
+[PipelineMiniCPU] cycle=134 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=53 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=74
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1812 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=135 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=63 stall=54 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=74
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28050b16
+[PipelineMiniCPU] cycle=136 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=64 stall=55 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=74
+[PipelineMiniCPU] cycle=137 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=64 stall=56 fwd=21 flush=6 icHit=0 icMiss=25 ibusReq=25 align=74
+[PipelineMiniCPU] cycle=138 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=64 stall=56 fwd=21 flush=6 icHit=0 icMiss=26 ibusReq=26 align=75
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28050b16
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=671419158 op_b=671419158 op_c=0
+[PipelineMiniCPU] cycle=139 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=65 stall=56 fwd=22 flush=6 icHit=0 icMiss=26 ibusReq=26 align=76
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=140 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=65 stall=56 fwd=23 flush=6 icHit=0 icMiss=26 ibusReq=26 align=77
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1300 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=141 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=66 stall=56 fwd=23 flush=6 icHit=0 icMiss=26 ibusReq=26 align=78
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1812 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=142 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=67 stall=56 fwd=23 flush=6 icHit=0 icMiss=26 ibusReq=26 align=79
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x00000518
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=3 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=143 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=68 stall=56 fwd=23 flush=6 icHit=0 icMiss=26 ibusReq=26 align=79
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x00000718
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=2 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=144 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=69 stall=56 fwd=24 flush=7 icHit=0 icMiss=27 ibusReq=27 align=79
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000002
+[PipelineMiniCPU] cycle=145 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=70 stall=56 fwd=24 flush=7 icHit=0 icMiss=27 ibusReq=27 align=79
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=146 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=56 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=80
+[PipelineMiniCPU] cycle=147 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=56 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=81
+[PipelineMiniCPU] cycle=148 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=56 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=82
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1304 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=149 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=56 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=83
+[PipelineMiniCPU] cycle=150 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=58 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=83
+[PipelineMiniCPU] cycle=151 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=60 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=83
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1816 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=152 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=71 stall=61 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=83
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28282828
+[PipelineMiniCPU] cycle=153 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=72 stall=62 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=83
+[PipelineMiniCPU] cycle=154 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=72 stall=63 fwd=24 flush=7 icHit=0 icMiss=28 ibusReq=28 align=83
+[PipelineMiniCPU] cycle=155 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=72 stall=63 fwd=24 flush=7 icHit=0 icMiss=29 ibusReq=29 align=84
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=673720360 op_b=673720360 op_c=0
+[PipelineMiniCPU] cycle=156 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=73 stall=63 fwd=25 flush=7 icHit=0 icMiss=29 ibusReq=29 align=85
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=157 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=73 stall=63 fwd=26 flush=7 icHit=0 icMiss=29 ibusReq=29 align=86
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1304 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=158 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=74 stall=63 fwd=26 flush=7 icHit=0 icMiss=29 ibusReq=29 align=87
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1816 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=159 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=75 stall=63 fwd=26 flush=7 icHit=0 icMiss=29 ibusReq=29 align=88
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x0000051c
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=2 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=160 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=76 stall=63 fwd=26 flush=7 icHit=0 icMiss=29 ibusReq=29 align=88
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x0000071c
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=1 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=161 pc=0x50 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=77 stall=63 fwd=27 flush=8 icHit=0 icMiss=30 ibusReq=30 align=88
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000001
+[PipelineMiniCPU] cycle=162 pc=0x50 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=78 stall=63 fwd=27 flush=8 icHit=0 icMiss=30 ibusReq=30 align=88
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=163 pc=0x54 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=63 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=89
+[PipelineMiniCPU] cycle=164 pc=0x58 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=63 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=90
+[PipelineMiniCPU] cycle=165 pc=0x5c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=63 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=91
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1308 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=166 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=63 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=92
+[PipelineMiniCPU] cycle=167 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=65 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=92
+[PipelineMiniCPU] cycle=168 pc=0x60 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=67 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=92
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1820 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=169 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=79 stall=68 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=92
+RETIRE pc=0x00000050 instr=0x00042603 rd=x12 data=0x28282828
+[PipelineMiniCPU] cycle=170 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=80 stall=69 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=92
+[PipelineMiniCPU] cycle=171 pc=0x60 IFID=1 IDEX=0 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=80 stall=70 fwd=27 flush=8 icHit=0 icMiss=31 ibusReq=31 align=92
+[PipelineMiniCPU] cycle=172 pc=0x64 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=80 stall=70 fwd=27 flush=8 icHit=0 icMiss=32 ibusReq=32 align=93
+RETIRE pc=0x00000054 instr=0x0004a683 rd=x13 data=0x28282828
+[FWD] rs1=12 rs2=13 rs3=0 sel_a=0 sel_b=2 sel_c=0 op_a=673720360 op_b=673720360 op_c=0
+[PipelineMiniCPU] cycle=173 pc=0x68 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=81 stall=70 fwd=28 flush=8 icHit=0 icMiss=32 ibusReq=32 align=94
+[FWD] rs1=10 rs2=12 rs3=0 sel_a=0 sel_b=1 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=174 pc=0x6c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=81 stall=70 fwd=29 flush=8 icHit=0 icMiss=32 ibusReq=32 align=95
+RETIRE pc=0x00000058 instr=0x00d64633 rd=x12 data=0x00000000
+[FWD] rs1=8 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1308 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=175 pc=0x70 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=82 stall=70 fwd=29 flush=8 icHit=0 icMiss=32 ibusReq=32 align=96
+RETIRE pc=0x0000005c instr=0x00c56533 rd=x10 data=0x00000000
+[FWD] rs1=9 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1820 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=176 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=83 stall=70 fwd=29 flush=8 icHit=0 icMiss=32 ibusReq=32 align=97
+RETIRE pc=0x00000060 instr=0x00440413 rd=x8 data=0x00000520
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=1 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=177 pc=0x74 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=84 stall=70 fwd=29 flush=8 icHit=0 icMiss=32 ibusReq=32 align=97
+RETIRE pc=0x00000064 instr=0x00448493 rd=x9 data=0x00000720
+[FWD] rs1=11 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=178 pc=0x74 IFID=0 IDEX=1 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=85 stall=70 fwd=30 flush=8 icHit=0 icMiss=32 ibusReq=32 align=97
+RETIRE pc=0x00000068 instr=0xfff58593 rd=x11 data=0x00000000
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=179 pc=0x74 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=86 stall=70 fwd=30 flush=8 icHit=0 icMiss=32 ibusReq=32 align=97
+RETIRE pc=0x0000006c instr=0xfe0592e3
+[PipelineMiniCPU] cycle=180 pc=0x74 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=87 stall=70 fwd=30 flush=8 icHit=0 icMiss=32 ibusReq=32 align=97
+RETIRE pc=0x00000070 instr=0x00100073
+[PipelineMiniCPU] cycle=181 pc=0x74 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=2621445 x2=768 x3=1280 x4=2048 retiredInst=88 stall=70 fwd=30 flush=8 icHit=0 icMiss=32 ibusReq=32 align=97
+Exiting @ tick 1910000 because PipelineMiniCPU completed test

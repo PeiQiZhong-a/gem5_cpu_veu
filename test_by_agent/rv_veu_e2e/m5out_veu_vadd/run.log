@@ -1,0 +1,129 @@
+Global frequency set at 1000000000000 ticks per second
+warn: No dot file generated. Please install pydot to generate the dot file and pdf.
+src/brs/pipeline_mini_cpu.cc:742: info: preloadDataFunctional: wrote 800 bytes to DMEM at 0 from test_by_agent/rv_veu_e2e/data_mem.hex
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.1.0.1
+gem5 compiled Jul 18 2026 16:36:49
+gem5 started Jul 18 2026 16:40:49
+gem5 executing on LAPTOP-47H052EL, pid 11
+command line: ./build/RISCV/gem5.opt -d test_by_agent/rv_veu_e2e/m5out_veu_vadd configs/brs/run_pipeline_mini.py --mem-system spirit-like --veu-model timing --program-file test_by_agent/rv_veu_e2e/instr_mem.hex --dmem-hex test_by_agent/rv_veu_e2e/data_mem.hex --imem-base 0x0 --dmem-base 0x0 --no-icache --max-cycles 300
+
+info: Standard input is not a terminal, disabling listeners.
+Beginning PipelineMiniCPU simulation!
+Clock frequency: 100MHz
+Reset cycles: 10
+VEU model: timing
+FakeVEU latency: 1 cycles
+FakeVEU response data: 0x0
+TimingVEU FIFO depth: 4
+TimingVEU execute latency: 3 cycles
+TimingVEU execute II: 1 cycles
+TimingVEU VSU latency: 1 cycles
+TimingVEU profile: <default>
+TimingVEU cycle trace: <disabled>
+TimingVEU startup cycles: 0
+TimingVEU finish cycles: 0
+Memory system: spirit-like
+IMEM range: 0:8192
+DMEM range: 0:8192
+IMEM latency: 10ns
+DMEM latency: 10ns
+IMEM hex: test_by_agent/rv_veu_e2e/instr_mem.hex
+DMEM hex: test_by_agent/rv_veu_e2e/data_mem.hex (loaded by CPU via dataPort)
+Internal I-cache: disabled
+[PipelineMiniCPU] cycle=1 pc=0x0 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=1 ibusReq=1 align=0
+[PipelineMiniCPU] cycle=2 pc=0x0 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=1 ibusReq=1 align=0
+[PipelineMiniCPU] cycle=3 pc=0x4 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=1
+[PipelineMiniCPU] cycle=4 pc=0x8 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=2
+[PipelineMiniCPU] cycle=5 pc=0xc IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=3
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=6 pc=0x10 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=2 ibusReq=2 align=4
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=7 pc=0x14 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=0 x2=0 x3=0 x4=0 retiredInst=0 stall=0 fwd=0 flush=0 icHit=0 icMiss=3 ibusReq=3 align=5
+RETIRE pc=0x00000000 instr=0x10000093 rd=x1 data=0x00000100
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=8 pc=0x18 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=0 x3=0 x4=0 retiredInst=1 stall=0 fwd=0 flush=0 icHit=0 icMiss=3 ibusReq=3 align=6
+RETIRE pc=0x00000004 instr=0x20000113 rd=x2 data=0x00000200
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=9 pc=0x1c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=0 x4=0 retiredInst=2 stall=0 fwd=0 flush=0 icHit=0 icMiss=3 ibusReq=3 align=7
+RETIRE pc=0x00000008 instr=0x30000193 rd=x3 data=0x00000300
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=10 pc=0x20 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=3 stall=0 fwd=0 flush=0 icHit=0 icMiss=3 ibusReq=3 align=8
+RETIRE pc=0x0000000c instr=0x10000293 rd=x5 data=0x00000100
+[PipelineMiniCPU] cycle=11 pc=0x20 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=4 stall=1 fwd=0 flush=0 icHit=0 icMiss=3 ibusReq=3 align=8
+RETIRE pc=0x00000010 instr=0xfff00313 rd=x6 data=0xffffffff
+[PipelineMiniCPU] cycle=12 pc=0x20 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=5 stall=2 fwd=0 flush=0 icHit=0 icMiss=3 ibusReq=3 align=8
+[PipelineMiniCPU] cycle=13 pc=0x24 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=5 stall=2 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=9
+[PipelineMiniCPU] cycle=14 pc=0x24 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=5 stall=3 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=9
+RETIRE pc=0x00000014 instr=0x1040200b
+[PipelineMiniCPU] cycle=15 pc=0x24 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=6 stall=4 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=9
+[PipelineMiniCPU] cycle=16 pc=0x28 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=6 stall=4 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=10
+[PipelineMiniCPU] cycle=17 pc=0x28 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=6 stall=5 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=10
+RETIRE pc=0x00000018 instr=0x1031a00b
+[PipelineMiniCPU] cycle=18 pc=0x28 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=7 stall=6 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=10
+[PipelineMiniCPU] cycle=19 pc=0x2c IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=7 stall=6 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=11
+[PipelineMiniCPU] cycle=20 pc=0x2c IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=7 stall=7 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=11
+RETIRE pc=0x0000001c instr=0x1052a00b
+[PipelineMiniCPU] cycle=21 pc=0x2c IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=8 stall=8 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=11
+[PipelineMiniCPU] cycle=22 pc=0x30 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=8 stall=8 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=12
+[PipelineMiniCPU] cycle=23 pc=0x30 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=8 stall=9 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=12
+RETIRE pc=0x00000020 instr=0x1063200b
+[PipelineMiniCPU] cycle=24 pc=0x30 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=9 stall=10 fwd=0 flush=0 icHit=0 icMiss=4 ibusReq=4 align=12
+[PipelineMiniCPU] cycle=25 pc=0x34 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=9 stall=10 fwd=0 flush=0 icHit=0 icMiss=5 ibusReq=5 align=13
+[PipelineMiniCPU] cycle=26 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=9 stall=11 fwd=0 flush=0 icHit=0 icMiss=5 ibusReq=5 align=13
+RETIRE pc=0x00000024 instr=0x002083eb rd=x7 data=0x00000003
+[PipelineMiniCPU] cycle=27 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=10 stall=12 fwd=0 flush=0 icHit=0 icMiss=5 ibusReq=5 align=13
+[PipelineMiniCPU] cycle=28 pc=0x38 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=10 stall=12 fwd=0 flush=0 icHit=0 icMiss=5 ibusReq=5 align=14
+[FWD] rs1=10 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=3 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=29 pc=0x3c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=10 stall=12 fwd=1 flush=0 icHit=0 icMiss=5 ibusReq=5 align=15
+RETIRE pc=0x00000028 instr=0x1000350b rd=x10 data=0x00000003
+[FWD] rs1=10 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=1 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=30 pc=0x28 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=11 stall=12 fwd=2 flush=1 icHit=0 icMiss=6 ibusReq=6 align=15
+RETIRE pc=0x0000002c instr=0x00157513 rd=x10 data=0x00000001
+[PipelineMiniCPU] cycle=31 pc=0x28 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=12 stall=12 fwd=2 flush=1 icHit=0 icMiss=6 ibusReq=6 align=15
+RETIRE pc=0x00000030 instr=0xfe051ce3
+[PipelineMiniCPU] cycle=32 pc=0x2c IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=12 fwd=2 flush=1 icHit=0 icMiss=7 ibusReq=7 align=16
+[PipelineMiniCPU] cycle=33 pc=0x30 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=12 fwd=2 flush=1 icHit=0 icMiss=7 ibusReq=7 align=17
+[PipelineMiniCPU] cycle=34 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=12 fwd=2 flush=1 icHit=0 icMiss=8 ibusReq=8 align=18
+[PipelineMiniCPU] cycle=35 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=13 fwd=2 flush=1 icHit=0 icMiss=8 ibusReq=8 align=18
+[PipelineMiniCPU] cycle=36 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=14 fwd=2 flush=1 icHit=0 icMiss=8 ibusReq=8 align=18
+[PipelineMiniCPU] cycle=37 pc=0x38 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=14 fwd=2 flush=1 icHit=0 icMiss=8 ibusReq=8 align=19
+[FWD] rs1=10 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=3 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=38 pc=0x3c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=13 stall=14 fwd=3 flush=1 icHit=0 icMiss=8 ibusReq=8 align=20
+RETIRE pc=0x00000028 instr=0x1000350b rd=x10 data=0x00000003
+[FWD] rs1=10 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=1 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=39 pc=0x28 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=14 stall=14 fwd=4 flush=2 icHit=0 icMiss=9 ibusReq=9 align=20
+RETIRE pc=0x0000002c instr=0x00157513 rd=x10 data=0x00000001
+[PipelineMiniCPU] cycle=40 pc=0x28 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=15 stall=14 fwd=4 flush=2 icHit=0 icMiss=9 ibusReq=9 align=20
+RETIRE pc=0x00000030 instr=0xfe051ce3
+[PipelineMiniCPU] cycle=41 pc=0x2c IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=14 fwd=4 flush=2 icHit=0 icMiss=10 ibusReq=10 align=21
+[PipelineMiniCPU] cycle=42 pc=0x30 IFID=1 IDEX=0 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=14 fwd=4 flush=2 icHit=0 icMiss=10 ibusReq=10 align=22
+[PipelineMiniCPU] cycle=43 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=14 fwd=4 flush=2 icHit=0 icMiss=11 ibusReq=11 align=23
+[PipelineMiniCPU] cycle=44 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=15 fwd=4 flush=2 icHit=0 icMiss=11 ibusReq=11 align=23
+[PipelineMiniCPU] cycle=45 pc=0x34 IFID=1 IDEX=1 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=16 fwd=4 flush=2 icHit=0 icMiss=11 ibusReq=11 align=23
+[PipelineMiniCPU] cycle=46 pc=0x38 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=16 fwd=4 flush=2 icHit=0 icMiss=11 ibusReq=11 align=24
+[FWD] rs1=10 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=2 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=47 pc=0x3c IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=16 stall=16 fwd=5 flush=2 icHit=0 icMiss=11 ibusReq=11 align=25
+RETIRE pc=0x00000028 instr=0x1000350b rd=x10 data=0x00000002
+[FWD] rs1=10 rs2=0 rs3=0 sel_a=1 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=48 pc=0x40 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=17 stall=16 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+RETIRE pc=0x0000002c instr=0x00157513 rd=x10 data=0x00000000
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=49 pc=0x40 IFID=1 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=18 stall=16 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+RETIRE pc=0x00000030 instr=0xfe051ce3
+[PipelineMiniCPU] cycle=50 pc=0x40 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=19 stall=17 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+[PipelineMiniCPU] cycle=51 pc=0x40 IFID=1 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=19 stall=18 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=52 pc=0x40 IFID=0 IDEX=1 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=19 stall=18 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+RETIRE pc=0x00000034 instr=0x30002403 rd=x8 data=0x0000000b
+[PipelineMiniCPU] cycle=53 pc=0x40 IFID=0 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=20 stall=19 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+[PipelineMiniCPU] cycle=54 pc=0x40 IFID=0 IDEX=1 EXMEM=1 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=20 stall=20 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+[FWD] rs1=0 rs2=0 rs3=0 sel_a=0 sel_b=0 sel_c=0 op_a=0 op_b=0 op_c=0
+[PipelineMiniCPU] cycle=55 pc=0x40 IFID=0 IDEX=0 EXMEM=1 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=20 stall=20 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+RETIRE pc=0x00000038 instr=0x31c02483 rd=x9 data=0x00000058
+[PipelineMiniCPU] cycle=56 pc=0x40 IFID=0 IDEX=0 EXMEM=0 MEMWB=1 x1=256 x2=512 x3=768 x4=0 retiredInst=21 stall=20 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+RETIRE pc=0x0000003c instr=0x00100073
+[PipelineMiniCPU] cycle=57 pc=0x40 IFID=0 IDEX=0 EXMEM=0 MEMWB=0 x1=256 x2=512 x3=768 x4=0 retiredInst=22 stall=20 fwd=6 flush=2 icHit=0 icMiss=11 ibusReq=11 align=26
+Exiting @ tick 670000 because PipelineMiniCPU completed test

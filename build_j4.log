@@ -1,0 +1,221 @@
+scons: Reading SConscript files ...
+
+You're missing the pre-commit/commit-msg hooks. These hook help to ensure your
+code follows gem5's style rules on git commit and your commit messages follow
+our commit message requirements. This script will now install these hooks in
+your .git/hooks/ directory.
+Press enter to continue, or ctrl-c to abort:
+ Cannot find 'pre-commit'. Please ensure all Python requirements are 
+installed. This can be done via 'pip install -r requirements.txt'.
+It is strongly recommended you install the pre-commit hooks before working with gem5. Do you want to continue compilation (y/n)?
+Mkdir("/home/lenovo-pccarryking/gem5_workspace/gem5/gem5_cpu_veu/build/RISCV/gem5.build")
+Checking for linker -Wl,--as-needed support... (cached) yes
+Checking for compiler -gz support... (cached) yes
+Checking for linker -gz support... (cached) yes
+Info: Using Python config: python3-config
+Checking for C header file Python.h... (cached) yes
+Checking Python version... (cached) 3.12.3
+Checking for accept(0,0,0) in C++ library None... (cached) yes
+Checking for zlibVersion() in C++ library z... (cached) yes
+Checking for C library tcmalloc_minimal... (cached) yes
+Building in /home/lenovo-pccarryking/gem5_workspace/gem5/gem5_cpu_veu/build/RISCV
+"build_tools/kconfig_base.py" "/home/lenovo-pccarryking/gem5_workspace/gem5/gem5_cpu_veu/build/RISCV/gem5.build/Kconfig" "/home/lenovo-pccarryking/gem5_workspace/gem5/gem5_cpu_veu/src/Kconfig"
+Checking size of struct kvm_xsave ... (cached) yes
+Checking for backtrace_symbols_fd((void *)1, 0, 0) in C library None... (cached) yes
+Checking for C header file fenv.h... (cached) yes
+Checking for C header file png.h... (cached) no
+Warning: Header file <png.h> not found.
+         This host has no libpng library.
+         Disabling support for PNG framebuffers.
+Checking for clock_nanosleep(0,0,NULL,NULL) in C library None... (cached) yes
+Checking for C header file valgrind/valgrind.h... (cached) no
+Checking for pkg-config package hdf5-serial... (cached) no
+Checking for pkg-config package hdf5... (cached) no
+Checking for H5Fcreate("", 0, 0, 0) in C library hdf5... (cached) no
+Warning: Couldn't find HDF5 C++ libraries. Disabling HDF5 support.
+Checking for shm_open("/test", 0, 0) in C library None... (cached) yes
+Checking for C header file linux/if_tun.h... (cached) yes
+Checking for C header file capstone/capstone.h... (cached) no
+Warning: Header file <capstone/capstone.h> not found.
+         This host has no capstone library installed.
+Checking for C header file linux/kvm.h... (cached) yes
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library None... (cached) yes
+Checking for member exclude_host in struct perf_event_attr...(cached) yes
+Checking for pkg-config package protobuf... (cached) yes
+Checking whether __i386__ is declared... (cached) no
+Checking whether __x86_64__ is declared... (cached) yes
+BUILD_TLM not set, not building CHI-TLM integration
+
+Checking for compiler -Wno-self-assign-overloaded support... (cached) yes
+Checking for linker -Wno-free-nonheap-object support... (cached) no
+scons: done reading SConscript files.
+scons: Building targets ...
+ [EMBED PY] RISCV/mem/ruby/protocol/MI_example/MI_example_DMA_Controller.py -> .cc
+ [EMBED PY] RISCV/mem/ruby/protocol/MI_example/MI_example_Directory_Controller.py -> .cc
+ [EMBED PY] RISCV/mem/ruby/protocol/MI_example/MI_example_L1Cache_Controller.py -> .cc
+ [VER TAGS]  -> RISCV/sim/tags.cc
+ [     CXX] RISCV/python/_m5/param_RubyCache.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyDirectoryMemory.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyPrefetcher.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyWireBuffer.cc -> .o
+ [     CXX] src/mem/ruby/structures/DirectoryMemory.cc -> RISCV/mem/ruby/structures/DirectoryMemory.o
+ [     CXX] src/mem/ruby/structures/CacheMemory.cc -> RISCV/mem/ruby/structures/CacheMemory.o
+ [     CXX] src/mem/ruby/structures/WireBuffer.cc -> RISCV/mem/ruby/structures/WireBuffer.o
+ [     CXX] src/mem/ruby/structures/PersistentTable.cc -> RISCV/mem/ruby/structures/PersistentTable.o
+ [     CXX] src/mem/ruby/structures/RubyPrefetcher.cc -> RISCV/mem/ruby/structures/RubyPrefetcher.o
+ [     CXX] src/mem/ruby/structures/RubyPrefetcherProxy.cc -> RISCV/mem/ruby/structures/RubyPrefetcherProxy.o
+ [     CXX] src/mem/ruby/structures/TimerTable.cc -> RISCV/mem/ruby/structures/TimerTable.o
+ [     CXX] src/mem/ruby/structures/BankedArray.cc -> RISCV/mem/ruby/structures/BankedArray.o
+ [     CXX] src/mem/ruby/structures/ALUFreeListArray.cc -> RISCV/mem/ruby/structures/ALUFreeListArray.o
+ [     CXX] RISCV/python/_m5/param_RubyController.cc -> .o
+ [MAKE INC] src/mem/ruby/common/MachineID.hh -> RISCV/mem/ruby/protocol/MachineID.hh
+ [MAKE INC] src/mem/ruby/slicc_interface/Message.hh -> RISCV/mem/ruby/protocol/Message.hh
+ [     CXX] src/mem/ruby/slicc_interface/AbstractController.cc -> RISCV/mem/ruby/slicc_interface/AbstractController.o
+ [     CXX] src/mem/ruby/slicc_interface/AbstractCacheEntry.cc -> RISCV/mem/ruby/slicc_interface/AbstractCacheEntry.o
+ [     CXX] src/mem/ruby/slicc_interface/RubyRequest.cc -> RISCV/mem/ruby/slicc_interface/RubyRequest.o
+ [     CXX] RISCV/python/_m5/param_RubySystem.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyPort.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyPortProxy.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubySequencer.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyHTMSequencer.cc -> .o
+ [     CXX] RISCV/python/_m5/param_DMASequencer.cc -> .o
+ [     CXX] src/mem/ruby/system/CacheRecorder.cc -> RISCV/mem/ruby/system/CacheRecorder.o
+ [     CXX] src/mem/ruby/system/DMASequencer.cc -> RISCV/mem/ruby/system/DMASequencer.o
+ [     CXX] src/mem/ruby/system/HTMSequencer.cc -> RISCV/mem/ruby/system/HTMSequencer.o
+ [     CXX] src/mem/ruby/system/RubyPort.cc -> RISCV/mem/ruby/system/RubyPort.o
+ [     CXX] src/mem/ruby/system/RubyPortProxy.cc -> RISCV/mem/ruby/system/RubyPortProxy.o
+ [     CXX] src/mem/ruby/system/RubySystem.cc -> RISCV/mem/ruby/system/RubySystem.o
+ [     CXX] src/mem/ruby/system/Sequencer.cc -> RISCV/mem/ruby/system/Sequencer.o
+ [     CXX] src/mem/ruby/profiler/AccessTraceForAddress.cc -> RISCV/mem/ruby/profiler/AccessTraceForAddress.o
+ [     CXX] src/mem/ruby/profiler/AddressProfiler.cc -> RISCV/mem/ruby/profiler/AddressProfiler.o
+ [     CXX] src/mem/ruby/profiler/Profiler.cc -> RISCV/mem/ruby/profiler/Profiler.o
+ [     CXX] RISCV/mem/ruby/protocol/TesterStatus.cc -> .o
+ [MAKE INC] src/mem/ruby/common/NetDest.hh -> RISCV/mem/ruby/protocol/NetDest.hh
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/ResponseMsg.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/SeriesRequestGeneratorStatus.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_State.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/LockStatus.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/RubyRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MemoryMsg.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMAResponseType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/InvalidateGeneratorStatus.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/TransitionResult.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_TBE.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/SequencerMsg.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MemoryRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/CoherenceResponseType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MachineType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/CoherenceRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/DirectoryRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_TBE.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMA_TBE.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/DMASequencerRequestType.cc -> .o
+ [MAKE INC] src/mem/ruby/structures/TBETable.hh -> RISCV/mem/ruby/protocol/TBETable.hh
+ [MAKE INC] src/mem/ruby/structures/CacheMemory.hh -> RISCV/mem/ruby/protocol/CacheMemory.hh
+ [MAKE INC] src/mem/ruby/system/DMASequencer.hh -> RISCV/mem/ruby/protocol/DMASequencer.hh
+ [MAKE INC] src/mem/ruby/structures/DirectoryMemory.hh -> RISCV/mem/ruby/protocol/DirectoryMemory.hh
+ [MAKE INC] src/mem/ruby/system/HTMSequencer.hh -> RISCV/mem/ruby/protocol/HTMSequencer.hh
+ [MAKE INC] src/mem/ruby/structures/RubyPrefetcher.hh -> RISCV/mem/ruby/protocol/RubyPrefetcher.hh
+ [MAKE INC] src/mem/ruby/structures/RubyPrefetcherProxy.hh -> RISCV/mem/ruby/protocol/RubyPrefetcherProxy.hh
+ [MAKE INC] src/mem/ruby/slicc_interface/RubyRequest.hh -> RISCV/mem/ruby/protocol/RubyRequest.hh
+ [MAKE INC] src/mem/ruby/system/Sequencer.hh -> RISCV/mem/ruby/protocol/Sequencer.hh
+ [MAKE INC] src/mem/ruby/structures/WireBuffer.hh -> RISCV/mem/ruby/protocol/WireBuffer.hh
+ [MAKE INC] src/mem/ruby/slicc_interface/AbstractCacheEntry.hh -> RISCV/mem/ruby/protocol/AbstractCacheEntry.hh
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_Transitions.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMARequestMsg.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/SequencerRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MessageSizeType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMAResponseMsg.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_Wakeup.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMA_Transitions.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/HtmFailedInCacheReason.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MaskPredictorIndex.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_Controller.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_Transitions.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/SequencerStatus.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/PrefetchBit.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMA_Wakeup.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_Wakeup.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMA_Event.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_Controller.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MaskPredictorTraining.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMA_State.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_Entry.cc -> .o
+ [     CXX] RISCV/python/_m5/param_MI_example_DMA_Controller.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMA_Controller.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/CacheRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/LinkDirection.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/AccessType.cc -> .o
+ [     CXX] RISCV/python/_m5/param_MI_example_Directory_Controller.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_Entry.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/HtmCallbackMode.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/RequestStatus.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MaskPredictorType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_Event.cc -> .o
+ [     CXX] RISCV/python/_m5/param_MI_example_L1Cache_Controller.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/DMARequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/RequestMsg.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/Directory_Event.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/RubyAccessMode.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MemoryControlRequestType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/AccessPermission.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/CacheResourceType.cc -> .o
+ [     CXX] RISCV/mem/ruby/protocol/MI_example/L1Cache_State.cc -> .o
+ [     CXX] src/mem/ruby/common/Address.cc -> RISCV/mem/ruby/common/Address.o
+ [     CXX] src/mem/ruby/common/NetDest.cc -> RISCV/mem/ruby/common/NetDest.o
+ [     CXX] src/mem/ruby/common/WriteMask.cc -> RISCV/mem/ruby/common/WriteMask.o
+ [     CXX] RISCV/python/_m5/param_BasicExtLink.cc -> .o
+ [     CXX] RISCV/python/_m5/param_MessageBuffer.cc -> .o
+ [     CXX] RISCV/python/_m5/param_RubyNetwork.cc -> .o
+ [     CXX] src/mem/ruby/network/MessageBuffer.cc -> RISCV/mem/ruby/network/MessageBuffer.o
+ [     CXX] src/mem/ruby/network/Network.cc -> RISCV/mem/ruby/network/Network.o
+ [     CXX] src/mem/ruby/network/Topology.cc -> RISCV/mem/ruby/network/Topology.o
+ [     CXX] RISCV/python/_m5/param_NetworkLink.cc -> .o
+ [     CXX] RISCV/python/_m5/param_CreditLink.cc -> .o
+ [     CXX] RISCV/python/_m5/param_NetworkBridge.cc -> .o
+ [     CXX] RISCV/python/_m5/param_GarnetIntLink.cc -> .o
+ [     CXX] RISCV/python/_m5/param_GarnetExtLink.cc -> .o
+ [     CXX] RISCV/python/_m5/param_GarnetNetwork.cc -> .o
+ [     CXX] RISCV/python/_m5/param_GarnetNetworkInterface.cc -> .o
+ [     CXX] RISCV/python/_m5/param_GarnetRouter.cc -> .o
+ [     CXX] src/mem/ruby/network/garnet/GarnetLink.cc -> RISCV/mem/ruby/network/garnet/GarnetLink.o
+ [     CXX] src/mem/ruby/network/garnet/GarnetNetwork.cc -> RISCV/mem/ruby/network/garnet/GarnetNetwork.o
+ [     CXX] src/mem/ruby/network/garnet/InputUnit.cc -> RISCV/mem/ruby/network/garnet/InputUnit.o
+ [     CXX] src/mem/ruby/network/garnet/NetworkInterface.cc -> RISCV/mem/ruby/network/garnet/NetworkInterface.o
+ [     CXX] src/mem/ruby/network/garnet/NetworkLink.cc -> RISCV/mem/ruby/network/garnet/NetworkLink.o
+ [     CXX] src/mem/ruby/network/garnet/OutVcState.cc -> RISCV/mem/ruby/network/garnet/OutVcState.o
+ [     CXX] src/mem/ruby/network/garnet/OutputUnit.cc -> RISCV/mem/ruby/network/garnet/OutputUnit.o
+ [     CXX] src/mem/ruby/network/garnet/Router.cc -> RISCV/mem/ruby/network/garnet/Router.o
+ [     CXX] src/mem/ruby/network/garnet/RoutingUnit.cc -> RISCV/mem/ruby/network/garnet/RoutingUnit.o
+ [     CXX] src/mem/ruby/network/garnet/SwitchAllocator.cc -> RISCV/mem/ruby/network/garnet/SwitchAllocator.o
+ [     CXX] src/mem/ruby/network/garnet/CrossbarSwitch.cc -> RISCV/mem/ruby/network/garnet/CrossbarSwitch.o
+ [     CXX] src/mem/ruby/network/garnet/VirtualChannel.cc -> RISCV/mem/ruby/network/garnet/VirtualChannel.o
+ [     CXX] src/mem/ruby/network/garnet/flitBuffer.cc -> RISCV/mem/ruby/network/garnet/flitBuffer.o
+ [     CXX] src/mem/ruby/network/garnet/flit.cc -> RISCV/mem/ruby/network/garnet/flit.o
+ [     CXX] src/mem/ruby/network/garnet/Credit.cc -> RISCV/mem/ruby/network/garnet/Credit.o
+ [     CXX] src/mem/ruby/network/garnet/NetworkBridge.cc -> RISCV/mem/ruby/network/garnet/NetworkBridge.o
+ [     CXX] RISCV/python/_m5/param_SimpleIntLink.cc -> .o
+ [     CXX] RISCV/python/_m5/param_SimpleNetwork.cc -> .o
+ [     CXX] RISCV/python/_m5/param_BaseRoutingUnit.cc -> .o
+ [     CXX] RISCV/python/_m5/param_WeightBased.cc -> .o
+ [     CXX] RISCV/python/_m5/param_Switch.cc -> .o
+ [     CXX] src/mem/ruby/network/simple/PerfectSwitch.cc -> RISCV/mem/ruby/network/simple/PerfectSwitch.o
+ [     CXX] src/mem/ruby/network/simple/SimpleNetwork.cc -> RISCV/mem/ruby/network/simple/SimpleNetwork.o
+ [     CXX] src/mem/ruby/network/simple/Switch.cc -> RISCV/mem/ruby/network/simple/Switch.o
+ [     CXX] src/mem/ruby/network/simple/Throttle.cc -> RISCV/mem/ruby/network/simple/Throttle.o
+ [     CXX] src/mem/ruby/network/simple/routing/WeightBased.cc -> RISCV/mem/ruby/network/simple/routing/WeightBased.o
+ [     CXX] src/cpu/testers/rubytest/RubyTester.cc -> RISCV/cpu/testers/rubytest/RubyTester.o
+ [     CXX] src/cpu/testers/rubytest/Check.cc -> RISCV/cpu/testers/rubytest/Check.o
+ [     CXX] src/cpu/testers/rubytest/CheckTable.cc -> RISCV/cpu/testers/rubytest/CheckTable.o
+ [     CXX] RISCV/python/_m5/param_SeriesRequestGenerator.cc -> .o
+ [     CXX] RISCV/python/_m5/param_InvalidateGenerator.cc -> .o
+ [     CXX] src/cpu/testers/directedtest/SeriesRequestGenerator.cc -> RISCV/cpu/testers/directedtest/SeriesRequestGenerator.o
+ [     CXX] src/cpu/testers/directedtest/InvalidateGenerator.cc -> RISCV/cpu/testers/directedtest/InvalidateGenerator.o
+scons: done building targets.
+*** Summary of Warnings ***
+Warning: Header file <png.h> not found.
+         This host has no libpng library.
+         Disabling support for PNG framebuffers.
+Warning: Couldn't find HDF5 C++ libraries. Disabling HDF5 support.
+Warning: Header file <capstone/capstone.h> not found.
+         This host has no capstone library installed.

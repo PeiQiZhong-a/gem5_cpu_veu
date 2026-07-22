@@ -171,7 +171,7 @@ alignVeuLengthBits(uint32_t lengthBits)
 constexpr uint32_t
 effectiveVeuLengthAtStart(uint32_t configuredLengthBits)
 {
-    return configuredLengthBits == 0 ? VeuVectorBits :
+    return configuredLengthBits == 0 ? 0 :
            alignVeuLengthBits(configuredLengthBits);
 }
 
