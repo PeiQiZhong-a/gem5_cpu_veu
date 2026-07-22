@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <string>
 #include <unordered_map>
 
 namespace gem5
@@ -78,12 +79,14 @@ class TbCrossbarModel
     explicit TbCrossbarModel(Config config);
 
     void reset();
+    void clearMemory();
     TbCrossbarOutputs clock(const TbCrossbarInputs &inputs);
 
     void writeByte(uint32_t address, uint8_t value);
     uint8_t readByte(uint32_t address) const;
     void writeWord(uint32_t address, uint32_t value);
     uint32_t readWord(uint32_t address) const;
+    std::string takeUartOutput();
 
   private:
     struct PendingRequest
@@ -99,14 +102,26 @@ class TbCrossbarModel
         TbBusResponse response;
     };
 
+    struct UartReturn
+    {
+        uint32_t remainingCycles = 1;
+        TbBusMaster master = TbBusMaster::None;
+        TbBusResponse response;
+    };
+
     Config config;
     bool lockActive = false;
     bool normalBusy = false;
     PendingRequest ibusPending;
     PendingRequest dbusPending;
     std::deque<DelayedResponse> delayedResponses;
+    std::deque<UartReturn> uartReturns;
     std::unordered_map<uint32_t, uint8_t> memory;
     std::array<uint32_t, 4> veuReadDataPins{};
+    uint32_t uartTxData = 0;
+    bool uartTxDataWeQ = false;
+    bool uartTxWritePosedge = false;
+    std::string uartOutput;
 
     bool mapped(uint32_t address) const;
     bool backedBySram(uint32_t address) const;
@@ -114,9 +129,11 @@ class TbCrossbarModel
     TbBusMaster arbitrate(const TbCrossbarInputs &inputs) const;
     TbBusRequest selectedRequest(
         TbBusMaster master, const TbCrossbarInputs &inputs) const;
-    TbBusResponse access(const TbBusRequest &request);
+    TbBusResponse access(TbBusMaster master, const TbBusRequest &request);
     uint32_t responseDelay(TbBusMaster master) const;
+    uint32_t responsePipelineDelay(TbBusMaster master) const;
     void deliverResponses(TbCrossbarOutputs &outputs);
+    void advanceUartReturns();
 };
 
 } // namespace brs

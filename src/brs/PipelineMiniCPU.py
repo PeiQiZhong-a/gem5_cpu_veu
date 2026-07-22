@@ -32,9 +32,12 @@ class PipelineMiniCPU(ClockedObject):
     tb_data_base = Param.Addr(0x20010000, "Aerith testbench data SRAM base")
     tb_data_size = Param.Addr(0x00040000, "Aerith testbench data SRAM size")
 
-    max_cycles = Param.UInt64(20, "Maximum cycles to run")
+    max_cycles = Param.UInt64(
+        2_000_000,
+        "Maximum cycles: total clock edges including reset in RTL-testbench mode, active CPU cycles otherwise",
+    )
     reset_cycles = Param.UInt64(
-        10,
+        100,
         "Clock edges held in reset before the first active CPU cycle",
     )
     fake_veu_latency = Param.UInt32(
@@ -45,6 +48,17 @@ class PipelineMiniCPU(ClockedObject):
         0,
         "Fixed csr_rdata returned by FakeVEU",
     )
+    irq_external = Param.UInt32(0, "External IRQ input bitmap")
+    irq_software = Param.Bool(False, "Software IRQ input level")
+    irq_timer = Param.Bool(False, "Timer IRQ input level")
+    debug_halt = Param.Bool(False, "Debug halt request input level")
+    debug_halt_on_reset = Param.Bool(False, "Debug halt-on-reset input level")
+    debug_resume = Param.Bool(False, "Debug resume request input level")
+    debug_data0 = Param.UInt32(0, "External debug data0 read value")
+    debug_instr = Param.UInt32(0, "Injected debug instruction bits")
+    debug_instr_valid = Param.Bool(False, "Injected debug instruction valid")
+    cycle_trace_file = Param.String(
+        "", "Optional per-cycle RTL-comparison trace written in gem5 output")
 
     text_base    = Param.Addr(0x80000000, "Code base address")
     dmem_base    = Param.Addr(0x80200000, "DMEM base address")

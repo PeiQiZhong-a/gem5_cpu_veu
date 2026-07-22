@@ -13,16 +13,42 @@ word(uint16_t high, uint16_t low)
     return (static_cast<uint32_t>(high) << 16) | low;
 }
 
+void
+advanceResetEnd(FrontendFetchUnit &frontend, uint32_t textEnd)
+{
+    FrontendFetchUnit::Input input;
+    input.textEnd = textEnd;
+    frontend.step(input);
+    frontend.step(input);
+}
+
+FrontendAligner::Input
+alignerInput(bool valid, uint32_t bits, uint32_t addr)
+{
+    FrontendAligner::Input input;
+    input.fetchInstrValid = valid;
+    input.fetchInstrBits = bits;
+    input.fetchInstrAddr = addr;
+    return input;
+}
+
+FrontendFetchUnit::Input
+responseInput(uint32_t textEnd, const FetchBlock &block, bool stall = false)
+{
+    FrontendFetchUnit::Input input;
+    input.stall = stall;
+    input.textEnd = textEnd;
+    input.responseValid = true;
+    input.response = block;
+    return input;
+}
+
 TEST(FrontendAlignerTest, EmitsAlignedRv32Instruction)
 {
     FrontendAligner aligner;
     aligner.reset(0);
 
-    const auto out = aligner.step({
-        .fetchInstrValid = true,
-        .fetchInstrBits = 0x00500093,
-        .fetchInstrAddr = 0,
-    });
+    const auto out = aligner.step(alignerInput(true, 0x00500093, 0));
 
     EXPECT_TRUE(out.alignedInstrValid);
     EXPECT_EQ(out.alignedInstrBits, 0x00500093);
@@ -35,21 +61,15 @@ TEST(FrontendAlignerTest, EmitsTwoCompressedInstructionsFromOneWord)
     FrontendAligner aligner;
     aligner.reset(0);
 
-    const auto first = aligner.step({
-        .fetchInstrValid = true,
-        .fetchInstrBits = word(0x0001, 0x0001),
-        .fetchInstrAddr = 0,
-    });
+    const auto first = aligner.step(
+        alignerInput(true, word(0x0001, 0x0001), 0));
 
     EXPECT_TRUE(first.alignedInstrValid);
     EXPECT_EQ(first.alignedInstrBits, 0x0001);
     EXPECT_EQ(first.nextInstrAddr, 2);
     EXPECT_TRUE(first.stopFetch);
 
-    const auto second = aligner.step({
-        .fetchInstrValid = false,
-        .fetchInstrAddr = 2,
-    });
+    const auto second = aligner.step(alignerInput(false, 0, 2));
 
     EXPECT_TRUE(second.alignedInstrValid);
     EXPECT_EQ(second.alignedInstrBits, 0x0001);
@@ -62,17 +82,10 @@ TEST(FrontendAlignerTest, ConcatenatesRv32InstructionAcrossWords)
     FrontendAligner aligner;
     aligner.reset(0);
 
-    aligner.step({
-        .fetchInstrValid = true,
-        .fetchInstrBits = word(0x567b, 0x0001),
-        .fetchInstrAddr = 0,
-    });
+    aligner.step(alignerInput(true, word(0x567b, 0x0001), 0));
 
-    const auto out = aligner.step({
-        .fetchInstrValid = true,
-        .fetchInstrBits = word(0x0001, 0x1234),
-        .fetchInstrAddr = 2,
-    });
+    const auto out = aligner.step(
+        alignerInput(true, word(0x0001, 0x1234), 2));
 
     EXPECT_TRUE(out.alignedInstrValid);
     EXPECT_EQ(out.alignedInstrBits, 0x1234567b);
@@ -159,10 +172,29 @@ TEST(FetchBusUnitTest, DiscardsFlushedInFlightResponse)
     EXPECT_EQ(ibu.requestBlockAddr(), 0x40);
 }
 
+TEST(FrontendFetchUnitTest, WaitsTwoActiveCyclesAfterReset)
+{
+    FrontendFetchUnit frontend;
+    frontend.reset(0);
+
+    FrontendFetchUnit::Input input;
+    input.textEnd = 16;
+
+    EXPECT_FALSE(frontend.step(input).requestValid);
+    EXPECT_FALSE(frontend.step(input).requestValid);
+
+    const auto out = frontend.step(input);
+    EXPECT_TRUE(out.requestValid);
+    EXPECT_EQ(out.requestAddr, 0);
+    EXPECT_EQ(out.requestFetchAddr, 0);
+    EXPECT_EQ(frontend.getIbusReqCount(), 0);
+}
+
 TEST(FrontendFetchUnitTest, DoesNotEmitPastTextEnd)
 {
     FrontendFetchUnit frontend;
     frontend.reset(0);
+    advanceResetEnd(frontend, 16);
 
     FrontendFetchUnit::Input requestInput;
     requestInput.textEnd = 16;
@@ -175,11 +207,7 @@ TEST(FrontendFetchUnitTest, DoesNotEmitPastTextEnd)
     block.blockAddr = 0;
     block.words = {0x00500093, 0x00000013, 0x00000013, 0};
 
-    out = frontend.step({
-        .textEnd = 0,
-        .responseValid = true,
-        .response = block,
-    });
+    out = frontend.step(responseInput(0, block));
 
     EXPECT_FALSE(out.instValid);
     EXPECT_EQ(frontend.getPC(), 0);
@@ -189,6 +217,7 @@ TEST(FrontendFetchUnitTest, BypassesReturnedBlockWhenFifoIsEmpty)
 {
     FrontendFetchUnit frontend;
     frontend.reset(0);
+    advanceResetEnd(frontend, 16);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 16;
@@ -201,11 +230,7 @@ TEST(FrontendFetchUnitTest, BypassesReturnedBlockWhenFifoIsEmpty)
     block.blockAddr = 0;
     block.words = {0x00500093, 0x00600113, 0x00700193, 0};
 
-    out = frontend.step({
-        .textEnd = 16,
-        .responseValid = true,
-        .response = block,
-    });
+    out = frontend.step(responseInput(16, block));
 
     EXPECT_FALSE(out.instValid);
 
@@ -229,6 +254,7 @@ TEST(FrontendFetchUnitTest, BypassesFirstValidWordForMisalignedFetch)
 {
     FrontendFetchUnit frontend;
     frontend.reset(8);
+    advanceResetEnd(frontend, 16);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 16;
@@ -242,11 +268,7 @@ TEST(FrontendFetchUnitTest, BypassesFirstValidWordForMisalignedFetch)
     block.blockAddr = 0;
     block.words = {0x00100093, 0x00200113, 0x00300193, 0x00400213};
 
-    out = frontend.step({
-        .textEnd = 16,
-        .responseValid = true,
-        .response = block,
-    });
+    out = frontend.step(responseInput(16, block));
 
     EXPECT_FALSE(out.instValid);
 
@@ -269,6 +291,7 @@ TEST(FrontendFetchUnitTest, AcceptsResponseWhileStalled)
 {
     FrontendFetchUnit frontend;
     frontend.reset(0);
+    advanceResetEnd(frontend, 16);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 16;
@@ -281,12 +304,7 @@ TEST(FrontendFetchUnitTest, AcceptsResponseWhileStalled)
     block.blockAddr = 0;
     block.words = {0x00500093, 0x00600113, 0, 0};
 
-    out = frontend.step({
-        .stall = true,
-        .textEnd = 16,
-        .responseValid = true,
-        .response = block,
-    });
+    out = frontend.step(responseInput(16, block, true));
     EXPECT_FALSE(out.instValid);
 
     input = {};
@@ -304,6 +322,7 @@ TEST(FrontendFetchUnitTest, HoldsIfOutputRegisterWhileStalled)
 {
     FrontendFetchUnit frontend;
     frontend.reset(0);
+    advanceResetEnd(frontend, 16);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 16;
@@ -316,11 +335,7 @@ TEST(FrontendFetchUnitTest, HoldsIfOutputRegisterWhileStalled)
     block.blockAddr = 0;
     block.words = {0x00500093, 0x00600113, 0, 0};
 
-    out = frontend.step({
-        .textEnd = 16,
-        .responseValid = true,
-        .response = block,
-    });
+    out = frontend.step(responseInput(16, block));
     EXPECT_FALSE(out.instValid);
 
     input = {};
@@ -343,6 +358,7 @@ TEST(FrontendFetchUnitTest, RequestsTrueFetchAddrForMisalignedResetPc)
 {
     FrontendFetchUnit frontend;
     frontend.reset(6);
+    advanceResetEnd(frontend, 32);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 32;
@@ -356,6 +372,7 @@ TEST(FrontendFetchUnitTest, RequestsTrueFetchAddrAfterMisalignedRedirect)
 {
     FrontendFetchUnit frontend;
     frontend.reset(0);
+    advanceResetEnd(frontend, 32);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 32;
@@ -383,15 +400,58 @@ TEST(FrontendFetchUnitTest, RequestsTrueFetchAddrAfterMisalignedRedirect)
     input.response = oldBlock;
     out = frontend.step(input);
 
+    EXPECT_FALSE(out.requestValid);
+
+    input = {};
+    input.textEnd = 32;
+    out = frontend.step(input);
     ASSERT_TRUE(out.requestValid);
     EXPECT_EQ(out.requestAddr, 0);
     EXPECT_EQ(out.requestFetchAddr, 8);
+}
+
+TEST(FrontendFetchUnitTest, RedirectAndOldResponseDoNotReissueSameEdge)
+{
+    FrontendFetchUnit frontend;
+    frontend.reset(0);
+    advanceResetEnd(frontend, 64);
+
+    FrontendFetchUnit::Input input;
+    input.textEnd = 64;
+    auto out = frontend.step(input);
+    ASSERT_TRUE(out.requestValid);
+    frontend.markRequestIssued();
+
+    FetchBlock oldBlock;
+    oldBlock.fetchAddr = 0;
+    oldBlock.blockAddr = 0;
+    oldBlock.words = {0x00500093, 0, 0, 0};
+
+    input = {};
+    input.textEnd = 64;
+    input.redirect = true;
+    input.redirectTarget = 0x20;
+    input.responseValid = true;
+    input.response = oldBlock;
+    out = frontend.step(input);
+
+    EXPECT_FALSE(out.requestValid);
+    EXPECT_FALSE(out.instValid);
+    EXPECT_EQ(frontend.getPC(), 0x20);
+
+    input = {};
+    input.textEnd = 64;
+    out = frontend.step(input);
+    ASSERT_TRUE(out.requestValid);
+    EXPECT_EQ(out.requestAddr, 0x20);
+    EXPECT_EQ(out.requestFetchAddr, 0x20);
 }
 
 TEST(FrontendFetchUnitTest, RedirectClearsRegisteredIfOutput)
 {
     FrontendFetchUnit frontend;
     frontend.reset(0);
+    advanceResetEnd(frontend, 128);
 
     FrontendFetchUnit::Input input;
     input.textEnd = 128;
@@ -404,11 +464,7 @@ TEST(FrontendFetchUnitTest, RedirectClearsRegisteredIfOutput)
     block.blockAddr = 0;
     block.words = {0x00500093, 0x00600113, 0, 0};
 
-    out = frontend.step({
-        .textEnd = 128,
-        .responseValid = true,
-        .response = block,
-    });
+    out = frontend.step(responseInput(128, block));
     EXPECT_FALSE(out.instValid);
 
     input = {};

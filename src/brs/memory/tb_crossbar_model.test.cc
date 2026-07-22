@@ -97,8 +97,8 @@ TEST(TbCrossbarModelTest, CpuWriteGetsDelayedCompletion)
     in.dbus.valid = true;
     in.dbus.address = 0x20010004;
     in.dbus.write = true;
-    in.dbus.writeStrobe = 0x00f0;
-    in.dbus.writeData[1] = 0xaabbccdd;
+    in.dbus.writeStrobe = 0x000f;
+    in.dbus.writeData[0] = 0xaabbccdd;
 
     EXPECT_EQ(model.clock(in).grantedMaster, TbBusMaster::None);
     EXPECT_EQ(model.clock({}).grantedMaster, TbBusMaster::DBus);
@@ -120,6 +120,39 @@ TEST(TbCrossbarModelTest, ModelsUartReadyRegister)
     const auto out = model.clock({});
     ASSERT_TRUE(out.dbus.valid);
     EXPECT_EQ(out.dbus.readData[2], 1u);
+}
+
+TEST(TbCrossbarModelTest, UartHoldsBusyThroughItsRegisteredResponse)
+{
+    TbCrossbarModel model;
+    TbCrossbarInputs in;
+    in.dbus = readRequest(0x40000008);
+    EXPECT_EQ(model.clock(in).grantedMaster, TbBusMaster::None);
+
+    in = {};
+    in.ibus = readRequest(0x00000000);
+    EXPECT_EQ(model.clock(in).grantedMaster, TbBusMaster::DBus);
+    EXPECT_EQ(model.clock({}).grantedMaster, TbBusMaster::None);
+    EXPECT_EQ(model.clock({}).grantedMaster, TbBusMaster::IBus);
+}
+
+TEST(TbCrossbarModelTest, UartTxIsLoggedOnceOnTheFollowingEdge)
+{
+    TbCrossbarModel model;
+    TbCrossbarInputs in;
+    in.dbus.valid = true;
+    in.dbus.address = 0x40000004;
+    in.dbus.write = true;
+    in.dbus.writeStrobe = 0x1;
+    in.dbus.writeData[0] = 'A';
+
+    model.clock(in);
+    EXPECT_TRUE(model.takeUartOutput().empty());
+    model.clock({});
+    EXPECT_TRUE(model.takeUartOutput().empty());
+    model.clock({});
+    EXPECT_EQ(model.takeUartOutput(), "A");
+    EXPECT_TRUE(model.takeUartOutput().empty());
 }
 
 TEST(TbCrossbarModelTest, ModelsTheFull128KiBPhysicalDataSram)

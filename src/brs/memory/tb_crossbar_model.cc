@@ -23,7 +23,18 @@ TbCrossbarModel::reset()
     ibusPending = {};
     dbusPending = {};
     delayedResponses.clear();
+    uartReturns.clear();
     veuReadDataPins = {};
+    uartTxData = 0;
+    uartTxDataWeQ = false;
+    uartTxWritePosedge = false;
+    uartOutput.clear();
+}
+
+void
+TbCrossbarModel::clearMemory()
+{
+    memory.clear();
 }
 
 bool
@@ -88,7 +99,8 @@ TbCrossbarModel::selectedRequest(
 }
 
 TbBusResponse
-TbCrossbarModel::access(const TbBusRequest &request)
+TbCrossbarModel::access(
+    TbBusMaster master, const TbBusRequest &request)
 {
     TbBusResponse response;
     response.valid = request.read;
@@ -106,12 +118,21 @@ TbCrossbarModel::access(const TbBusRequest &request)
     }
 
     if (request.write && backedBySram(request.address)) {
+        uint16_t writeStrobe = request.writeStrobe;
+        std::array<uint32_t, 4> writeData = request.writeData;
+        if (master == TbBusMaster::DBus) {
+            // crossbar.sv receives the CPU DBus strobe/data as 4/32 bits and
+            // expands them only on the SRAM slave paths.
+            const unsigned lane = (request.address >> 2) & 0x3u;
+            writeStrobe = (request.writeStrobe & 0xfu) << (lane * 4);
+            writeData.fill(request.writeData[0]);
+        }
         for (unsigned byte = 0; byte < 16; ++byte) {
-            if (request.writeStrobe & (uint16_t{1} << byte)) {
+            if (writeStrobe & (uint16_t{1} << byte)) {
                 const unsigned word = byte / 4;
                 const unsigned shift = (byte % 4) * 8;
                 writeByte(base + byte,
-                    static_cast<uint8_t>(request.writeData[word] >> shift));
+                    static_cast<uint8_t>(writeData[word] >> shift));
             }
         }
     }
@@ -128,6 +149,35 @@ TbCrossbarModel::responseDelay(TbBusMaster master) const
       case TbBusMaster::DBus: return 1 + config.dbusResponseDelay;
       case TbBusMaster::Veu: return 1 + config.veuPipelineStages;
       default: return 0;
+    }
+}
+
+uint32_t
+TbCrossbarModel::responsePipelineDelay(TbBusMaster master) const
+{
+    switch (master) {
+      case TbBusMaster::IBus: return config.ibusResponseDelay;
+      case TbBusMaster::DBus: return config.dbusResponseDelay;
+      case TbBusMaster::Veu: return config.veuPipelineStages;
+      default: return 0;
+    }
+}
+
+void
+TbCrossbarModel::advanceUartReturns()
+{
+    for (auto &entry : uartReturns) {
+        if (entry.remainingCycles > 0) {
+            --entry.remainingCycles;
+        }
+    }
+    while (!uartReturns.empty() &&
+           uartReturns.front().remainingCycles == 0) {
+        const auto entry = uartReturns.front();
+        uartReturns.pop_front();
+        delayedResponses.push_back({
+            responsePipelineDelay(entry.master), entry.master,
+            entry.response});
     }
 }
 
@@ -161,6 +211,11 @@ TbCrossbarModel::clock(const TbCrossbarInputs &inputs)
     // retain the last completed value between responses.
     outputs.veu.readData = veuReadDataPins;
     deliverResponses(outputs);
+    advanceUartReturns();
+    if (uartTxWritePosedge) {
+        // uart_vip.sv logs the registered TX byte one edge after tx_data_we.
+        uartOutput.push_back(static_cast<char>(uartTxData & 0xffu));
+    }
     if (outputs.veu.valid) {
         veuReadDataPins = outputs.veu.readData;
     }
@@ -174,6 +229,7 @@ TbCrossbarModel::clock(const TbCrossbarInputs &inputs)
     // edge. A CPU pulse captured on this edge cannot be granted until the
     // following cycle, matching the nonblocking assignments in crossbar.sv.
     const TbBusMaster grant = arbitrate(inputs);
+    const TbBusRequest grantedRequest = selectedRequest(grant, inputs);
     outputs.grantedMaster = grant;
 
     PendingRequest nextIbusPending = ibusPending;
@@ -186,8 +242,8 @@ TbCrossbarModel::clock(const TbCrossbarInputs &inputs)
     }
 
     if (grant != TbBusMaster::None) {
-        const TbBusRequest request = selectedRequest(grant, inputs);
-        TbBusResponse response = access(request);
+        const TbBusRequest request = grantedRequest;
+        TbBusResponse response = access(grant, request);
 
         // In normal mode crossbar.sv returns an SRAM completion for both
         // reads and writes. Lock mode suppresses the VEU return on writes.
@@ -202,8 +258,22 @@ TbCrossbarModel::clock(const TbCrossbarInputs &inputs)
         }
 
         if (response.valid) {
-            delayedResponses.push_back(
-                {responseDelay(grant), grant, response});
+            if (mappedToUart(request.address)) {
+                // uart_vip.sv registers req into resp_delay.  The crossbar
+                // response pipeline starts only when that internal response
+                // becomes visible on the following edge.
+                uartReturns.push_back({1, grant, response});
+            } else {
+                delayedResponses.push_back(
+                    {responseDelay(grant), grant, response});
+            }
+        }
+
+        uint16_t uartWstrb = request.writeStrobe;
+        uint32_t uartWdata = request.writeData[0];
+        if (mappedToUart(request.address) && request.write &&
+            (uartWstrb & 1u) && (request.address & 0xfu) == 4u) {
+            uartTxData = uartWdata;
         }
     }
 
@@ -215,9 +285,24 @@ TbCrossbarModel::clock(const TbCrossbarInputs &inputs)
     // so normal arbitration resumes before the delayed response is visible.
     normalBusy = !lockActive && grant != TbBusMaster::None;
 
+    const bool uartTxDataWe = grant != TbBusMaster::None &&
+        mappedToUart(grantedRequest.address) && grantedRequest.write &&
+        (grantedRequest.writeStrobe & 1u) &&
+        (grantedRequest.address & 0xfu) == 4u;
+    uartTxWritePosedge = uartTxDataWe && !uartTxDataWeQ;
+    uartTxDataWeQ = uartTxDataWe;
+
     lockActive = nextLock;
     outputs.lockActive = lockActive;
     return outputs;
+}
+
+std::string
+TbCrossbarModel::takeUartOutput()
+{
+    std::string output;
+    output.swap(uartOutput);
+    return output;
 }
 
 void

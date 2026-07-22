@@ -11,7 +11,14 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("--binary", default="", help="Path to RISC-V ELF binary")
 parser.add_argument("--program-file", default="", help="Path to instruction hex file")
-parser.add_argument("--max-cycles", type=int, default=200)
+parser.add_argument(
+    "--max-cycles",
+    type=int,
+    default=None,
+    help=("Timeout in cycles. Defaults to 2,000,000 total clock edges "
+          "including reset for rtl-aerith-tb, or 200 active CPU cycles "
+          "for other memory modes."),
+)
 parser.add_argument(
     "--clock-frequency",
     default="100MHz",
@@ -20,8 +27,9 @@ parser.add_argument(
 parser.add_argument(
     "--reset-cycles",
     type=int,
-    default=10,
-    help="Reset clock edges before CPU cycle 1. Spirit testbench uses 10.",
+    default=100,
+    help=("Reset clock edges before CPU cycle 1. "
+          "aerith_tb_top.sv holds reset for 100 rising edges."),
 )
 parser.add_argument(
     "--fake-veu-latency",
@@ -34,6 +42,28 @@ parser.add_argument(
     type=lambda value: int(value, 0),
     default=0,
     help="Fixed FakeVEU csr_rdata value (decimal or 0x-prefixed).",
+)
+parser.add_argument(
+    "--irq-external", type=lambda value: int(value, 0), default=0,
+    help="External IRQ input bitmap (decimal or 0x-prefixed).",
+)
+parser.add_argument("--irq-software", action="store_true")
+parser.add_argument("--irq-timer", action="store_true")
+parser.add_argument("--debug-halt", action="store_true")
+parser.add_argument("--debug-halt-on-reset", action="store_true")
+parser.add_argument("--debug-resume", action="store_true")
+parser.add_argument(
+    "--debug-data0", type=lambda value: int(value, 0), default=0,
+    help="External DMDATA0 read value (decimal or 0x-prefixed).",
+)
+parser.add_argument(
+    "--debug-instr", type=lambda value: int(value, 0), default=0,
+    help="Injected debug instruction bits (decimal or 0x-prefixed).",
+)
+parser.add_argument("--debug-instr-valid", action="store_true")
+parser.add_argument(
+    "--cycle-trace", default="",
+    help="Write a machine-readable per-cycle CPU/bus trace to this output file.",
 )
 parser.add_argument("--mem-size", default="64MiB")
 parser.add_argument(
@@ -119,6 +149,11 @@ if args.mem_system == "rtl-veu-tb":
     )
 
 rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
+max_cycles = args.max_cycles
+if max_cycles is None:
+    max_cycles = 2_000_000 if rtl_tb_mode else 200
+if max_cycles <= 0:
+    parser.error("--max-cycles must be positive")
 
 
 def parse_addr(value):
@@ -209,10 +244,20 @@ else:
     dmem_image_file = args.dmem_image
 
 system.pipeline = PipelineMiniCPU(
-    max_cycles=args.max_cycles,
+    max_cycles=max_cycles,
     reset_cycles=args.reset_cycles,
     fake_veu_latency=args.fake_veu_latency,
     fake_veu_response_data=args.fake_veu_response_data,
+    irq_external=args.irq_external,
+    irq_software=args.irq_software,
+    irq_timer=args.irq_timer,
+    debug_halt=args.debug_halt,
+    debug_halt_on_reset=args.debug_halt_on_reset,
+    debug_resume=args.debug_resume,
+    debug_data0=args.debug_data0,
+    debug_instr=args.debug_instr,
+    debug_instr_valid=args.debug_instr_valid,
+    cycle_trace_file=args.cycle_trace,
     program_file=pipeline_program_file,
     elf_file=pipeline_elf_file,
     preloaded_program=pipeline_preloaded_program,
@@ -360,6 +405,10 @@ m5.instantiate()
 print("Beginning PipelineMiniCPU simulation!")
 print("Clock frequency: {}".format(args.clock_frequency))
 print("Reset cycles: {}".format(args.reset_cycles))
+print("Timeout cycles: {} ({})".format(
+    max_cycles,
+    "total clock edges including reset" if rtl_tb_mode else "active CPU cycles",
+))
 print("FakeVEU latency: {} cycles".format(args.fake_veu_latency))
 print("FakeVEU response data: {:#x}".format(args.fake_veu_response_data))
 print("Memory system: {}".format(args.mem_system))

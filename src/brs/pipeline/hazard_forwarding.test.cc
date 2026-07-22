@@ -91,7 +91,7 @@ TEST(SourceOperandsTest, SpiritInstructionsExposeExactSources)
     EXPECT_EQ(vmadd.rs3, 10);
 }
 
-TEST(HazardUnitTest, StallsForEveryVeuSourceAfterLoad)
+TEST(HazardUnitTest, DoesNotAddBubbleAfterIeStalledLoad)
 {
     HazardUnit hazards;
     IFID consumer;
@@ -100,9 +100,9 @@ TEST(HazardUnitTest, StallsForEveryVeuSourceAfterLoad)
 
     for (const uint8_t source : {uint8_t{8}, uint8_t{9}, uint8_t{10}}) {
         const auto decision = hazards.resolve(consumer, loadProducer(source));
-        EXPECT_TRUE(decision.stall_pc);
-        EXPECT_TRUE(decision.stall_ifid);
-        EXPECT_TRUE(decision.bubble_idex);
+        EXPECT_FALSE(decision.stall_pc);
+        EXPECT_FALSE(decision.stall_ifid);
+        EXPECT_FALSE(decision.bubble_idex);
     }
 }
 
@@ -155,7 +155,7 @@ TEST(ForwardingUnitTest, SelectsIndependentRs1Rs2AndRs3Paths)
     EXPECT_EQ(decision.sel_c, ForwardSel::FROM_EXMEM);
 }
 
-TEST(ForwardingUnitTest, DoesNotForwardLoadAddressFromExmem)
+TEST(ForwardingUnitTest, ForwardsCompletedLoadValueFromExmem)
 {
     ForwardingUnit forwarding;
     IDEX consumer;
@@ -171,7 +171,7 @@ TEST(ForwardingUnitTest, DoesNotForwardLoadAddressFromExmem)
     load.wb_sel = WbSel::MEM;
 
     const auto decision = forwarding.resolve(consumer, load, {});
-    EXPECT_EQ(decision.sel_a, ForwardSel::NONE);
+    EXPECT_EQ(decision.sel_a, ForwardSel::FROM_EXMEM);
 }
 
 } // namespace

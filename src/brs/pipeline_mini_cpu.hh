@@ -2,6 +2,7 @@
 #define __BRS_PIPELINE_MINI_CPU_HH__
 
 #include <cstdint>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <string>
@@ -52,6 +53,7 @@ class PipelineMiniCPU : public ClockedObject
 
     uint64_t maxCycles;
     uint64_t resetCyclesRemaining;
+    uint64_t elapsedClockEdges = 0;
     Addr textBase;
     System *system;
     PipelineCore core;
@@ -69,6 +71,10 @@ class PipelineMiniCPU : public ClockedObject
     bool tbMemoryEnabled;
     std::string tbImemImageFile;
     std::string tbDmemImageFile;
+    Addr tbInstBase;
+    Addr tbInstSize;
+    Addr tbDataBase;
+    Addr tbDataStorageSize;
     brs::TbCrossbarModel tbCrossbar;
     brs::TbBusRequest tbIbusPulse;
     brs::TbBusRequest tbDbusPulse;
@@ -77,6 +83,9 @@ class PipelineMiniCPU : public ClockedObject
     bool tbDoneRequested = false;
     uint32_t tbDoneValue = 0;
     brs::VeuMemoryResponse tbVeuResponsePins;
+    std::ofstream uartLog;
+    std::string cycleTraceFile;
+    std::ofstream cycleTrace;
 
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
@@ -122,8 +131,14 @@ class PipelineMiniCPU : public ClockedObject
     void preloadProgramFunctional();
     void usePreloadedProgram();
     void preloadDataFunctional();
-    Addr preloadTbRawImage(const std::string &path, Addr base);
+    Addr preloadTbRawImage(
+        const std::string &path, Addr base, Addr capacity);
+    Addr preloadTbReadmemh32Image(
+        const std::string &path, Addr base, Addr capacity);
     void processTbMemoryCycle(const brs::VeuMemoryOutput &veu);
+    void writeTbCycleTrace(
+        const brs::TbCrossbarInputs &inputs,
+        const brs::TbCrossbarOutputs &outputs);
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);

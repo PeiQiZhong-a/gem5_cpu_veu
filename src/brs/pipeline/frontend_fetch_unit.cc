@@ -352,6 +352,7 @@ void
 FrontendFetchUnit::reset(uint32_t startPc)
 {
     pc = startPc;
+    resetEnd = 0;
     fifo.reset();
     ibu.reset(startPc);
     aligner.reset(startPc);
@@ -378,6 +379,13 @@ FrontendFetchUnit::Output
 FrontendFetchUnit::step(const Input &in)
 {
     Output out;
+    const bool resetEndReady = resetEnd == 2;
+    // The RTL IBU decides w_ibus_out_req from the registered state at the
+    // beginning of the edge.  A response may retire that state on this edge,
+    // but it cannot make a replacement request visible until the next edge.
+    // In particular, an old response coincident with a redirect must be
+    // discarded without also issuing the redirected request one cycle early.
+    const bool ibuCouldRequestAtEdgeStart = ibu.canRequest();
 
     if (in.redirect) {
         flush(in.redirectTarget);
@@ -464,10 +472,18 @@ FrontendFetchUnit::step(const Input &in)
         ifInstrLenQ = nextIfInstrLenQ;
     }
 
-    if (fifo.count() < 4 && ibu.canRequest() && pc < in.textEnd) {
+    // PFU only permits the initial IBus request after r_reset_end advances
+    // 0 -> 1 -> 2. A redirect is the IBU fetch-address-update path and is
+    // allowed to request independently of the normal PFU allow-input gate.
+    if ((resetEndReady || in.redirect) && fifo.count() < 4 &&
+        ibuCouldRequestAtEdgeStart && ibu.canRequest() && pc < in.textEnd) {
         out.requestValid = true;
         out.requestAddr = ibu.requestBlockAddr();
         out.requestFetchAddr = ibu.requestFetchAddr();
+    }
+
+    if (resetEnd < 2) {
+        ++resetEnd;
     }
 
     return out;

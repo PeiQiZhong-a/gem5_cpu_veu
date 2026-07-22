@@ -14,6 +14,7 @@ struct IFID
     uint32_t pc = 0;
     uint32_t instr = 0;
     uint8_t instr_len = 4;
+    bool debug_instr = false;
 };
 
 struct IDEX
@@ -30,10 +31,22 @@ struct IDEX
     uint8_t rs2 = 0;
     uint8_t rs3 = 0;
 
+    bool rd_fp = false;
+    bool rs1_fp = false;
+    bool rs2_fp = false;
+    bool rs3_fp = false;
+
     uint32_t rs1_val = 0;
     uint32_t rs2_val = 0;
     uint32_t rs3_val = 0;
     int32_t imm = 0;
+
+    uint16_t csr_addr = 0;
+    uint32_t csr_rdata = 0;
+    uint32_t csr_wdata = 0;
+    CsrWriteType csr_write_type = CsrWriteType::WRITE;
+    bool csr_read = false;
+    bool csr_write = false;
 
     brs::VeuInstruction veu_operation = brs::VeuInstruction::Unknown;
     uint16_t veu_csr_addr = 0;
@@ -61,7 +74,9 @@ struct EXMEM
     InstrKind kind = InstrKind::NOP;
 
     uint8_t rd = 0;
+    bool rd_fp = false;
     uint32_t alu_result = 0;
+    uint32_t mem_data = 0;
     uint32_t store_data = 0;
     uint32_t instr = 0;
     uint8_t instr_len = 4;
@@ -80,6 +95,7 @@ struct MEMWB
     InstrKind kind = InstrKind::NOP;
 
     uint8_t rd = 0;
+    bool rd_fp = false;
     uint32_t alu_result = 0;
     uint32_t mem_data = 0;
     uint32_t instr = 0;

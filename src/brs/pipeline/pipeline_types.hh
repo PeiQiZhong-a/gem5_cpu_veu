@@ -61,9 +61,24 @@ enum class InstrKind
     SB,
     SH,
 
+    FLW,
+    FSW,
+    FMV_X_W,
+    FMV_W_X,
+    FP_ARITH,
+
     FENCE,
+    FENCE_I,
+    CSRRW,
+    CSRRS,
+    CSRRC,
+    CSRRWI,
+    CSRRSI,
+    CSRRCI,
     ECALL,
     EBREAK,
+    MRET,
+    WFI,
 
     VEU,
 
@@ -84,6 +99,13 @@ enum class AluOp
     DIVU,
     REM,
     REMU
+};
+
+enum class CsrWriteType
+{
+    WRITE,
+    SET,
+    CLEAR
 };
 
 enum class WbSel

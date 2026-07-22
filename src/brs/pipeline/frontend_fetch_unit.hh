@@ -168,6 +168,7 @@ class FrontendFetchUnit
     FetchBusUnit ibu;
     FrontendAligner aligner;
     uint32_t pc = 0;
+    uint8_t resetEnd = 0;
     bool pfuInstrNeedUpdate = false;
     bool ifReadyQ = false;
     uint32_t ifPcQ = 0;

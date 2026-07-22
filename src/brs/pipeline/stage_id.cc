@@ -5,6 +5,66 @@
 namespace gem5
 {
 
+namespace
+{
+
+enum class RtlFpKind
+{
+    None,
+    Load,
+    Store,
+    MoveToInt,
+    MoveToFp,
+    Arithmetic
+};
+
+RtlFpKind
+decodeRtlFpKind(uint32_t instr)
+{
+    const uint32_t opcode = instr & 0x7f;
+    const uint32_t funct3 = (instr >> 12) & 0x7;
+    const uint32_t rs2 = (instr >> 20) & 0x1f;
+    const uint32_t funct7 = (instr >> 25) & 0x7f;
+
+    if (opcode == 0x07 && funct3 == 0x2) {
+        return RtlFpKind::Load;
+    }
+    if (opcode == 0x27 && funct3 == 0x2) {
+        return RtlFpKind::Store;
+    }
+    if ((opcode == 0x43 || opcode == 0x47 || opcode == 0x4b ||
+         opcode == 0x4f) && ((instr >> 25) & 0x3) == 0) {
+        return RtlFpKind::Arithmetic;
+    }
+    if (opcode != 0x53) {
+        return RtlFpKind::None;
+    }
+
+    if (funct7 == 0x70 && rs2 == 0 && funct3 == 0) {
+        return RtlFpKind::MoveToInt;
+    }
+    if (funct7 == 0x78 && rs2 == 0 && funct3 == 0) {
+        return RtlFpKind::MoveToFp;
+    }
+
+    const bool binaryArithmetic =
+        funct7 == 0x00 || funct7 == 0x04 || funct7 == 0x08 ||
+        funct7 == 0x0c;
+    const bool sqrt = funct7 == 0x2c && rs2 == 0;
+    const bool signInject = funct7 == 0x10 && funct3 <= 2;
+    const bool minMax = funct7 == 0x14 && funct3 <= 1;
+    const bool convertToInt = funct7 == 0x60 && rs2 <= 1;
+    const bool compare = funct7 == 0x50 && funct3 <= 2;
+    const bool classify = funct7 == 0x70 && rs2 == 0 && funct3 == 1;
+    const bool convertToFloat = funct7 == 0x68 && rs2 <= 1;
+
+    return binaryArithmetic || sqrt || signInject || minMax ||
+           convertToInt || compare || classify || convertToFloat ?
+        RtlFpKind::Arithmetic : RtlFpKind::None;
+}
+
+} // anonymous namespace
+
 void
 PipelineCore::stageID()
 {
@@ -21,6 +81,22 @@ PipelineCore::stageID()
     if (!ifid_cur.valid) {
         return;
     }
+
+    // With no debug instruction supplied by the testbench, PFU does not
+    // present normal program instructions while CSRU is in debug mode.
+    if (csr_debug_mode && !ifid_cur.debug_instr) {
+        return;
+    }
+
+    // CSR register writes take effect at the edge; interrupt qualification
+    // for this edge therefore uses the pre-write CSRU state.
+    const bool takeDebug = !csr_debug_mode &&
+        (debug_halt_sampled || debug_halt_on_reset_latched ||
+         debug_step_halt_requested);
+    const bool takeInterrupt = !csr_debug_mode && !takeDebug &&
+                               interruptActive();
+    const uint8_t pendingInterruptCode =
+        takeInterrupt ? interruptCode() : 0;
 
     uint32_t instr = ifid_cur.instr;
     uint8_t instr_len = ifid_cur.instr_len;
@@ -82,8 +158,65 @@ PipelineCore::stageID()
       return;
     }
 
-  // addi 
-    if (opcode == 0x13 && funct3 == 0x0) {
+    const RtlFpKind fpKind = decodeRtlFpKind(instr);
+    if (fpKind != RtlFpKind::None) {
+      idex_next.valid = true;
+      idex_next.pc = ifid_cur.pc;
+      idex_next.instr = instr;
+      idex_next.rd = static_cast<uint8_t>(rd);
+      idex_next.rs1 = static_cast<uint8_t>(rs1);
+      idex_next.rs2 = static_cast<uint8_t>(rs2);
+      idex_next.rs3 = static_cast<uint8_t>((instr >> 27) & 0x1f);
+
+      if (fpKind == RtlFpKind::Load) {
+          idex_next.kind = InstrKind::FLW;
+          idex_next.rd_fp = true;
+          idex_next.rs1_val = regs[rs1];
+          idex_next.imm = signExtend12(imm12);
+          idex_next.mem_read = true;
+          idex_next.reg_write = true;
+          idex_next.wb_sel = WbSel::MEM;
+      } else if (fpKind == RtlFpKind::Store) {
+          idex_next.kind = InstrKind::FSW;
+          idex_next.rs2_fp = true;
+          idex_next.rs1_val = regs[rs1];
+          idex_next.rs2_val = fp_regs[rs2];
+          idex_next.imm = signExtend12(imm_s);
+          idex_next.mem_write = true;
+      } else if (fpKind == RtlFpKind::MoveToInt) {
+          idex_next.kind = InstrKind::FMV_X_W;
+          idex_next.rs1_fp = true;
+          idex_next.rs1_val = fp_regs[rs1];
+          idex_next.reg_write = true;
+          idex_next.wb_sel = WbSel::ALU;
+      } else if (fpKind == RtlFpKind::MoveToFp) {
+          idex_next.kind = InstrKind::FMV_W_X;
+          idex_next.rd_fp = true;
+          idex_next.rs1_val = regs[rs1];
+          idex_next.reg_write = true;
+          idex_next.wb_sel = WbSel::ALU;
+      } else {
+          const bool fused = opcode == 0x43 || opcode == 0x47 ||
+                             opcode == 0x4b || opcode == 0x4f;
+          const bool intToFloat = opcode == 0x53 && funct7 == 0x68;
+          const bool writesInteger = opcode == 0x53 &&
+              (funct7 == 0x50 || funct7 == 0x60 || funct7 == 0x70);
+
+          idex_next.kind = InstrKind::FP_ARITH;
+          idex_next.rd_fp = !writesInteger;
+          idex_next.rs1_fp = !intToFloat;
+          idex_next.rs2_fp = !intToFloat;
+          idex_next.rs3_fp = fused;
+          idex_next.rs1_val = idex_next.rs1_fp ? fp_regs[rs1] : regs[rs1];
+          idex_next.rs2_val = idex_next.rs2_fp ? fp_regs[rs2] : regs[rs2];
+          idex_next.rs3_val = fused ? fp_regs[idex_next.rs3] : 0;
+          idex_next.reg_write = true;
+          idex_next.wb_sel = WbSel::ALU;
+      }
+    }
+
+  // addi
+    else if (opcode == 0x13 && funct3 == 0x0) {
       idex_next.valid = true;
       idex_next.pc = ifid_cur.pc;
       idex_next.instr = instr;
@@ -670,7 +803,9 @@ PipelineCore::stageID()
         idex_next.reg_write = true;
         idex_next.wb_sel = WbSel::ALU;
     }
-   // fence
+   // fence / fence.i.  In Spirit, FENCE.I only resets the BTB.  This model's
+   // branch predictor is intentionally deferred, so the architectural pipe
+   // behavior is the same as FENCE while retaining a distinct instruction.
     else if (opcode == 0x0F && funct3 == 0x0) {
         idex_next.valid = true;
         idex_next.pc = ifid_cur.pc;
@@ -683,20 +818,100 @@ PipelineCore::stageID()
         idex_next.mem_write = false;
         idex_next.wb_sel = WbSel::NONE;
     }
+    else if (opcode == 0x0F && funct3 == 0x1) {
+        idex_next.valid = true;
+        idex_next.pc = ifid_cur.pc;
+        idex_next.instr = instr;
+        idex_next.kind = InstrKind::FENCE_I;
+        idex_next.wb_sel = WbSel::NONE;
+    }
 
-  //ECALL / EBREAK
-    else if (opcode == 0x73 && funct3 == 0x0) {  
+    // Zicsr.  CSRU is connected directly to Decoder/IDU in the RTL, so the
+    // old value is captured and the write side effect occurs in ID.
+    else if (opcode == 0x73 && funct3 != 0 && funct3 != 0x4) {
+        idex_next.valid = true;
+        idex_next.pc = ifid_cur.pc;
+        idex_next.instr = instr;
+        idex_next.rd = static_cast<uint8_t>(rd);
+        idex_next.rs1 = static_cast<uint8_t>(rs1);
+        idex_next.csr_addr = static_cast<uint16_t>(imm12);
+        idex_next.reg_write = true;
+        idex_next.wb_sel = WbSel::ALU;
+
+        const bool immediate = (funct3 & 0x4) != 0;
+        const uint32_t operand = immediate ? rs1 :
+            decodeForwardedReg(static_cast<uint8_t>(rs1));
+        idex_next.csr_wdata = operand;
+
+        switch (funct3) {
+          case 0x1:
+            idex_next.kind = InstrKind::CSRRW;
+            idex_next.csr_write_type = CsrWriteType::WRITE;
+            idex_next.csr_read = rd != 0;
+            idex_next.csr_write = true;
+            break;
+          case 0x2:
+            idex_next.kind = InstrKind::CSRRS;
+            idex_next.csr_write_type = CsrWriteType::SET;
+            idex_next.csr_read = true;
+            idex_next.csr_write = rs1 != 0;
+            break;
+          case 0x3:
+            idex_next.kind = InstrKind::CSRRC;
+            idex_next.csr_write_type = CsrWriteType::CLEAR;
+            idex_next.csr_read = true;
+            idex_next.csr_write = rs1 != 0;
+            break;
+          case 0x5:
+            idex_next.kind = InstrKind::CSRRWI;
+            idex_next.csr_write_type = CsrWriteType::WRITE;
+            idex_next.csr_read = rd != 0;
+            idex_next.csr_write = true;
+            break;
+          case 0x6:
+            idex_next.kind = InstrKind::CSRRSI;
+            idex_next.csr_write_type = CsrWriteType::SET;
+            idex_next.csr_read = true;
+            idex_next.csr_write = rs1 != 0;
+            break;
+          case 0x7:
+            idex_next.kind = InstrKind::CSRRCI;
+            idex_next.csr_write_type = CsrWriteType::CLEAR;
+            idex_next.csr_read = true;
+            idex_next.csr_write = rs1 != 0;
+            break;
+          default:
+            idex_next = {};
+            return;
+        }
+
+        idex_next.csr_rdata = idex_next.csr_read ?
+            readCsr(idex_next.csr_addr, operand) : 0;
+        if (idex_next.csr_read) {
+            applyCsrReadSideEffects(idex_next.csr_addr, operand);
+        }
+        if (idex_next.csr_write) {
+            writeCsr(idex_next.csr_addr, operand,
+                     idex_next.csr_write_type);
+        }
+    }
+
+  // Privileged/system encodings follow Decoder.sv exactly.  In particular,
+  // ECALL has exception type zero in this RTL and behaves as a normal no-op.
+    else if (instr == 0x00000073u || instr == 0x00100073u ||
+             instr == 0x30200073u || instr == 0x10500073u) {
         idex_next.valid = true;
         idex_next.pc = ifid_cur.pc;
         idex_next.instr = instr;
 
-        if (imm12 == 0x000) {
+        if (instr == 0x00000073u) {
             idex_next.kind = InstrKind::ECALL;
-        } else if (imm12 == 0x001) {
+        } else if (instr == 0x00100073u) {
             idex_next.kind = InstrKind::EBREAK;
+        } else if (instr == 0x30200073u) {
+            idex_next.kind = InstrKind::MRET;
         } else {
-            idex_next = {};
-            return;
+            idex_next.kind = InstrKind::WFI;
         }
 
         idex_next.alu_op = AluOp::NONE;
@@ -706,8 +921,87 @@ PipelineCore::stageID()
         idex_next.wb_sel = WbSel::NONE;
     }
 
+    // CIDU.sv asserts r_id_instr_valid for every full-width instruction
+    // (instr[1:0] == 2'b11), even when Decoder.sv recognizes no operation.
+    // Such an encoding therefore occupies the IE/IC/WB pipeline and retires
+    // as a side-effect-free instruction.  Unsupported compressed encodings
+    // were rejected above and intentionally do not take this path.
+    if (!idex_next.valid && instr_len == 4) {
+        idex_next.valid = true;
+        idex_next.pc = ifid_cur.pc;
+        idex_next.instr = instr;
+        idex_next.kind = InstrKind::INVALID;
+        idex_next.alu_op = AluOp::NONE;
+        idex_next.reg_write = false;
+        idex_next.mem_read = false;
+        idex_next.mem_write = false;
+        idex_next.wb_sel = WbSel::NONE;
+    }
+
     if (idex_next.valid) {
         idex_next.instr_len = instr_len;
+
+        // JCU resolves branch and jump targets in ID.  Use the same IE/IC
+        // bypass sources as CSR decode, so a producer immediately ahead of
+        // the control-flow instruction does not add a bubble.
+        if (!csr_debug_mode && !takeInterrupt && !takeDebug) {
+            bool redirect = false;
+            uint32_t target = 0;
+            const uint32_t lhs = decodeForwardedReg(idex_next.rs1);
+            const uint32_t rhs = decodeForwardedReg(idex_next.rs2);
+
+            switch (idex_next.kind) {
+              case InstrKind::BEQ:  redirect = lhs == rhs; break;
+              case InstrKind::BNE:  redirect = lhs != rhs; break;
+              case InstrKind::BLT:
+                redirect = static_cast<int32_t>(lhs) <
+                           static_cast<int32_t>(rhs);
+                break;
+              case InstrKind::BGE:
+                redirect = static_cast<int32_t>(lhs) >=
+                           static_cast<int32_t>(rhs);
+                break;
+              case InstrKind::BLTU: redirect = lhs < rhs; break;
+              case InstrKind::BGEU: redirect = lhs >= rhs; break;
+              case InstrKind::JAL:
+                redirect = true;
+                break;
+              case InstrKind::JALR:
+                redirect = true;
+                target = static_cast<uint32_t>(
+                    static_cast<int32_t>(lhs) + idex_next.imm);
+                break;
+              default:
+                break;
+            }
+
+            if (redirect) {
+                if (idex_next.kind != InstrKind::JALR) {
+                    target = static_cast<uint32_t>(
+                        static_cast<int32_t>(idex_next.pc) + idex_next.imm);
+                }
+                const uint32_t sequentialPc =
+                    idex_next.pc + idex_next.instr_len;
+                if (target != sequentialPc) {
+                    redirect_pc = true;
+                    redirect_target = target;
+                    ++flush_count;
+                }
+            }
+        }
+
+        // Interrupt entry is resolved in ID in Spirit.  The instruction
+        // currently in ID is allowed to advance; only younger fetch state is
+        // redirected, and mepc receives that instruction's sequential PC.
+        if (takeInterrupt) {
+            enterTrap(idex_next.pc + idex_next.instr_len,
+                      pendingInterruptCode, true);
+            ++flush_count;
+        } else if (takeDebug) {
+            enterDebug(idex_next.pc + idex_next.instr_len,
+                       debug_step_halt_requested ? 4 : 3);
+            ++flush_count;
+        }
     }
 }
 

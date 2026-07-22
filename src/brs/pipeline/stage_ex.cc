@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <iostream>
+
+#include "base/logging.hh"
 namespace gem5
 {
 
@@ -11,7 +13,10 @@ namespace
 
 constexpr uint32_t Int32Min = 0x80000000u;
 constexpr uint32_t MinusOne = 0xffffffffu;
-constexpr uint32_t MultiplierLatencyCycles = 3;
+// Multiplier.sv accepts in state 0, stalls through states 0 and 1, and
+// exposes ready in state 2. The instruction therefore occupies three EX
+// evaluations with two stalled evaluations before completion.
+constexpr uint32_t MultiplierLatencyCycles = 2;
 
 bool
 isMduInstr(InstrKind kind)
@@ -20,6 +25,71 @@ isMduInstr(InstrKind kind)
            kind == InstrKind::MULHSU || kind == InstrKind::MULHU ||
            kind == InstrKind::DIV || kind == InstrKind::DIVU ||
            kind == InstrKind::REM || kind == InstrKind::REMU;
+}
+
+bool
+isLoadInstr(InstrKind kind)
+{
+    return kind == InstrKind::LB || kind == InstrKind::LBU ||
+           kind == InstrKind::LH || kind == InstrKind::LHU ||
+           kind == InstrKind::LW || kind == InstrKind::FLW;
+}
+
+bool
+isStoreInstr(InstrKind kind)
+{
+    return kind == InstrKind::SB || kind == InstrKind::SH ||
+           kind == InstrKind::SW || kind == InstrKind::FSW;
+}
+
+unsigned
+memAccessSize(InstrKind kind)
+{
+    switch (kind) {
+      case InstrKind::LB:
+      case InstrKind::LBU:
+      case InstrKind::SB:
+        return 1;
+      case InstrKind::LH:
+      case InstrKind::LHU:
+      case InstrKind::SH:
+        return 2;
+      case InstrKind::LW:
+      case InstrKind::SW:
+      case InstrKind::FLW:
+      case InstrKind::FSW:
+        return 4;
+      default:
+        return 0;
+    }
+}
+
+uint32_t
+signOrZeroExtendLoad(InstrKind kind, uint32_t value, uint32_t address)
+{
+    const unsigned byteOffset = address & 0x3u;
+    const uint32_t selectedByte = (value >> (byteOffset * 8)) & 0xffu;
+    // LSU.sv uses addr[1:0] == 0 for the low halfword and the high
+    // halfword for all other offsets.  It never assembles across words.
+    const uint32_t selectedHalf = byteOffset == 0 ?
+        (value & 0xffffu) : ((value >> 16) & 0xffffu);
+
+    switch (kind) {
+      case InstrKind::LB:
+        return static_cast<uint32_t>(
+            static_cast<int32_t>(static_cast<int8_t>(selectedByte)));
+      case InstrKind::LBU:
+        return selectedByte;
+      case InstrKind::LH:
+        return static_cast<uint32_t>(
+            static_cast<int32_t>(static_cast<int16_t>(selectedHalf)));
+      case InstrKind::LHU:
+        return selectedHalf;
+      case InstrKind::LW:
+      case InstrKind::FLW:
+      default:
+        return value;
+    }
 }
 
 uint32_t
@@ -210,6 +280,7 @@ PipelineCore::stageEX()
             exmem_next.pc = idex_cur.pc;
             exmem_next.kind = idex_cur.kind;
             exmem_next.rd = idex_cur.rd;
+            exmem_next.rd_fp = idex_cur.rd_fp;
             exmem_next.alu_result = veuCbuOutput.result;
             exmem_next.instr = idex_cur.instr;
             exmem_next.instr_len = idex_cur.instr_len;
@@ -247,10 +318,94 @@ PipelineCore::stageEX()
         }
     }
 
+    // The generated RTL has RV32F decode and an FP register file, but its
+    // IEU has no connected FPU.  RES_RV32F therefore asserts stall_req
+    // continuously.  Preserve that exact behavior until the RTL itself is
+    // regenerated with a real FPU interface.
+    if (idex_cur.kind == InstrKind::FP_ARITH) {
+        fp_stall = true;
+        exmem_next = {};
+        return;
+    }
+
+    const bool isLoad = isLoadInstr(idex_cur.kind);
+    const bool isStore = isStoreInstr(idex_cur.kind);
+    if (isLoad || isStore) {
+        const uint32_t computedAddress = static_cast<uint32_t>(
+            static_cast<int32_t>(op_a) + idex_cur.imm);
+        const unsigned size = memAccessSize(idex_cur.kind);
+
+        panic_if(!requestTimingData,
+                 "Timing data backend is not configured for memory access");
+
+        if (!mem_req_issued && !data_waiting && !data_response_valid) {
+            if (requestTimingData(computedAddress, size, isStore, op_b)) {
+                mem_req_issued = true;
+                mem_request_addr = computedAddress;
+                mem_request_store_data = op_b;
+                data_waiting = true;
+            }
+            lsu_stall = true;
+            exmem_next = {};
+            return;
+        }
+
+        if (!data_response_valid) {
+            lsu_stall = true;
+            exmem_next = {};
+            return;
+        }
+
+        const uint32_t address = mem_req_issued ?
+            mem_request_addr : computedAddress;
+        const uint32_t storeData = mem_req_issued ?
+            mem_request_store_data : op_b;
+
+        panic_if(data_response_addr != address,
+                 "Data response address mismatch: response=%#x expected=%#x",
+                 data_response_addr, address);
+        panic_if(data_response_is_store != isStore,
+                 "Data response type mismatch for pc=%#x", idex_cur.pc);
+
+        exmem_next.valid = true;
+        exmem_next.pc = idex_cur.pc;
+        exmem_next.kind = idex_cur.kind;
+        exmem_next.rd = idex_cur.rd;
+        exmem_next.rd_fp = idex_cur.rd_fp;
+        exmem_next.store_data = storeData;
+        exmem_next.instr = idex_cur.instr;
+        exmem_next.instr_len = idex_cur.instr_len;
+        exmem_next.reg_write = idex_cur.reg_write;
+        exmem_next.mem_read = idex_cur.mem_read;
+        exmem_next.mem_write = idex_cur.mem_write;
+        exmem_next.wb_sel = idex_cur.wb_sel;
+
+        if (isLoad) {
+            const uint32_t loaded =
+                signOrZeroExtendLoad(idex_cur.kind, data_response_value,
+                                     address);
+            exmem_next.alu_result = loaded;
+            exmem_next.mem_data = loaded;
+        } else {
+            exmem_next.alu_result = address;
+        }
+
+        mem_req_issued = false;
+        mem_request_addr = 0;
+        mem_request_store_data = 0;
+        data_waiting = false;
+        data_response_valid = false;
+        data_response_addr = 0;
+        data_response_value = 0;
+        data_response_is_store = false;
+        return;
+    }
+
     exmem_next.valid = true;
     exmem_next.pc = idex_cur.pc;
     exmem_next.kind = idex_cur.kind;
     exmem_next.rd = idex_cur.rd;
+    exmem_next.rd_fp = idex_cur.rd_fp;
     exmem_next.reg_write = idex_cur.reg_write;
     exmem_next.mem_read = idex_cur.mem_read;
     exmem_next.mem_write = idex_cur.mem_write;
@@ -291,6 +446,7 @@ PipelineCore::stageEX()
       case InstrKind::LH:
       case InstrKind::LHU:
       case InstrKind::LW:
+      case InstrKind::FLW:
           exmem_next.alu_result = static_cast<uint32_t>(
               static_cast<int32_t>(op_a) + idex_cur.imm);
           break;
@@ -298,6 +454,7 @@ PipelineCore::stageEX()
       case InstrKind::SB:
       case InstrKind::SH:
       case InstrKind::SW:
+      case InstrKind::FSW:
           exmem_next.alu_result = static_cast<uint32_t>(
               static_cast<int32_t>(op_a) + idex_cur.imm);
           break;
@@ -309,47 +466,23 @@ PipelineCore::stageEX()
       case InstrKind::BLTU:
       case InstrKind::BGEU:
       {
-          bool taken = false;
-
-          switch (idex_cur.kind) {
-            case InstrKind::BEQ:  taken = (op_a == op_b); break;
-            case InstrKind::BNE:  taken = (op_a != op_b); break;
-            case InstrKind::BLT:  taken = (static_cast<int32_t>(op_a) <  static_cast<int32_t>(op_b)); break;
-            case InstrKind::BGE:  taken = (static_cast<int32_t>(op_a) >= static_cast<int32_t>(op_b)); break;
-            case InstrKind::BLTU: taken = (op_a < op_b); break;
-            case InstrKind::BGEU: taken = (op_a >= op_b); break;
-            default: break;
-          }
-
-          if (taken) {
-              redirect_pc = true;
-              redirect_target = static_cast<uint32_t>(
-                  static_cast<int32_t>(idex_cur.pc) + idex_cur.imm);
-              flush_idex = true;
-              ++flush_count;
-          }
-
+          // JCU already resolved this instruction in ID.
           exmem_next.alu_result = 0;
           break;
       }
 
       case InstrKind::JALR:
           exmem_next.alu_result = idex_cur.pc + idex_cur.instr_len;
-          redirect_pc = true;
-          redirect_target = static_cast<uint32_t>(
-              (static_cast<int32_t>(op_a) + idex_cur.imm)) & ~1u;
-          flush_idex = true;
-          ++flush_count;
           break;
 
       case InstrKind::JAL:
         exmem_next.alu_result = idex_cur.pc + idex_cur.instr_len;
 
-        redirect_pc = true;
-        redirect_target = static_cast<uint32_t>(
-            static_cast<int32_t>(idex_cur.pc) + idex_cur.imm);
-        flush_idex = true;
-        ++flush_count;
+        break;
+
+      case InstrKind::FMV_X_W:
+      case InstrKind::FMV_W_X:
+        exmem_next.alu_result = op_a;
         break;
 
       case InstrKind::LUI:
@@ -429,13 +562,41 @@ PipelineCore::stageEX()
             static_cast<int32_t>(op_a) >> (op_b & 0x1F));
          break;
       case InstrKind::FENCE:
+      case InstrKind::FENCE_I:
+      case InstrKind::WFI:
+      case InstrKind::ECALL:
           exmem_next.alu_result = 0;
           break;
 
-      case InstrKind::ECALL:
+      case InstrKind::CSRRW:
+      case InstrKind::CSRRS:
+      case InstrKind::CSRRC:
+      case InstrKind::CSRRWI:
+      case InstrKind::CSRRSI:
+      case InstrKind::CSRRCI:
+          exmem_next.alu_result = idex_cur.csr_rdata;
+          break;
+
       case InstrKind::EBREAK:
-          halt_requested = true;
-          flush_idex = true;   
+          // DCSR may turn EBREAK into a debug entry.  Otherwise Spirit uses
+          // internal exception code 4 and records the resolved sequential PC.
+          if (!csr_debug_mode &&
+              (csr_machine_mode ? csr_dcsr_ebreakm : csr_dcsr_ebreaku)) {
+              enterDebug(idex_cur.pc + idex_cur.instr_len, 1);
+          } else if (!csr_debug_mode) {
+              enterTrap(idex_cur.pc + idex_cur.instr_len, 4, false);
+          } else {
+              debug_instr_caught_ebreak = true;
+          }
+          flush_idex = true;
+          ++flush_count;
+          exmem_next.alu_result = 0;
+          break;
+
+      case InstrKind::MRET:
+          returnFromTrap();
+          flush_idex = true;
+          ++flush_count;
           exmem_next.alu_result = 0;
           break;
 

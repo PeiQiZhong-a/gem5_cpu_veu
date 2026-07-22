@@ -81,6 +81,34 @@ cBase(uint32_t funct3, uint32_t quadrant)
     return static_cast<uint16_t>((funct3 << 13) | quadrant);
 }
 
+bool
+rtlCiduRecognizes(uint16_t c)
+{
+    if ((c & 0x3u) == 0x3u) {
+        return true;
+    }
+    const uint32_t key0 = (((c >> 13) & 0x7u) << 2) | (c & 0x3u);
+    const uint32_t key9 = (((c >> 13) & 0x7u) << 4) |
+                          (((c >> 10) & 0x3u) << 2) | (c & 0x3u);
+    const uint32_t key12 = (((c >> 10) & 0x3fu) << 4) |
+                           (((c >> 5) & 0x3u) << 2) | (c & 0x3u);
+    const uint32_t key20 = (((c >> 12) & 0xfu) << 7) | (c & 0x7fu);
+    const uint32_t key22 = (((c >> 12) & 0xfu) << 2) | (c & 0x3u);
+    const uint32_t key7 = (((c >> 13) & 0x7u) << 7) |
+                          (((c >> 7) & 0x1fu) << 2) | (c & 0x3u);
+
+    return key0 == 0x00 || key0 == 0x08 || key0 == 0x18 ||
+           key0 == 0x01 || key0 == 0x05 || key0 == 0x15 ||
+           key0 == 0x09 || key7 == 0x189 || key0 == 0x0d ||
+           key9 == 0x41 || key9 == 0x45 || key9 == 0x49 ||
+           key12 == 0x231 || key12 == 0x235 ||
+           key12 == 0x239 || key12 == 0x23d ||
+           key0 == 0x19 || key0 == 0x1d || key0 == 0x02 ||
+           key0 == 0x0a || key20 == 0x402 || key22 == 0x22 ||
+           c == 0x9002 || key20 == 0x482 || key22 == 0x26 ||
+           key0 == 0x1a;
+}
+
 } // anonymous namespace
 
 TEST(CompressedDecodeTest, PassesThroughRv32Instructions)
@@ -164,6 +192,31 @@ TEST(CompressedDecodeTest, RejectsUnsupportedCompressedPatterns)
 {
     uint32_t expanded = 0;
     EXPECT_FALSE(expandCompressedInstr(cBase(1, 0), expanded));
+}
+
+TEST(CompressedDecodeTest, MatchesCiduRecognitionForEveryEncoding)
+{
+    for (uint32_t encoding = 0; encoding <= 0xffffu; ++encoding) {
+        uint32_t expanded = 0;
+        const bool recognized = expandCompressedInstr(encoding, expanded);
+        EXPECT_EQ(recognized,
+                  rtlCiduRecognizes(static_cast<uint16_t>(encoding)))
+            << "encoding=0x" << std::hex << encoding;
+    }
+}
+
+TEST(CompressedDecodeTest, PreservesGeneratedRtlHintAndReservedBehavior)
+{
+    // CIDU recognizes these encodings without the architectural reserved/HINT
+    // filters from the RISC-V specification.
+    expectExpand(0x0000, encodeI(0, 2, 0, 8, OPCODE_OPIMM));
+    expectExpand(0x0001, encodeI(0, 0, 0, 0, OPCODE_OPIMM));
+    expectExpand(0x0085, encodeI(1, 1, 0, 1, OPCODE_OPIMM));
+    expectExpand(0x4005, encodeI(1, 0, 0, 0, OPCODE_OPIMM));
+    expectExpand(0x6001, encodeU(0, 0, OPCODE_LUI));
+    expectExpand(0x0002, encodeI(0, 0, 1, 0, OPCODE_OPIMM));
+    expectExpand(0x4002, encodeI(0, 2, 2, 0, OPCODE_LOAD));
+    expectExpand(0x8002, encodeI(0, 0, 0, 0, OPCODE_JALR));
 }
 
 } // namespace gem5
