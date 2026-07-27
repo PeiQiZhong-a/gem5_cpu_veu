@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "brs/pipeline/pipeline_types.hh"
+#include "brs/sau/sau_protocol.hh"
 #include "brs/veu/veu_protocol.hh"
 
 namespace gem5
@@ -54,6 +55,12 @@ struct IDEX
     bool veu_csr_write = false;
     brs::VeuWriteType veu_write_type = brs::VeuWriteType::Write;
     uint32_t veu_start = 0;
+
+    brs::SauInstruction sau_operation = brs::SauInstruction::Unknown;
+    uint16_t sau_csr_addr = 0;
+    bool sau_csr_read = false;
+    bool sau_csr_write = false;
+    brs::SauWriteType sau_write_type = brs::SauWriteType::Write;
 
     AluOp alu_op = AluOp::NONE;
     bool mdu_op_is_div = false;

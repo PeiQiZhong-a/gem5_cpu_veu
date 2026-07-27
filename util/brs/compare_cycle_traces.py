@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-TRACE_HEADER = "brs-cycle-trace-v1"
+TRACE_HEADERS = ("brs-cycle-trace-v1", "brs-cycle-trace-v2")
 INT_RE = re.compile(r"^[+-]?[0-9]+$")
 HEX_RE = re.compile(r"^0x[0-9a-f]+$")
 
@@ -74,7 +74,7 @@ def load_trace(path: Path) -> Trace:
             if not line:
                 continue
             if line.startswith("#"):
-                if TRACE_HEADER in line:
+                if any(header in line for header in TRACE_HEADERS):
                     saw_header = True
                     for token in line[1:].split():
                         if token.startswith("source="):
@@ -103,7 +103,9 @@ def load_trace(path: Path) -> Trace:
             records.append(fields)
 
     if not saw_header:
-        raise ValueError(f"{path}: missing '# {TRACE_HEADER}' header")
+        raise ValueError(
+            f"{path}: missing a supported trace header "
+            f"({', '.join(TRACE_HEADERS)})")
     if not records:
         raise ValueError(f"{path}: no cycle records")
     return Trace(path, source, tuple(records))

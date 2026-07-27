@@ -7,6 +7,10 @@ from compare_cycle_traces import compare, load_trace
 
 HEADER_RTL = "# brs-cycle-trace-v1 source=rtl sampling=posedge-pre-nba\n"
 HEADER_GEM5 = "# brs-cycle-trace-v1 source=gem5 sampling=posedge-pre-nba\n"
+HEADER_GEM5_V2 = (
+    "# brs-cycle-trace-v2 source=gem5 "
+    "sampling=evaluate-before-clock platform=rtl-dut-kui-tb\n"
+)
 
 
 def cycle(edge: int, **fields: int) -> str:
@@ -40,7 +44,8 @@ class CompareCycleTracesTest(unittest.TestCase):
                   done=1, done_value=2),
         ]
         rtl = load_trace(self.write("rtl.log", HEADER_RTL, lines))
-        gem5 = load_trace(self.write("gem5.log", HEADER_GEM5, lines))
+        # New gem5 v2 output remains comparable with archived RTL v1 traces.
+        gem5 = load_trace(self.write("gem5.log", HEADER_GEM5_V2, lines))
         self.assertTrue(compare(rtl, gem5, 2)["match"])
 
     def test_reports_first_retire_edge_and_cycle_mismatch(self):

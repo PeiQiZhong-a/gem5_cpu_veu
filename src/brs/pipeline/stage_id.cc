@@ -1,5 +1,6 @@
 #include "brs/pipeline/pipeline_core.hh"
 #include "brs/pipeline/compressed_decode.hh"
+#include "brs/pipeline/sau_decode.hh"
 #include "brs/pipeline/veu_decode.hh"
 
 namespace gem5
@@ -129,6 +130,31 @@ PipelineCore::stageID()
     (((instr >> 21) & 0x3FF) << 1);
 
     const uint32_t imm_u = instr & 0xFFFFF000u;
+
+    const brs::SauDecodeInfo sau = brs::decodeSpiritSauInstruction(instr);
+    if (sau.valid) {
+      idex_next.valid = true;
+      idex_next.pc = ifid_cur.pc;
+      idex_next.instr = instr;
+      idex_next.instr_len = instr_len;
+      idex_next.kind = InstrKind::SAU;
+
+      idex_next.rd = sau.rd;
+      idex_next.rs1 = sau.rs1;
+      idex_next.rs2 = sau.rs2;
+      idex_next.rs1_val = regs[sau.rs1];
+      idex_next.rs2_val = regs[sau.rs2];
+
+      idex_next.sau_operation = sau.operation;
+      idex_next.sau_csr_addr = sau.csrAddr;
+      idex_next.sau_csr_read = sau.csrRead;
+      idex_next.sau_csr_write = sau.csrWrite;
+      idex_next.sau_write_type = sau.writeType;
+
+      idex_next.reg_write = sau.writesRd;
+      idex_next.wb_sel = WbSel::SAU;
+      return;
+    }
 
     const brs::VeuDecodeInfo veu = brs::decodeSpiritVeuInstruction(instr);
     if (veu.valid) {

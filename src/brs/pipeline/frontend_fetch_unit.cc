@@ -286,7 +286,9 @@ FetchBusUnit::flush(uint32_t pc)
 uint32_t
 FetchBusUnit::requestBlockAddr() const
 {
-    return alignDown(nextFetchAddr, 16);
+    // The Spirit testbench returns four words beginning at
+    // ibus_out_addr[31:2], rather than at a 16-byte burst boundary.
+    return alignDown(nextFetchAddr, sizeof(uint32_t));
 }
 
 void
@@ -478,7 +480,9 @@ FrontendFetchUnit::step(const Input &in)
     if ((resetEndReady || in.redirect) && fifo.count() < 4 &&
         ibuCouldRequestAtEdgeStart && ibu.canRequest() && pc < in.textEnd) {
         out.requestValid = true;
-        out.requestAddr = ibu.requestBlockAddr();
+        // Spirit exposes the true fetch address on ibus_out_addr.  The
+        // response block base is tracked separately at 32-bit word alignment.
+        out.requestAddr = ibu.requestFetchAddr();
         out.requestFetchAddr = ibu.requestFetchAddr();
     }
 

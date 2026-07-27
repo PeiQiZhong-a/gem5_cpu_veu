@@ -25,6 +25,30 @@ encodeBranch(uint8_t funct3, uint8_t rs1, uint8_t rs2, uint32_t imm)
            (((imm >> 11) & 1) << 7) | 0x63;
 }
 
+TEST(PipelineTickPhaseTest, EvaluateAndClockAdvanceExactlyOneCycle)
+{
+    PipelineCore core;
+    core.reset(0, 0x200);
+    disableFetch(core);
+
+    const uint64_t cycle = core.getCycle();
+    core.evaluateOneCycle();
+    EXPECT_TRUE(core.cycleHasBeenEvaluated());
+    EXPECT_EQ(core.getCycle(), cycle);
+
+    // A second combinational-system evaluation in the same tick is inert.
+    core.evaluateOneCycle();
+    EXPECT_EQ(core.getCycle(), cycle);
+
+    core.clockOneCycle();
+    EXPECT_FALSE(core.cycleHasBeenEvaluated());
+    EXPECT_EQ(core.getCycle(), cycle + 1);
+
+    // A stray second edge without a fresh evaluate phase is also inert.
+    core.clockOneCycle();
+    EXPECT_EQ(core.getCycle(), cycle + 1);
+}
+
 TEST(PipelineControlFlowTest, TakenBranchRedirectsInIdWithIeuBypass)
 {
     PipelineCore core;
@@ -121,7 +145,7 @@ TEST(PipelineDecodeTest, UnknownFullWidthInstructionFlowsAndRetires)
     EXPECT_EQ(core.getRetiredInstCount(), 1u);
 }
 
-TEST(PipelineDecodeTest, UnknownCompressedEncodingIsDiscarded)
+TEST(PipelineDecodeTest, ZeroCompressedEncodingFollowsGeneratedRtlHint)
 {
     PipelineCore core;
     core.reset(0, 0x200);
@@ -129,7 +153,11 @@ TEST(PipelineDecodeTest, UnknownCompressedEncodingIsDiscarded)
     core.ifid_cur = {true, 0, 0x00000000u, 2};
 
     core.stepOneCycle();
-    EXPECT_FALSE(core.idexValid());
+    ASSERT_TRUE(core.idexValid());
+    EXPECT_EQ(core.idex_cur.kind, InstrKind::ADDI);
+    EXPECT_EQ(core.idex_cur.rd, 8);
+    EXPECT_EQ(core.idex_cur.rs1, 2);
+    EXPECT_EQ(core.idex_cur.imm, 0);
     EXPECT_EQ(core.getRetiredInstCount(), 0u);
 }
 
