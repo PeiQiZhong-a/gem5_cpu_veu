@@ -267,6 +267,19 @@ struct DataImage
         data.clear();
     }
 
+    bool trimZeroFilledTail(size_t capacity)
+    {
+        if (data.size() <= capacity) {
+            return true;
+        }
+        if (std::any_of(data.begin() + capacity, data.end(),
+                        [](uint8_t byte) { return byte != 0; })) {
+            return false;
+        }
+        data.resize(capacity);
+        return true;
+    }
+
     bool loadHexFile(const std::string &path)
     {
         clear();

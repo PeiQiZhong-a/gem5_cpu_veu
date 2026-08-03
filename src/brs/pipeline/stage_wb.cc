@@ -62,6 +62,10 @@ PipelineCore::stageWB()
         }
 
         ++retired_inst_count;
+
+        if (memwb_cur.kind == InstrKind::EBREAK && ebreak_termination) {
+            done_flag = true;
+        }
     }
 
     regs[0] = 0;

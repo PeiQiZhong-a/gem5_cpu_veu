@@ -125,6 +125,7 @@ class DutKuiMemoryModel
 
     void writeByte(uint32_t address, uint8_t value);
     uint8_t readByte(uint32_t address) const;
+    bool dataMapped(uint32_t address) const;
     void writeWord(uint32_t address, uint32_t value);
     uint32_t readWord(uint32_t address) const;
 
@@ -186,7 +187,6 @@ class DutKuiMemoryModel
     std::deque<DelayedResponse<DutKuiIbusResponse>> ibusResponses;
     DutKuiMemoryOutputs visibleOutputs;
     bool instructionMapped(uint32_t address) const;
-    bool dataMapped(uint32_t address) const;
     DutKuiMemoryOutputs advance(
         bool veuLockActive, const SauMemoryOutput &sau);
 };

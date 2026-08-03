@@ -1,0 +1,50 @@
+{
+  "cycle_count": 242297,
+  "details": {
+    "instruction_image": {
+      "sau_slots_in_image": [
+        1,
+        2,
+        3,
+        4,
+        3,
+        4
+      ],
+      "word_count": 65536
+    },
+    "memory_requests": 0,
+    "sau_instruction_counts": {
+      "msetins1": 1,
+      "msetins2": 1,
+      "msetins3": 32,
+      "msetins4": 32
+    },
+    "sau_issue_count": 66,
+    "sau_retire_count": 66
+  },
+  "fixture": "archive_baseline",
+  "instruction_sha256": "7208598f61edba17594ef9ac9f8402a113f021293266748e99f2945e573bdce2",
+  "memory_profile": {
+    "data_bank_count": 4,
+    "data_bank_size": 1048576,
+    "data_base": 536870912,
+    "data_real_bank_count": 4,
+    "data_window_bytes": 4194304,
+    "instruction_base": 0,
+    "instruction_bytes": 262144,
+    "termination": "ebreak"
+  },
+  "memory_sha256": null,
+  "retired_inst_count": 49844,
+  "roi_end_retired_inst": 0,
+  "roi_start_retired_inst": 0,
+  "sau_csr_handshake_cycles": 132,
+  "sau_model": "stub",
+  "stall_count": 93814,
+  "status": "PASS",
+  "termination": {
+    "termination": "ebreak",
+    "termination_edge": 242307,
+    "termination_pc": "0xc32"
+  }
+}

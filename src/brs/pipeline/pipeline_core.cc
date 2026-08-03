@@ -32,6 +32,12 @@ PipelineCore::configureTextEndTermination(bool enabled)
 }
 
 void
+PipelineCore::configureEbreakTermination(bool enabled)
+{
+    ebreak_termination = enabled;
+}
+
+void
 PipelineCore::configureTrapVector(uint32_t trapVector)
 {
     trap_vector_reset = trapVector;

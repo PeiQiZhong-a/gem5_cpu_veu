@@ -23,6 +23,7 @@
 #include "brs/pipeline_stats.hh"
 #include "brs/memory/dut_kui_memory_model.hh"
 #include "brs/memory/npu_lpnpu_mikui_memory_model.hh"
+#include "brs/sau/sau_n_endpoint.hh"
 
 namespace gem5
 {
@@ -85,10 +86,17 @@ class PipelineMiniCPU : public ClockedObject
     Addr tbDataStorageSize;
     brs::DutKuiMemoryModel dutKuiMemory;
     brs::NpuLpnpuMikuiMemoryModel npuLpnpuMikuiMemory;
+    std::unique_ptr<brs::SauNEndpoint> sauNSau;
+    uint64_t observedSauOperationStarts = 0;
+    uint64_t observedSauOperationCompletes = 0;
+    uint64_t sauRoiStartRetiredInst = 0;
+    uint64_t sauRoiEndRetiredInst = 0;
     bool tbInstOutstanding = false;
     bool tbDataOutstanding = false;
     std::string cycleTraceFile;
+    bool cycleTraceCompact;
     std::ofstream cycleTrace;
+    uint64_t sauNOutputTraceOperations = 0;
 
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
@@ -104,6 +112,11 @@ class PipelineMiniCPU : public ClockedObject
     unsigned pendingDataSize = 0;
     bool pendingDataIsWrite = false;
     uint32_t pendingDataWriteValue = 0;
+    bool pendingDataUnaligned = false;
+    unsigned pendingDataBeatCount = 1;
+    unsigned pendingDataBeatIndex = 0;
+    uint32_t pendingDataCurrentBeatAddress = 0;
+    uint32_t pendingDataReadValue = 0;
 
     PacketPtr pendingVeuReq = nullptr;
     bool veuReqRetry = false;
@@ -159,6 +172,7 @@ class PipelineMiniCPU : public ClockedObject
     void writeDutKuiCycleTrace(
         const brs::SauMemoryOutput &sau,
         const brs::DutKuiMemoryOutputs &outputs);
+    void writeSauNOutputTrace();
     void processDutKuiMemoryCycle(const brs::SauMemoryOutput &sau);
     bool dutKuiMemoryEnabled() const;
     bool npuLpnpuMikuiMemoryEnabled() const;

@@ -33,6 +33,12 @@ class PipelineMiniCPU(ClockedObject):
     tb_inst_size = Param.Addr(0x00040000, "RTL instruction SRAM size")
     tb_data_base = Param.Addr(0x29120000, "RTL data SRAM base")
     tb_data_size = Param.Addr(0x00040000, "RTL decoded data window size")
+    tb_data_bank_size = Param.UInt32(
+        0x00010000, "dut_kui data bank size")
+    tb_data_bank_count = Param.UInt32(
+        4, "dut_kui decoded data bank count")
+    tb_data_real_bank_count = Param.UInt32(
+        3, "dut_kui physically backed data bank count")
 
     max_cycles = Param.UInt64(
         2_000_000,
@@ -61,9 +67,21 @@ class PipelineMiniCPU(ClockedObject):
     debug_instr_valid = Param.Bool(False, "Injected debug instruction valid")
     cycle_trace_file = Param.String(
         "", "Optional per-cycle RTL-comparison trace written in gem5 output")
+    cycle_trace_compact = Param.Bool(
+        False,
+        "Write a compact event-enriched cycle trace instead of full signal lines",
+    )
+    ebreak_terminates = Param.Bool(
+        False,
+        "Treat a retired EBREAK as a normal workload termination",
+    )
     veu_model = Param.String(
         "fake",
         "VEU backend model: fake or timing",
+    )
+    sau_model = Param.String(
+        "stub",
+        "SAU backend model: stub or sau_n",
     )
     veu_input_fifo_depth = Param.UInt32(
         4,

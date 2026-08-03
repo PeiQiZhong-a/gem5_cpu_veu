@@ -65,10 +65,28 @@ parser.add_argument(
     help="Write a machine-readable per-cycle CPU/bus trace to this output file.",
 )
 parser.add_argument(
+    "--cycle-trace-compact",
+    action="store_true",
+    help=("Keep one compact CPU-PC record per cycle and add full fields only "
+          "for HC/SAU/retire events."),
+)
+parser.add_argument(
+    "--terminate-on-ebreak",
+    action="store_true",
+    help="Treat a retired EBREAK as the normal workload termination point.",
+)
+parser.add_argument(
     "--veu-model",
     choices=["fake", "timing"],
     default="fake",
     help="VEU backend model. fake preserves current tests; timing runs the VEU state-machine model.",
+)
+parser.add_argument(
+    "--sau-model",
+    choices=["stub", "sau_n"],
+    default="stub",
+    help=("SAU backend model. stub preserves current behavior; sau_n uses "
+          "StreamingConvPipelineModel."),
 )
 parser.add_argument("--veu-input-fifo-depth", type=int, default=4)
 parser.add_argument("--veu-execute-latency", type=int, default=3)
@@ -109,7 +127,40 @@ parser.add_argument(
 parser.add_argument(
     "--dmem-hex",
     default="",
-    help="DMEM text image with one byte per token.",
+    help=(
+        "DMEM text image: rtl-dut-kui-tb uses one 32-bit $readmemh word "
+        "per token; spirit-like uses one byte per token."
+    ),
+)
+parser.add_argument(
+    "--rtl-data-base",
+    type=lambda value: int(value, 0),
+    default=0x29120000,
+    help="RTL-testbench data window base address.",
+)
+parser.add_argument(
+    "--rtl-data-size",
+    type=lambda value: int(value, 0),
+    default=0x00040000,
+    help="RTL-testbench decoded data window size.",
+)
+parser.add_argument(
+    "--rtl-data-bank-size",
+    type=lambda value: int(value, 0),
+    default=0x00010000,
+    help="RTL-testbench data bank size.",
+)
+parser.add_argument(
+    "--rtl-data-bank-count",
+    type=int,
+    default=4,
+    help="RTL-testbench decoded data bank count (at most four).",
+)
+parser.add_argument(
+    "--rtl-data-real-bank-count",
+    type=int,
+    default=3,
+    help="RTL-testbench physically backed data bank count.",
 )
 parser.add_argument(
     "--imem-base",
@@ -203,6 +254,19 @@ if args.dmem_hex and args.mem_system != "spirit-like" and not rtl_tb_mode:
 if reset_cycles < 0:
     parser.error("--reset-cycles must be non-negative")
 
+if dut_kui_tb_mode:
+    if args.rtl_data_base < 0 or args.rtl_data_size <= 0:
+        parser.error("RTL data base/size must describe a non-empty window")
+    if args.rtl_data_bank_size <= 0:
+        parser.error("--rtl-data-bank-size must be positive")
+    if not 1 <= args.rtl_data_bank_count <= 4:
+        parser.error("--rtl-data-bank-count must be in the range 1..4")
+    if not 0 <= args.rtl_data_real_bank_count <= args.rtl_data_bank_count:
+        parser.error("invalid RTL real-bank count")
+    if args.rtl_data_bank_size * args.rtl_data_bank_count != args.rtl_data_size:
+        parser.error(
+            "--rtl-data-size must equal bank-size * bank-count")
+
 if args.fake_veu_latency < 1:
     parser.error("--fake-veu-latency must be at least one cycle")
 
@@ -243,8 +307,8 @@ if rtl_tb_mode:
         ]
     else:
         rtl_inst_size = 0x00040000
-        rtl_data_base = 0x29120000
-        rtl_data_size = 0x00040000
+        rtl_data_base = args.rtl_data_base
+        rtl_data_size = args.rtl_data_size
         system.mem_ranges = [
             AddrRange(start=rtl_inst_base, size=rtl_inst_size),
             AddrRange(start=rtl_data_base, size=rtl_data_size),
@@ -299,7 +363,10 @@ system.pipeline = PipelineMiniCPU(
     debug_instr=args.debug_instr,
     debug_instr_valid=args.debug_instr_valid,
     cycle_trace_file=args.cycle_trace,
+    cycle_trace_compact=args.cycle_trace_compact,
+    ebreak_terminates=args.terminate_on_ebreak,
     veu_model=args.veu_model,
+    sau_model=args.sau_model,
     veu_input_fifo_depth=args.veu_input_fifo_depth,
     veu_execute_latency=args.veu_execute_latency,
     veu_execute_ii=args.veu_execute_ii,
@@ -328,6 +395,12 @@ system.pipeline = PipelineMiniCPU(
     tb_inst_size=rtl_inst_size if rtl_tb_mode else 0x00040000,
     tb_data_base=rtl_data_base if rtl_tb_mode else 0x20010000,
     tb_data_size=rtl_data_size if rtl_tb_mode else 0x00040000,
+    tb_data_bank_size=(
+        args.rtl_data_bank_size if dut_kui_tb_mode else 0x00010000),
+    tb_data_bank_count=(
+        args.rtl_data_bank_count if dut_kui_tb_mode else 1),
+    tb_data_real_bank_count=(
+        args.rtl_data_real_bank_count if dut_kui_tb_mode else 1),
 )
 system.pipeline.clk_domain = system.clk_domain
 
@@ -474,6 +547,7 @@ print("Timeout cycles: {} ({})".format(
     "total clock edges including reset" if rtl_tb_mode else "active CPU cycles",
 ))
 print("VEU model: {}".format(args.veu_model))
+print("SAU model: {}".format(args.sau_model))
 print("FakeVEU latency: {} cycles".format(args.fake_veu_latency))
 print("FakeVEU response data: {:#x}".format(args.fake_veu_response_data))
 if args.veu_model == "timing":
@@ -508,8 +582,10 @@ elif args.mem_system == "spirit-like":
     else:
         print("DMEM image: {}".format(dmem_image_file if dmem_image_file else "<none>"))
 elif dut_kui_tb_mode:
-    print("RTL IMEM range: 0x00000000..0x0003ffff")
-    print("RTL DMEM range: 0x29120000..0x2915ffff")
+    print("RTL IMEM range: 0x{:08x}..0x{:08x}".format(
+        rtl_inst_base, rtl_inst_base + rtl_inst_size - 1))
+    print("RTL DMEM range: 0x{:08x}..0x{:08x}".format(
+        rtl_data_base, rtl_data_base + rtl_data_size - 1))
     print("RTL response timing: IBus/DBus external=N+1 core-visible=N+2")
     print("Shared arbitration: VEU lock blocks DBus; IBus remains independent")
 elif mikui_tb_mode:

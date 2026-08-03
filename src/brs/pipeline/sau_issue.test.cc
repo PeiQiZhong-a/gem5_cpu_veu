@@ -31,6 +31,29 @@ TEST(SauIssueTest, CopiesDecodedControlAndForwardedOperands)
     EXPECT_EQ(issue.operand2, 0x55667788);
 }
 
+TEST(SauIssueTest, PacksArchiveSetOperandsAsRs2ThenRs1)
+{
+    const brs::SauDecodeInfo archiveSet =
+        brs::decodeSpiritSauInstruction(0x00ab906b);
+    IDEX decoded;
+    decoded.valid = archiveSet.valid;
+    decoded.kind = InstrKind::SAU;
+    decoded.sau_operation = archiveSet.operation;
+    decoded.sau_csr_addr = archiveSet.csrAddr;
+    decoded.sau_csr_read = archiveSet.csrRead;
+    decoded.sau_csr_write = archiveSet.csrWrite;
+    decoded.sau_write_type = archiveSet.writeType;
+
+    const auto issue =
+        makeSauHcCbuIssue(decoded, 0x11223344, 0x55667788);
+
+    ASSERT_TRUE(issue.valid);
+    EXPECT_EQ(issue.firstRequest.csrAddr, brs::SauCsrBase);
+    EXPECT_TRUE(issue.firstRequest.csrWrite);
+    EXPECT_FALSE(issue.firstRequest.csrRead);
+    EXPECT_EQ(issue.firstRequest.writeData, 0x5566778811223344ULL);
+}
+
 TEST(SauIssueTest, RejectsNonSauPipelineEntry)
 {
     IDEX decoded;

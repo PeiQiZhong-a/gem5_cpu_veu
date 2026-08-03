@@ -23,6 +23,10 @@ Source('memory/sram_converter_32to128.cc')
 Source('hc/hc_cbu.cc')
 Source('hc/hc_router.cc')
 Source('sau/sau_cbu.cc')
+Source('sau/conv3_csr_config.cc')
+Source('sau/sau_n_config_adapter.cc')
+Source('sau/sau_n_endpoint.cc')
+Source('sau/sau_n_memory_view.cc')
 Source('sau/stub_sau.cc')
 Source('veu/veu_cbu.cc')
 Source('veu/fake_veu.cc')
@@ -115,6 +119,53 @@ GTest('brs_sau_cbu.test',
       'sau/sau_cbu.test.cc',
       'hc/hc_cbu.cc',
       'sau/sau_cbu.cc')
+
+GTest('brs_conv3_csr_config.test',
+      'sau/conv3_csr_config.test.cc',
+      'sau/conv3_csr_config.cc')
+
+GTest('brs_sau_n_config_adapter.test',
+      'sau/sau_n_config_adapter.test.cc',
+      'sau/sau_n_config_adapter.cc',
+      'sau/conv3_csr_config.cc',
+      '../sau_n/streaming_pipeline_contract.cc',
+      '../sau_n/sau_types.cc',
+      '../sau_n/im2col_types.cc')
+
+GTest('brs_sau_n_endpoint.test',
+      'sau/sau_n_endpoint.test.cc',
+      'sau/sau_n_endpoint.cc',
+      'sau/sau_n_config_adapter.cc',
+      'sau/conv3_csr_config.cc',
+      'sau/sau_n_memory_view.cc',
+      'memory/dut_kui_memory_model.cc',
+      'memory/dut_kui_data_crossbar.cc',
+      'memory/sram_converter_32to256.cc',
+      '../sau_n/streaming_conv_pipeline_model.cc',
+      '../sau_n/pipelined_im2col_model.cc',
+      '../sau_n/streaming_pipeline_contract.cc',
+      '../sau_n/sau_model.cc',
+      '../sau_n/sau_generators.cc',
+      '../sau_n/banked_scratchpad.cc',
+      '../sau_n/im2col_address.cc',
+      '../sau_n/sau_types.cc',
+      '../sau_n/im2col_types.cc')
+
+GTest('brs_sau_n_memory_view.test',
+      'sau/sau_n_memory_view.test.cc',
+      'sau/sau_n_memory_view.cc',
+      'memory/dut_kui_memory_model.cc',
+      'memory/dut_kui_data_crossbar.cc',
+      'memory/sram_converter_32to256.cc',
+      '../sau_n/streaming_conv_pipeline_model.cc',
+      '../sau_n/pipelined_im2col_model.cc',
+      '../sau_n/streaming_pipeline_contract.cc',
+      '../sau_n/sau_model.cc',
+      '../sau_n/sau_generators.cc',
+      '../sau_n/banked_scratchpad.cc',
+      '../sau_n/im2col_address.cc',
+      '../sau_n/sau_types.cc',
+      '../sau_n/im2col_types.cc')
 
 GTest('brs_stub_sau.test',
       'sau/stub_sau.test.cc',

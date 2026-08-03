@@ -616,6 +616,13 @@ PipelineCore::stageEX()
           break;
 
       case InstrKind::EBREAK:
+          if (ebreak_termination) {
+              // EBREAK is an ordinary retiring terminator for explicitly
+              // configured workload runs.  The default path below preserves
+              // Spirit's architectural trap/debug behavior.
+              exmem_next.alu_result = 0;
+              break;
+          }
           // DCSR may turn EBREAK into a debug entry.  Otherwise Spirit uses
           // internal exception code 4 and records the resolved sequential PC.
           if (!csr_debug_mode &&

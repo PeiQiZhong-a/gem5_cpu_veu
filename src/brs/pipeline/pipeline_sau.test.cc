@@ -145,6 +145,38 @@ TEST(PipelineSauTest, ForwardsBothSetOperandsFromOlderInstructions)
     EXPECT_GE(core.getForwardCount(), 1);
 }
 
+TEST(PipelineSauTest, ExecutesArchivedSetWordsOnceThroughStubSau)
+{
+    PipelineCore core;
+    core.reset(0x80000000u, 0x80000028u);
+    core.configureStubSau(2);
+    core.program.clear();
+    core.program.instr_mem[0] = encodeAddi(23, 0, 0x111);
+    core.program.instr_mem[1] = encodeAddi(10, 0, 0x222);
+    core.program.instr_mem[2] = encodeAddi(11, 0, 0x333);
+    core.program.instr_mem[3] = encodeAddi(12, 0, 0x444);
+    core.program.instr_mem[4] = encodeAddi(7, 0, 0x555);
+    core.program.instr_mem[5] = encodeAddi(5, 0, 0x666);
+    // Exact MSET words present in the archived compressed-RV32 stream.
+    core.program.instr_mem[6] = 0x00ab906b; // Set1 x23, x10
+    core.program.instr_mem[7] = 0x06c5906b; // Set2 x11, x12
+    core.program.instr_mem[8] = 0x0c53906b; // Set3 x7, x5 (tail loop)
+    core.program.instr_mem[9] = 0x1272906b; // Set4 x5, x7 (tail loop)
+    core.program.program_words = 10;
+
+    runUntilDone(core);
+
+    ASSERT_TRUE(core.done());
+    EXPECT_EQ(core.getSauIssueCount(), 4);
+    EXPECT_EQ(core.getSauCompleteCount(), 4);
+    EXPECT_EQ(core.getStubSauAcceptedRequestCount(), 4);
+    EXPECT_EQ(core.getStubSauSlotValue(1), 0x0000022200000111ULL);
+    EXPECT_EQ(core.getStubSauSlotValue(2), 0x0000044400000333ULL);
+    EXPECT_EQ(core.getStubSauSlotValue(3), 0x0000066600000555ULL);
+    EXPECT_EQ(core.getStubSauSlotValue(4), 0x0000055500000666ULL);
+    EXPECT_EQ(core.getRetiredInstCount(), 10);
+}
+
 TEST(PipelineSauTest, UnsupportedSauEncodingRetiresAsInvalid)
 {
     PipelineCore core;

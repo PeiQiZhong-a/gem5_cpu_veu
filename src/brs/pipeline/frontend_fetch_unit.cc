@@ -445,7 +445,14 @@ FrontendFetchUnit::step(const Input &in)
             fifoIn.pop = true;
         }
 
-        if (aligned.alignedInstrValid) {
+        // FrontendAligner keeps the last aligned value in its registered
+        // state while a 32-bit instruction is waiting for the next word.
+        // That value is not a new instruction when the FIFO is empty: only
+        // the stop-fetch half-word path is allowed to produce an instruction
+        // without a fetch word on this cycle.
+        const bool alignedInstrProduced = aligned.alignedInstrValid &&
+            (hasWord || aligned.stopFetch);
+        if (alignedInstrProduced) {
             nextIfReadyQ = true;
             nextIfPcQ = oldPc;
             nextIfInstrQ = aligned.alignedInstrBits;

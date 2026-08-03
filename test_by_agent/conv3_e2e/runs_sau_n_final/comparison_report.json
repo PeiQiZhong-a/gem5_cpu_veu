@@ -1,0 +1,984 @@
+{
+  "comparisons": {
+    "A_vs_B": {
+      "after": "B_generated_legacy_stub",
+      "before": "A_archive_baseline_stub",
+      "metrics": {
+        "config_cycles": {
+          "after": 430,
+          "before": null
+        },
+        "cycle_count": {
+          "absolute": 401463,
+          "after": 643760,
+          "before": 242297,
+          "percent": 165.69045427718873
+        },
+        "input_init_cycles": {
+          "after": 81915,
+          "before": null
+        },
+        "non_sau_retired_instructions": {
+          "absolute": 105119,
+          "after": 154897,
+          "before": 49778,
+          "percent": 211.17561975169752
+        },
+        "padding_cycles": {
+          "after": 487441,
+          "before": null
+        },
+        "retired_inst_count": {
+          "absolute": 105119,
+          "after": 154963,
+          "before": 49844,
+          "percent": 210.89599550597865
+        },
+        "roi_cycles": {
+          "after": null,
+          "before": null
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_config_instruction_count": {
+          "absolute": 0,
+          "after": 66,
+          "before": 66,
+          "percent": 0.0
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": 0,
+          "after": 132,
+          "before": 132,
+          "percent": 0.0
+        },
+        "sau_memory_requests": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "stall_count": {
+          "absolute": 175118,
+          "after": 268932,
+          "before": 93814,
+          "percent": 186.66510328948772
+        },
+        "startup_cycles": {
+          "after": 15,
+          "before": null
+        },
+        "tail_cycles": {
+          "after": 9,
+          "before": null
+        }
+      }
+    },
+    "A_vs_D": {
+      "after": "D_full_offload_conv3",
+      "before": "A_archive_baseline_stub",
+      "metrics": {
+        "config_cycles": {
+          "after": 74845,
+          "before": null
+        },
+        "cycle_count": {
+          "absolute": -3626,
+          "after": 238671,
+          "before": 242297,
+          "percent": -1.4965104809386827
+        },
+        "input_init_cycles": {
+          "after": 81915,
+          "before": null
+        },
+        "non_sau_retired_instructions": {
+          "absolute": -632,
+          "after": 49146,
+          "before": 49778,
+          "percent": -1.2696371891196914
+        },
+        "padding_cycles": {
+          "after": 7936,
+          "before": null
+        },
+        "retired_inst_count": {
+          "absolute": -694,
+          "after": 49150,
+          "before": 49844,
+          "percent": -1.3923441136345398
+        },
+        "roi_cycles": {
+          "after": 74817,
+          "before": null
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": 42048,
+          "after": 42048,
+          "before": 0,
+          "percent": null
+        },
+        "sau_config_instruction_count": {
+          "absolute": -62,
+          "after": 4,
+          "before": 66,
+          "percent": -93.93939393939394
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": 74693,
+          "after": 74825,
+          "before": 132,
+          "percent": 56585.606060606064
+        },
+        "sau_memory_requests": {
+          "absolute": 18704,
+          "after": 18704,
+          "before": 0,
+          "percent": null
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": 32768,
+          "after": 32768,
+          "before": 0,
+          "percent": null
+        },
+        "stall_count": {
+          "absolute": 38355,
+          "after": 132169,
+          "before": 93814,
+          "percent": 40.88408979470015
+        },
+        "startup_cycles": {
+          "after": 15,
+          "before": null
+        },
+        "tail_cycles": {
+          "after": 10,
+          "before": null
+        }
+      }
+    },
+    "B_vs_C_stub": {
+      "after": "C_stub",
+      "before": "B_generated_legacy_stub",
+      "metrics": {
+        "config_cycles": {
+          "absolute": -402,
+          "after": 28,
+          "before": 430,
+          "percent": -93.48837209302326
+        },
+        "cycle_count": {
+          "absolute": -401,
+          "after": 643359,
+          "before": 643760,
+          "percent": -0.06229029451969678
+        },
+        "input_init_cycles": {
+          "absolute": 0,
+          "after": 81915,
+          "before": 81915,
+          "percent": 0.0
+        },
+        "non_sau_retired_instructions": {
+          "absolute": -216,
+          "after": 154681,
+          "before": 154897,
+          "percent": -0.1394475038251225
+        },
+        "padding_cycles": {
+          "absolute": 0,
+          "after": 487441,
+          "before": 487441,
+          "percent": 0.0
+        },
+        "retired_inst_count": {
+          "absolute": -278,
+          "after": 154685,
+          "before": 154963,
+          "percent": -0.17939766266786264
+        },
+        "roi_cycles": {
+          "after": null,
+          "before": null
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_config_instruction_count": {
+          "absolute": -62,
+          "after": 4,
+          "before": 66,
+          "percent": -93.93939393939394
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": -124,
+          "after": 8,
+          "before": 132,
+          "percent": -93.93939393939394
+        },
+        "sau_memory_requests": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "stall_count": {
+          "absolute": -124,
+          "after": 268808,
+          "before": 268932,
+          "percent": -0.04610830990733717
+        },
+        "startup_cycles": {
+          "absolute": 0,
+          "after": 15,
+          "before": 15,
+          "percent": 0.0
+        },
+        "tail_cycles": {
+          "absolute": 1,
+          "after": 10,
+          "before": 9,
+          "percent": 11.11111111111111
+        }
+      }
+    },
+    "C_conv3_vs_C_sau_n": {
+      "after": "C_sau_n",
+      "before": "C_conv3",
+      "metrics": {
+        "config_cycles": {
+          "absolute": -68424,
+          "after": 6421,
+          "before": 74845,
+          "percent": -91.42093660231144
+        },
+        "cycle_count": {
+          "absolute": -68424,
+          "after": 649752,
+          "before": 718176,
+          "percent": -9.527469589627055
+        },
+        "input_init_cycles": {
+          "absolute": 0,
+          "after": 81915,
+          "before": 81915,
+          "percent": 0.0
+        },
+        "non_sau_retired_instructions": {
+          "absolute": 0,
+          "after": 154681,
+          "before": 154681,
+          "percent": 0.0
+        },
+        "padding_cycles": {
+          "absolute": 0,
+          "after": 487441,
+          "before": 487441,
+          "percent": 0.0
+        },
+        "retired_inst_count": {
+          "absolute": 0,
+          "after": 154685,
+          "before": 154685,
+          "percent": 0.0
+        },
+        "roi_cycles": {
+          "absolute": -68424,
+          "after": 6393,
+          "before": 74817,
+          "percent": -91.45515056738442
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": -42048,
+          "after": 0,
+          "before": 42048,
+          "percent": -100.0
+        },
+        "sau_config_instruction_count": {
+          "absolute": 0,
+          "after": 4,
+          "before": 4,
+          "percent": 0.0
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": -68424,
+          "after": 6401,
+          "before": 74825,
+          "percent": -91.44537253591714
+        },
+        "sau_memory_requests": {
+          "absolute": -18704,
+          "after": 0,
+          "before": 18704,
+          "percent": -100.0
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": -32768,
+          "after": 0,
+          "before": 32768,
+          "percent": -100.0
+        },
+        "stall_count": {
+          "absolute": -68424,
+          "after": 275201,
+          "before": 343625,
+          "percent": -19.912404510731175
+        },
+        "startup_cycles": {
+          "absolute": 0,
+          "after": 15,
+          "before": 15,
+          "percent": 0.0
+        },
+        "tail_cycles": {
+          "absolute": 0,
+          "after": 10,
+          "before": 10,
+          "percent": 0.0
+        }
+      }
+    },
+    "C_conv3_vs_D": {
+      "after": "D_full_offload_conv3",
+      "before": "C_conv3",
+      "metrics": {
+        "config_cycles": {
+          "absolute": 0,
+          "after": 74845,
+          "before": 74845,
+          "percent": 0.0
+        },
+        "cycle_count": {
+          "absolute": -479505,
+          "after": 238671,
+          "before": 718176,
+          "percent": -66.7670598850421
+        },
+        "input_init_cycles": {
+          "absolute": 0,
+          "after": 81915,
+          "before": 81915,
+          "percent": 0.0
+        },
+        "non_sau_retired_instructions": {
+          "absolute": -105535,
+          "after": 49146,
+          "before": 154681,
+          "percent": -68.22751339854281
+        },
+        "padding_cycles": {
+          "absolute": -479505,
+          "after": 7936,
+          "before": 487441,
+          "percent": -98.37190552292482
+        },
+        "retired_inst_count": {
+          "absolute": -105535,
+          "after": 49150,
+          "before": 154685,
+          "percent": -68.2257491030158
+        },
+        "roi_cycles": {
+          "absolute": 0,
+          "after": 74817,
+          "before": 74817,
+          "percent": 0.0
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": 0,
+          "after": 42048,
+          "before": 42048,
+          "percent": 0.0
+        },
+        "sau_config_instruction_count": {
+          "absolute": 0,
+          "after": 4,
+          "before": 4,
+          "percent": 0.0
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": 0,
+          "after": 74825,
+          "before": 74825,
+          "percent": 0.0
+        },
+        "sau_memory_requests": {
+          "absolute": 0,
+          "after": 18704,
+          "before": 18704,
+          "percent": 0.0
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": 0,
+          "after": 32768,
+          "before": 32768,
+          "percent": 0.0
+        },
+        "stall_count": {
+          "absolute": -211456,
+          "after": 132169,
+          "before": 343625,
+          "percent": -61.53684976355038
+        },
+        "startup_cycles": {
+          "absolute": 0,
+          "after": 15,
+          "before": 15,
+          "percent": 0.0
+        },
+        "tail_cycles": {
+          "absolute": 0,
+          "after": 10,
+          "before": 10,
+          "percent": 0.0
+        }
+      }
+    },
+    "C_stub_vs_C_conv3": {
+      "after": "C_conv3",
+      "before": "C_stub",
+      "metrics": {
+        "config_cycles": {
+          "absolute": 74817,
+          "after": 74845,
+          "before": 28,
+          "percent": 267203.5714285714
+        },
+        "cycle_count": {
+          "absolute": 74817,
+          "after": 718176,
+          "before": 643359,
+          "percent": 11.629121532456995
+        },
+        "input_init_cycles": {
+          "absolute": 0,
+          "after": 81915,
+          "before": 81915,
+          "percent": 0.0
+        },
+        "non_sau_retired_instructions": {
+          "absolute": 0,
+          "after": 154681,
+          "before": 154681,
+          "percent": 0.0
+        },
+        "padding_cycles": {
+          "absolute": 0,
+          "after": 487441,
+          "before": 487441,
+          "percent": 0.0
+        },
+        "retired_inst_count": {
+          "absolute": 0,
+          "after": 154685,
+          "before": 154685,
+          "percent": 0.0
+        },
+        "roi_cycles": {
+          "after": 74817,
+          "before": null
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": 42048,
+          "after": 42048,
+          "before": 0,
+          "percent": null
+        },
+        "sau_config_instruction_count": {
+          "absolute": 0,
+          "after": 4,
+          "before": 4,
+          "percent": 0.0
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": 74817,
+          "after": 74825,
+          "before": 8,
+          "percent": 935212.5
+        },
+        "sau_memory_requests": {
+          "absolute": 18704,
+          "after": 18704,
+          "before": 0,
+          "percent": null
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": 32768,
+          "after": 32768,
+          "before": 0,
+          "percent": null
+        },
+        "stall_count": {
+          "absolute": 74817,
+          "after": 343625,
+          "before": 268808,
+          "percent": 27.8328769977084
+        },
+        "startup_cycles": {
+          "absolute": 0,
+          "after": 15,
+          "before": 15,
+          "percent": 0.0
+        },
+        "tail_cycles": {
+          "absolute": 0,
+          "after": 10,
+          "before": 10,
+          "percent": 0.0
+        }
+      }
+    },
+    "C_stub_vs_C_sau_n": {
+      "after": "C_sau_n",
+      "before": "C_stub",
+      "metrics": {
+        "config_cycles": {
+          "absolute": 6393,
+          "after": 6421,
+          "before": 28,
+          "percent": 22832.14285714286
+        },
+        "cycle_count": {
+          "absolute": 6393,
+          "after": 649752,
+          "before": 643359,
+          "percent": 0.993690925284328
+        },
+        "input_init_cycles": {
+          "absolute": 0,
+          "after": 81915,
+          "before": 81915,
+          "percent": 0.0
+        },
+        "non_sau_retired_instructions": {
+          "absolute": 0,
+          "after": 154681,
+          "before": 154681,
+          "percent": 0.0
+        },
+        "padding_cycles": {
+          "absolute": 0,
+          "after": 487441,
+          "before": 487441,
+          "percent": 0.0
+        },
+        "retired_inst_count": {
+          "absolute": 0,
+          "after": 154685,
+          "before": 154685,
+          "percent": 0.0
+        },
+        "roi_cycles": {
+          "after": 6393,
+          "before": null
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_config_instruction_count": {
+          "absolute": 0,
+          "after": 4,
+          "before": 4,
+          "percent": 0.0
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": 6393,
+          "after": 6401,
+          "before": 8,
+          "percent": 79912.5
+        },
+        "sau_memory_requests": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "stall_count": {
+          "absolute": 6393,
+          "after": 275201,
+          "before": 268808,
+          "percent": 2.3782774322192792
+        },
+        "startup_cycles": {
+          "absolute": 0,
+          "after": 15,
+          "before": 15,
+          "percent": 0.0
+        },
+        "tail_cycles": {
+          "absolute": 0,
+          "after": 10,
+          "before": 10,
+          "percent": 0.0
+        }
+      }
+    },
+    "D_conv3_vs_D_sau_n": {
+      "after": "D_full_offload_sau_n",
+      "before": "D_full_offload_conv3",
+      "metrics": {
+        "config_cycles": {
+          "absolute": -68424,
+          "after": 6421,
+          "before": 74845,
+          "percent": -91.42093660231144
+        },
+        "cycle_count": {
+          "absolute": -68424,
+          "after": 170247,
+          "before": 238671,
+          "percent": -28.668753220961072
+        },
+        "input_init_cycles": {
+          "absolute": 0,
+          "after": 81915,
+          "before": 81915,
+          "percent": 0.0
+        },
+        "non_sau_retired_instructions": {
+          "absolute": 0,
+          "after": 49146,
+          "before": 49146,
+          "percent": 0.0
+        },
+        "padding_cycles": {
+          "absolute": 0,
+          "after": 7936,
+          "before": 7936,
+          "percent": 0.0
+        },
+        "retired_inst_count": {
+          "absolute": 0,
+          "after": 49150,
+          "before": 49150,
+          "percent": 0.0
+        },
+        "roi_cycles": {
+          "absolute": -68424,
+          "after": 6393,
+          "before": 74817,
+          "percent": -91.45515056738442
+        },
+        "roi_retired_instructions": {
+          "absolute": 0,
+          "after": 0,
+          "before": 0,
+          "percent": null
+        },
+        "sau_compute_wait_cycles": {
+          "absolute": -42048,
+          "after": 0,
+          "before": 42048,
+          "percent": -100.0
+        },
+        "sau_config_instruction_count": {
+          "absolute": 0,
+          "after": 4,
+          "before": 4,
+          "percent": 0.0
+        },
+        "sau_handshake_stall_cycles": {
+          "absolute": -68424,
+          "after": 6401,
+          "before": 74825,
+          "percent": -91.44537253591714
+        },
+        "sau_memory_requests": {
+          "absolute": -18704,
+          "after": 0,
+          "before": 18704,
+          "percent": -100.0
+        },
+        "sau_writeback_wait_cycles": {
+          "absolute": -32768,
+          "after": 0,
+          "before": 32768,
+          "percent": -100.0
+        },
+        "stall_count": {
+          "absolute": -68424,
+          "after": 63745,
+          "before": 132169,
+          "percent": -51.77008224318865
+        },
+        "startup_cycles": {
+          "absolute": 0,
+          "after": 15,
+          "before": 15,
+          "percent": 0.0
+        },
+        "tail_cycles": {
+          "absolute": 0,
+          "after": 10,
+          "before": 10,
+          "percent": 0.0
+        }
+      }
+    }
+  },
+  "interpretation": {
+    "A_vs_D": "overall artifact difference with compiler/allocation/path confounders",
+    "B_vs_C_stub": "controlled four-instruction ABI CPU overhead",
+    "C_conv3_vs_C_sau_n": "Conv3 endpoint versus sau_n pipeline timing",
+    "C_conv3_vs_D": "software-padding/preprocessing boundary",
+    "C_stub_vs_C_conv3": "stub response versus Conv3 endpoint wait",
+    "C_stub_vs_C_sau_n": "stub response versus sau_n local-scratchpad wait",
+    "D_conv3_vs_D_sau_n": "Conv3 endpoint versus sau_n on full offload"
+  },
+  "runs": {
+    "A_archive_baseline_stub": {
+      "config_cycles": null,
+      "config_retired": null,
+      "cycle_count": 242297,
+      "fixture": "archive_baseline",
+      "input_init_cycles": null,
+      "input_init_retired": null,
+      "non_sau_retired_instructions": 49778,
+      "padding_cycles": null,
+      "padding_retired": null,
+      "retired_inst_count": 49844,
+      "roi_cycles": null,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/archive_baseline-stub",
+      "sau_compute_wait_cycles": 0,
+      "sau_config_instruction_count": 66,
+      "sau_handshake_stall_cycles": 132,
+      "sau_memory_requests": 0,
+      "sau_model": "stub",
+      "sau_writeback_wait_cycles": 0,
+      "stall_count": 93814,
+      "startup_cycles": null,
+      "startup_retired": null,
+      "tail_cycles": null,
+      "tail_retired": null
+    },
+    "B_generated_legacy_stub": {
+      "config_cycles": 430,
+      "config_retired": 296,
+      "cycle_count": 643760,
+      "fixture": "generated_legacy_control",
+      "input_init_cycles": 81915,
+      "input_init_retired": 40960,
+      "non_sau_retired_instructions": 154897,
+      "padding_cycles": 487441,
+      "padding_retired": 113471,
+      "retired_inst_count": 154963,
+      "roi_cycles": null,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/generated_legacy_control-stub",
+      "sau_compute_wait_cycles": 0,
+      "sau_config_instruction_count": 66,
+      "sau_handshake_stall_cycles": 132,
+      "sau_memory_requests": 0,
+      "sau_model": "stub",
+      "sau_writeback_wait_cycles": 0,
+      "stall_count": 268932,
+      "startup_cycles": 15,
+      "startup_retired": 11,
+      "tail_cycles": 9,
+      "tail_retired": 1
+    },
+    "C_conv3": {
+      "config_cycles": 74845,
+      "config_retired": 18,
+      "cycle_count": 718176,
+      "fixture": "generated_four_ins_control_matched",
+      "input_init_cycles": 81915,
+      "input_init_retired": 40960,
+      "non_sau_retired_instructions": 154681,
+      "padding_cycles": 487441,
+      "padding_retired": 113471,
+      "retired_inst_count": 154685,
+      "roi_cycles": 74817,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/generated_four_ins_control_matched-conv3",
+      "sau_compute_wait_cycles": 42048,
+      "sau_config_instruction_count": 4,
+      "sau_handshake_stall_cycles": 74825,
+      "sau_memory_requests": 18704,
+      "sau_model": "conv3",
+      "sau_writeback_wait_cycles": 32768,
+      "stall_count": 343625,
+      "startup_cycles": 15,
+      "startup_retired": 11,
+      "tail_cycles": 10,
+      "tail_retired": 1
+    },
+    "C_sau_n": {
+      "config_cycles": 6421,
+      "config_retired": 18,
+      "cycle_count": 649752,
+      "fixture": "generated_four_ins_control_matched",
+      "input_init_cycles": 81915,
+      "input_init_retired": 40960,
+      "non_sau_retired_instructions": 154681,
+      "padding_cycles": 487441,
+      "padding_retired": 113471,
+      "retired_inst_count": 154685,
+      "roi_cycles": 6393,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/generated_four_ins_control_matched-sau_n",
+      "sau_compute_wait_cycles": 0,
+      "sau_config_instruction_count": 4,
+      "sau_handshake_stall_cycles": 6401,
+      "sau_memory_requests": 0,
+      "sau_model": "sau_n",
+      "sau_writeback_wait_cycles": 0,
+      "stall_count": 275201,
+      "startup_cycles": 15,
+      "startup_retired": 11,
+      "tail_cycles": 10,
+      "tail_retired": 1
+    },
+    "C_stub": {
+      "config_cycles": 28,
+      "config_retired": 18,
+      "cycle_count": 643359,
+      "fixture": "generated_four_ins_control_matched",
+      "input_init_cycles": 81915,
+      "input_init_retired": 40960,
+      "non_sau_retired_instructions": 154681,
+      "padding_cycles": 487441,
+      "padding_retired": 113471,
+      "retired_inst_count": 154685,
+      "roi_cycles": null,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/generated_four_ins_control_matched-stub",
+      "sau_compute_wait_cycles": 0,
+      "sau_config_instruction_count": 4,
+      "sau_handshake_stall_cycles": 8,
+      "sau_memory_requests": 0,
+      "sau_model": "stub",
+      "sau_writeback_wait_cycles": 0,
+      "stall_count": 268808,
+      "startup_cycles": 15,
+      "startup_retired": 11,
+      "tail_cycles": 10,
+      "tail_retired": 1
+    },
+    "D_full_offload_conv3": {
+      "config_cycles": 74845,
+      "config_retired": 18,
+      "cycle_count": 238671,
+      "fixture": "generated_four_ins_full_offload",
+      "input_init_cycles": 81915,
+      "input_init_retired": 40960,
+      "non_sau_retired_instructions": 49146,
+      "padding_cycles": 7936,
+      "padding_retired": 7936,
+      "retired_inst_count": 49150,
+      "roi_cycles": 74817,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/generated_four_ins_full_offload-conv3",
+      "sau_compute_wait_cycles": 42048,
+      "sau_config_instruction_count": 4,
+      "sau_handshake_stall_cycles": 74825,
+      "sau_memory_requests": 18704,
+      "sau_model": "conv3",
+      "sau_writeback_wait_cycles": 32768,
+      "stall_count": 132169,
+      "startup_cycles": 15,
+      "startup_retired": 11,
+      "tail_cycles": 10,
+      "tail_retired": 1
+    },
+    "D_full_offload_sau_n": {
+      "config_cycles": 6421,
+      "config_retired": 18,
+      "cycle_count": 170247,
+      "fixture": "generated_four_ins_full_offload",
+      "input_init_cycles": 81915,
+      "input_init_retired": 40960,
+      "non_sau_retired_instructions": 49146,
+      "padding_cycles": 7936,
+      "padding_retired": 7936,
+      "retired_inst_count": 49150,
+      "roi_cycles": 6393,
+      "roi_retired_instructions": 0,
+      "run_directory": "/home/xch/workspace/soc_gem5/gem5_cpu_veu/test_by_agent/conv3_e2e/runs_sau_n_final/generated_four_ins_full_offload-sau_n",
+      "sau_compute_wait_cycles": 0,
+      "sau_config_instruction_count": 4,
+      "sau_handshake_stall_cycles": 6401,
+      "sau_memory_requests": 0,
+      "sau_model": "sau_n",
+      "sau_writeback_wait_cycles": 0,
+      "stall_count": 63745,
+      "startup_cycles": 15,
+      "startup_retired": 11,
+      "tail_cycles": 10,
+      "tail_retired": 1
+    }
+  },
+  "status": "PASS"
+}

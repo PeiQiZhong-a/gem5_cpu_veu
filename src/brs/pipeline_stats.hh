@@ -18,6 +18,38 @@ struct PipelineStats : public statistics::Group
     statistics::Scalar ibus_req_count;
     statistics::Scalar fetch_fifo_flush_count;
     statistics::Scalar aligned_instr_count;
+    statistics::Scalar sau_issue_count;
+    statistics::Scalar sau_retire_count;
+    statistics::Scalar sau_csr_handshake_cycles;
+    statistics::Scalar sau_memory_requests;
+    statistics::Scalar sau_compute_wait_cycles;
+    statistics::Scalar sau_writeback_wait_cycles;
+    statistics::Scalar sau_operation_start_count;
+    statistics::Scalar sau_operation_complete_count;
+    statistics::Scalar sau_roi_start_cycle;
+    statistics::Scalar sau_roi_end_cycle;
+    statistics::Scalar sau_roi_start_retired_inst;
+    statistics::Scalar sau_roi_end_retired_inst;
+    statistics::Scalar sau_n_model_ticks;
+    statistics::Scalar sau_n_operation_start_count;
+    statistics::Scalar sau_n_operation_complete_count;
+    statistics::Scalar sau_n_roi_start_cycle;
+    statistics::Scalar sau_n_roi_end_cycle;
+    statistics::Scalar sau_n_spad_read_requests_a;
+    statistics::Scalar sau_n_spad_read_grants_a;
+    statistics::Scalar sau_n_spad_read_responses_a;
+    statistics::Scalar sau_n_spad_read_requests_b;
+    statistics::Scalar sau_n_spad_read_grants_b;
+    statistics::Scalar sau_n_spad_read_responses_b;
+    statistics::Scalar sau_n_spad_read_requests_c;
+    statistics::Scalar sau_n_spad_read_grants_c;
+    statistics::Scalar sau_n_spad_read_responses_c;
+    statistics::Scalar sau_n_spad_write_requests_d;
+    statistics::Scalar sau_n_spad_write_grants_d;
+    statistics::Scalar sau_n_b_buffer_hit_vectors;
+    statistics::Scalar sau_n_b_buffer_switches;
+    statistics::Scalar sau_n_d_pending_peak;
+    statistics::Scalar sau_n_output_elements;
     statistics::Scalar veu_issue_count;
     statistics::Scalar veu_complete_count;
     statistics::Scalar veu_csr_handshake_cycles;
@@ -69,6 +101,65 @@ struct PipelineStats : public statistics::Group
           ADD_STAT(ibus_req_count, "Frontend instruction burst requests"),
           ADD_STAT(fetch_fifo_flush_count, "Frontend instruction FIFO flushes"),
           ADD_STAT(aligned_instr_count, "Instructions emitted by frontend aligner"),
+          ADD_STAT(sau_issue_count, "SAU instructions issued to the CBU"),
+          ADD_STAT(sau_retire_count,
+                   "SAU instructions completing their CBU CSR handshake sequence"),
+          ADD_STAT(sau_csr_handshake_cycles,
+                   "RV cycles stalled waiting for SAU CSR handshakes"),
+          ADD_STAT(sau_memory_requests, "SAU SRAM requests issued"),
+          ADD_STAT(sau_compute_wait_cycles,
+                   "SAU cycles waiting while loading tensors"),
+          ADD_STAT(sau_writeback_wait_cycles,
+                   "SAU cycles waiting while writing output"),
+          ADD_STAT(sau_operation_start_count, "SAU operations started"),
+          ADD_STAT(sau_operation_complete_count,
+                   "SAU operations completed"),
+          ADD_STAT(sau_roi_start_cycle, "SAU ROI start endpoint cycle"),
+          ADD_STAT(sau_roi_end_cycle, "SAU ROI end endpoint cycle"),
+          ADD_STAT(sau_roi_start_retired_inst,
+                   "Retired instructions observed at SAU ROI start"),
+          ADD_STAT(sau_roi_end_retired_inst,
+                   "Retired instructions observed at SAU ROI end"),
+          ADD_STAT(sau_n_model_ticks,
+                   "StreamingConvPipelineModel ticks"),
+          ADD_STAT(sau_n_operation_start_count,
+                   "sau_n operations started"),
+          ADD_STAT(sau_n_operation_complete_count,
+                   "sau_n operations completed"),
+          ADD_STAT(sau_n_roi_start_cycle,
+                   "sau_n ROI start endpoint cycle"),
+          ADD_STAT(sau_n_roi_end_cycle,
+                   "sau_n ROI end endpoint cycle"),
+          ADD_STAT(sau_n_spad_read_requests_a,
+                   "sau_n A scratchpad read requests"),
+          ADD_STAT(sau_n_spad_read_grants_a,
+                   "sau_n A scratchpad read grants"),
+          ADD_STAT(sau_n_spad_read_responses_a,
+                   "sau_n A scratchpad read responses"),
+          ADD_STAT(sau_n_spad_read_requests_b,
+                   "sau_n B scratchpad read requests"),
+          ADD_STAT(sau_n_spad_read_grants_b,
+                   "sau_n B scratchpad read grants"),
+          ADD_STAT(sau_n_spad_read_responses_b,
+                   "sau_n B scratchpad read responses"),
+          ADD_STAT(sau_n_spad_read_requests_c,
+                   "sau_n C scratchpad read requests"),
+          ADD_STAT(sau_n_spad_read_grants_c,
+                   "sau_n C scratchpad read grants"),
+          ADD_STAT(sau_n_spad_read_responses_c,
+                   "sau_n C scratchpad read responses"),
+          ADD_STAT(sau_n_spad_write_requests_d,
+                   "sau_n D scratchpad write requests"),
+          ADD_STAT(sau_n_spad_write_grants_d,
+                   "sau_n D scratchpad write grants"),
+          ADD_STAT(sau_n_b_buffer_hit_vectors,
+                   "sau_n B buffer hit vectors"),
+          ADD_STAT(sau_n_b_buffer_switches,
+                   "sau_n B buffer switches"),
+          ADD_STAT(sau_n_d_pending_peak,
+                   "sau_n peak D pending rows"),
+          ADD_STAT(sau_n_output_elements,
+                   "sau_n output elements written"),
           ADD_STAT(veu_issue_count, "VEU instructions issued to the CBU"),
           ADD_STAT(veu_complete_count,
                    "VEU instructions completing their CBU CSR handshake sequence"),

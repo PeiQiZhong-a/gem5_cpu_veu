@@ -1,0 +1,30 @@
+{
+  "archive": {
+    "control_flow_observations": {
+      "static_compressed_ebreak_pcs": [
+        3122
+      ],
+      "static_uncompressed_ebreak_pcs": []
+    }
+  },
+  "fixture": {
+    "name": "archive_baseline",
+    "mode": "archive_baseline",
+    "sau_instruction_counts": {
+      "msetins1": 1,
+      "msetins2": 1,
+      "msetins3": 32,
+      "msetins4": 32
+    }
+  },
+  "image": {
+    "instruction_base": 0,
+    "instruction_bytes": 262144,
+    "data_base": 536870912,
+    "data_window_bytes": 4194304,
+    "data_bank_size": 1048576,
+    "data_bank_count": 4,
+    "data_real_bank_count": 4,
+    "termination": "ebreak"
+  }
+}

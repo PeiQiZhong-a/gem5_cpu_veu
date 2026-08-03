@@ -38,3 +38,7 @@ configs/dram/lowp_sweep.cfg
 .vscode
 typings
 .DS_Store
+
+# Generated conv3 runner logs are kept locally but are not versioned.
+/test_by_agent/conv3_e2e/runs*/**/stdout.log
+/test_by_agent/conv3_e2e/runs*/**/cycle_trace.log

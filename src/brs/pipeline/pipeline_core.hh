@@ -42,6 +42,7 @@ class PipelineCore
     void reset(uint32_t start_pc, uint32_t end_pc);
     void configureFrontend(uint32_t fifoDepth, uint32_t burstBytes);
     void configureTextEndTermination(bool enabled);
+    void configureEbreakTermination(bool enabled);
     void configureTrapVector(uint32_t trapVector);
     void setInterruptInputs(uint32_t external, bool software, bool timer);
     void setDebugInputs(bool halt, bool haltOnReset, bool resume,
@@ -294,6 +295,7 @@ class PipelineCore
     uint32_t text_start = 0x80000000u;
     uint32_t text_end = 0x80000000u;
     bool text_end_termination = true;
+    bool ebreak_termination = false;
     bool fetch_waiting = false;
     bool fetch_response_valid = false;
     uint32_t fetch_response_addr = 0;
