@@ -11,9 +11,12 @@
 #include "brs/pipeline/memory_backend_local.hh"
 #include "brs/pipeline/pipeline_regs.hh"
 #include "brs/pipeline/program_image.hh"
+#include "brs/hc/hc_cbu.hh"
+#include "brs/hc/hc_router.hh"
+#include "brs/sau/sau_endpoint.hh"
+#include "brs/sau/stub_sau.hh"
 #include "brs/veu/fake_veu.hh"
 #include "brs/veu/timing_veu.hh"
-#include "brs/veu/veu_cbu.hh"
 #include "brs/veu/veu_endpoint.hh"
 
 namespace gem5
@@ -45,6 +48,9 @@ class PipelineCore
                         uint32_t data0 = 0);
     void setDebugInstruction(uint32_t instruction, bool valid);
     void configureFakeVeu(uint32_t latencyCycles, uint32_t responseData);
+    void configureStubSau(uint32_t latencyCycles);
+    void attachSauEndpoint(brs::SauEndpoint &endpoint);
+    void useStubSauEndpoint();
     void configureTimingVeu(const brs::VeuTimingConfig &config);
     void setTimingVeuMemoryRequestCallback(
         brs::TimingVeu::MemoryRequestFn callback);
@@ -57,6 +63,10 @@ class PipelineCore
     void noteVeuMemoryRetry() { timingVeu.noteMemoryRetry(); }
     brs::VeuMemoryOutput evaluateVeuMemory() const;
     void clockVeuMemory(const brs::VeuMemoryResponse &response);
+    brs::SauMemoryOutput evaluateSauMemory() const;
+    void clockSauMemory(const brs::SauMemoryResponse &response);
+    void evaluateOneCycle();
+    void clockOneCycle();
     void stepOneCycle();
 
     bool done() const;
@@ -78,6 +88,24 @@ class PipelineCore
     uint64_t getVeuCsrHandshakeCycles() const
     {
         return veu_csr_handshake_cycles;
+    }
+    uint64_t getSauIssueCount() const { return sau_issue_count; }
+    uint64_t getSauCompleteCount() const { return sau_complete_count; }
+    uint64_t getSauCsrHandshakeCycles() const
+    {
+        return sau_csr_handshake_cycles;
+    }
+    uint64_t getStubSauAcceptedRequestCount() const
+    {
+        return stubSau.acceptedRequestCount();
+    }
+    const brs::SauRequest &getStubSauLastRequest() const
+    {
+        return stubSau.lastAcceptedRequest();
+    }
+    uint64_t getStubSauSlotValue(uint8_t slot) const
+    {
+        return stubSau.slotValue(slot);
     }
     uint64_t getRvDmemBlockedByVeuCycles() const
     {
@@ -124,19 +152,39 @@ class PipelineCore
     {
         return fakeVeu.lastAcceptedRequest();
     }
-    bool veuBusy() const { return veuCbu.busy(); }
+    bool veuBusy() const
+    {
+        return hcCbu.busy() &&
+               hcRoutedRequests.target == brs::HcTarget::Veu;
+    }
+    bool sauBusy() const
+    {
+        return hcCbu.busy() &&
+               hcRoutedRequests.target == brs::HcTarget::Sau;
+    }
     bool veuStalled() const { return veu_stall; }
+    bool sauStalled() const { return sau_stall; }
     bool mduStalled() const { return mdu_stall; }
     bool lsuStalled() const { return lsu_stall; }
     bool fpStalled() const { return fp_stall; }
     bool spiritExecuteStalled() const
     {
-        return veu_stall || mdu_stall || lsu_stall || fp_stall;
+        return veu_stall || sau_stall || mdu_stall || lsu_stall || fp_stall;
     }
     bool timingVeuOwnsSharedDmem() const
     {
         return veuEndpoint == &timingVeu && timingVeu.lockIsActive();
     }
+    const brs::HcRequest &getHcRequest() const
+    {
+        return hcCbuOutput.request;
+    }
+    const brs::HcResponse &getHcResponse() const { return hcResponse; }
+    brs::HcTarget getHcTarget() const
+    {
+        return hcRoutedRequests.target;
+    }
+    bool cycleHasBeenEvaluated() const { return cycleEvaluated; }
     bool haltRequested() const { return halt_requested; }
     bool debugMode() const { return csr_debug_mode; }
     uint32_t debugData0() const { return debug_data0; }
@@ -263,19 +311,33 @@ class PipelineCore
     bool data_response_is_store = false;
 
     bool veu_stall = false;
+    bool sau_stall = false;
     bool mdu_stall = false;
     bool lsu_stall = false;
     bool fp_stall = false;
     bool mdu_busy = false;
     uint32_t mdu_cycles_remaining = 0;
     uint32_t mdu_result = 0;
-    brs::VeuCbu veuCbu;
+    brs::HcCbu hcCbu;
+    brs::HcRouter hcRouter;
+    brs::HcResponse hcResponse;
+    brs::HcCbuOutput hcCbuOutput;
+    brs::HcCbuIssue hcIssue;
+    brs::HcRoutedRequests hcRoutedRequests;
+    brs::SauMemoryResponse sauMemoryResponse;
+    brs::VeuMemoryResponse veuMemoryResponse;
+    bool cycleEvaluated = false;
+    bool instrRetiringThisCycle = false;
+    brs::StubSau stubSau;
+    brs::SauEndpoint *sauEndpoint = &stubSau;
+    brs::SauResponse sauResponse;
+    uint64_t sau_issue_count = 0;
+    uint64_t sau_complete_count = 0;
+    uint64_t sau_csr_handshake_cycles = 0;
     brs::FakeVeu fakeVeu;
     brs::TimingVeu timingVeu;
     brs::VeuEndpoint *veuEndpoint = &fakeVeu;
     brs::VeuResponse veuResponse;
-    brs::VeuCbuOutput veuCbuOutput;
-    brs::VeuCbuIssue veuIssue;
     uint64_t veu_issue_count = 0;
     uint64_t veu_complete_count = 0;
     uint64_t veu_csr_handshake_cycles = 0;

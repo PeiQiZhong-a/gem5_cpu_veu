@@ -46,6 +46,9 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       resetCyclesRemaining(p.reset_cycles),
       textBase(p.text_base),
       system(p.system),
+      configuredExternalIrq(p.irq_external),
+      configuredSoftwareIrq(p.irq_software),
+      configuredTimerIrq(p.irq_timer),
       core(),
       tickEvent([this] { processTick(); }, name()),
       programFile(p.program_file),
@@ -59,21 +62,12 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       dataRequestorId(p.system->getRequestorId(this, "data")),
       veuRequestorId(p.system->getRequestorId(this, "veu")),
       tbMemoryEnabled(p.tb_memory_enabled),
-      tbMemoryPlatform(p.tb_memory_platform),
       tbImemImageFile(p.tb_imem_image_file),
       tbDmemImageFile(p.tb_dmem_image_file),
       tbInstBase(p.tb_inst_base),
       tbInstSize(p.tb_inst_size),
       tbDataBase(p.tb_data_base),
-      tbDataStorageSize(std::min<Addr>(p.tb_data_size, 0x00020000)),
-      tbCrossbar(brs::TbCrossbarModel::Config{
-          p.tb_ibus_response_delay,
-          p.tb_dbus_response_delay,
-          p.tb_veu_pipeline_stages,
-          static_cast<uint32_t>(p.tb_inst_base),
-          static_cast<uint32_t>(p.tb_inst_size),
-          static_cast<uint32_t>(p.tb_data_base),
-          static_cast<uint32_t>(p.tb_data_size)}),
+      tbDataStorageSize(std::min<Addr>(p.tb_data_size, 0x00030000)),
       dutKuiMemory(),
       cycleTraceFile(p.cycle_trace_file),
       instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
@@ -85,20 +79,14 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       icacheNumLines(0),
       frontendBurstBytes(p.frontend_burst_bytes)
 {
-    fatal_if(tbMemoryEnabled && tbMemoryPlatform != "aerith-legacy" &&
-             tbMemoryPlatform != "dut-kui",
-             "Unsupported RTL-testbench memory platform '%s'",
-             tbMemoryPlatform.c_str());
     fatal_if(frontendBurstBytes != 16,
              "PipelineMiniCPU frontend currently models 16-byte RV-NEW bursts");
     core.configureFrontend(p.instr_fifo_depth, p.frontend_burst_bytes);
-    // aerith_tb_top.sv keeps fetching until the DONE monitor or its absolute
-    // timeout; the dut-kui and ordinary gem5 modes terminate at text end.
-    core.configureTextEndTermination(!legacyTbMemoryEnabled());
+    core.configureTextEndTermination(true);
     core.configureFakeVeu(
         p.fake_veu_latency, p.fake_veu_response_data);
     core.setInterruptInputs(
-        p.irq_external, p.irq_software, p.irq_timer);
+        configuredExternalIrq, configuredSoftwareIrq, configuredTimerIrq);
     core.setDebugInputs(
         p.debug_halt, p.debug_halt_on_reset, p.debug_resume, p.debug_data0);
     core.setDebugInstruction(p.debug_instr, p.debug_instr_valid);
@@ -138,10 +126,6 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
              p.tb_inst_size > 0xffffffffULL ||
               p.tb_data_size > 0xffffffffULL,
              "RTL-testbench address map must fit in the 32-bit RTL bus");
-    fatal_if(legacyTbMemoryEnabled() && p.veu_model == "timing",
-             "TimingVEU uses a 256-bit gem5 memory port and is not compatible "
-             "with the 128-bit Aerith RTL-testbench VEU TCM pins");
-
     if (icacheEnabled) {
         fatal_if(icacheLineSize < frontendBurstBytes,
                  "I-cache line size must be at least the frontend burst size");
@@ -176,15 +160,9 @@ PipelineMiniCPU::getPort(const std::string &if_name, PortID idx)
 }
 
 bool
-PipelineMiniCPU::legacyTbMemoryEnabled() const
-{
-    return tbMemoryEnabled && tbMemoryPlatform == "aerith-legacy";
-}
-
-bool
 PipelineMiniCPU::dutKuiMemoryEnabled() const
 {
-    return tbMemoryEnabled && tbMemoryPlatform == "dut-kui";
+    return tbMemoryEnabled;
 }
 
 Addr
@@ -275,10 +253,6 @@ PipelineMiniCPU::fillICacheLine(Addr blockAddr, const uint8_t *data,
 bool
 PipelineMiniCPU::fetchInstrFunctional(uint32_t addr, uint32_t &inst)
 {
-    if (legacyTbMemoryEnabled()) {
-        inst = tbCrossbar.readWord(addr);
-        return true;
-    }
     if (dutKuiMemoryEnabled()) {
         inst = dutKuiMemory.readWord(addr);
         return true;
@@ -322,26 +296,15 @@ PipelineMiniCPU::requestInstrTiming(uint32_t addr)
         panic_if(fetchSize != 16,
                  "dut_kui IBus supports one 16-byte beat, got %u",
                  fetchSize);
-        pendingInstAddr = reqAddr;
+        // Match Spirit's IBus pins and spirit_top_tb IMEM indexing: drive the
+        // true fetch address, while the returned four-word block starts at
+        // addr[31:2].
+        pendingInstAddr = fetchAddr & ~Addr{0x3};
         pendingInstFetchAddr = fetchAddr;
         if (!dutKuiMemory.acceptIbus(
-                {static_cast<uint32_t>(reqAddr)})) {
+                {static_cast<uint32_t>(fetchAddr)})) {
             return false;
         }
-        tbInstOutstanding = true;
-        return true;
-    }
-
-    if (legacyTbMemoryEnabled()) {
-        panic_if(fetchSize != 16,
-                 "RTL-testbench IBus supports one 16-byte beat, got %u",
-                 fetchSize);
-        pendingInstAddr = reqAddr;
-        pendingInstFetchAddr = fetchAddr;
-        tbIbusPulse = {};
-        tbIbusPulse.valid = true;
-        tbIbusPulse.address = static_cast<uint32_t>(reqAddr);
-        tbIbusPulse.read = true;
         tbInstOutstanding = true;
         return true;
     }
@@ -376,23 +339,6 @@ PipelineMiniCPU::completeDutKuiFetch(
     block.blockAddr = static_cast<uint32_t>(pendingInstAddr);
     block.words = response.readData;
     core.acceptFetchedBlock(block);
-    tbInstOutstanding = false;
-    pendingInstAddr = 0;
-    pendingInstFetchAddr = 0;
-}
-
-void
-PipelineMiniCPU::completeTbFetch(const brs::TbBusResponse &response)
-{
-    panic_if(!tbInstOutstanding,
-             "RTL-testbench IBus returned without an outstanding fetch");
-
-    FetchBlock block;
-    block.fetchAddr = static_cast<uint32_t>(pendingInstFetchAddr);
-    block.blockAddr = static_cast<uint32_t>(pendingInstAddr);
-    block.words = response.readData;
-    core.acceptFetchedBlock(block);
-
     tbInstOutstanding = false;
     pendingInstAddr = 0;
     pendingInstFetchAddr = 0;
@@ -487,52 +433,6 @@ PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
         return true;
     }
 
-    if (legacyTbMemoryEnabled()) {
-        panic_if(size != 1 && size != 2 && size != 4,
-                 "Unsupported RTL-testbench data access size: %u", size);
-        pendingDataAddr = addr;
-        pendingDataSize = size;
-        pendingDataIsWrite = isWrite;
-        pendingDataWriteValue = writeData;
-        tbDbusPulse = {};
-        tbDbusPulse.valid = true;
-        tbDbusPulse.address = addr;
-        tbDbusPulse.read = !isWrite;
-        tbDbusPulse.write = isWrite;
-
-        if (isWrite) {
-            const unsigned byteOffset = addr & 0x3u;
-            uint16_t wordStrobe = 0;
-            uint32_t busData = writeData;
-            if (size == 1) {
-                wordStrobe = uint16_t{1} << byteOffset;
-                const uint32_t byte = writeData & 0xffu;
-                busData = byte * 0x01010101u;
-            } else if (size == 2) {
-                wordStrobe = (uint16_t{3} << byteOffset) & 0xfu;
-                const uint32_t half = writeData & 0xffffu;
-                busData = half | (half << 16);
-            } else {
-                // SW ignores addr[1:0] in the generated LSU.
-                wordStrobe = 0xfu;
-            }
-            // DBus is 4/32 bits at the crossbar boundary.  The crossbar, not
-            // the LSU, shifts/broadcasts these values for an SRAM slave.
-            tbDbusPulse.writeStrobe = wordStrobe;
-            tbDbusPulse.writeData[0] = busData;
-        }
-
-        tbDataOutstanding = true;
-        if (isWrite && size == 4 && addr == 0x4001e004 &&
-            (writeData == 2 || writeData == 4)) {
-            // aerith_tb_top.sv observes this request directly, outside the
-            // crossbar decode, and terminates on the same rising edge.
-            tbDoneRequested = true;
-            tbDoneValue = writeData;
-        }
-        return true;
-    }
-
     // The RTL DBus always transfers one selected 32-bit word.  Subword
     // behavior is represented by four byte enables, not by changing the bus
     // request width, and addr[1:0] never makes a transfer cross into the next
@@ -600,29 +500,6 @@ PipelineMiniCPU::completeDutKuiData(
             data &= (uint32_t{1} << (pendingDataSize * 8)) - 1;
         }
     }
-    core.acceptDataResponse(static_cast<uint32_t>(pendingDataAddr),
-                            data, pendingDataIsWrite);
-    tbDataOutstanding = false;
-    pendingDataAddr = 0;
-    pendingDataSize = 0;
-    pendingDataIsWrite = false;
-    pendingDataWriteValue = 0;
-}
-
-void
-PipelineMiniCPU::completeTbData(const brs::TbBusResponse &response)
-{
-    panic_if(!tbDataOutstanding,
-             "RTL-testbench DBus returned without an outstanding request");
-
-    uint32_t data = 0;
-    if (!pendingDataIsWrite) {
-        const unsigned word = (pendingDataAddr >> 2) & 0x3;
-        // The crossbar selects a 32-bit word with addr[3:2].  LSU.sv then
-        // performs the byte/halfword lane selection using addr[1:0].
-        data = response.readData[word];
-    }
-
     core.acceptDataResponse(static_cast<uint32_t>(pendingDataAddr),
                             data, pendingDataIsWrite);
     tbDataOutstanding = false;
@@ -826,16 +703,6 @@ PipelineMiniCPU::preloadProgramFunctional()
 
     for (uint32_t i = 0; i < img.program_words; ++i) {
         Addr addr = textBase + i * 4;
-        if (legacyTbMemoryEnabled()) {
-            tbCrossbar.writeWord(static_cast<uint32_t>(addr),
-                                 img.instr_mem[i]);
-            continue;
-        }
-        if (dutKuiMemoryEnabled()) {
-            dutKuiMemory.writeWord(static_cast<uint32_t>(addr),
-                                   img.instr_mem[i]);
-            continue;
-        }
         auto req = std::make_shared<Request>(
             addr, 4, Request::INST_FETCH, instRequestorId);
         auto pkt = new Packet(req, MemCmd::WriteReq);
@@ -875,9 +742,7 @@ void
 PipelineMiniCPU::preloadDataFunctional()
 {
     DataImage img;
-    const bool loaded = legacyTbMemoryEnabled() ?
-        img.loadReadmemh32File(dmemHexFile) : img.loadHexFile(dmemHexFile);
-    if (!loaded) {
+    if (!img.loadHexFile(dmemHexFile)) {
         fatal("Failed to load DMEM hex file: %s", dmemHexFile);
     }
 
@@ -890,10 +755,6 @@ PipelineMiniCPU::preloadDataFunctional()
     }
     for (size_t i = 0; i < totalBytes; ++i) {
         Addr addr = dmemBase + i;
-        if (legacyTbMemoryEnabled()) {
-            tbCrossbar.writeByte(static_cast<uint32_t>(addr), img.data[i]);
-            continue;
-        }
         if (dutKuiMemoryEnabled()) {
             dutKuiMemory.writeByte(static_cast<uint32_t>(addr), img.data[i]);
             continue;
@@ -928,13 +789,8 @@ PipelineMiniCPU::preloadTbRawImage(
         fatal_if(base + size > 0xffffffffULL,
                  "RTL-testbench raw image exceeds the 32-bit address bus: %s",
                  path);
-        if (dutKuiMemoryEnabled()) {
-            dutKuiMemory.writeByte(static_cast<uint32_t>(base + size),
-                                   static_cast<uint8_t>(byte));
-        } else {
-            tbCrossbar.writeByte(static_cast<uint32_t>(base + size),
-                                 static_cast<uint8_t>(byte));
-        }
+        dutKuiMemory.writeByte(static_cast<uint32_t>(base + size),
+                               static_cast<uint8_t>(byte));
         ++size;
     }
     fatal_if(!input.eof(), "Failed while reading RTL-testbench image: %s",
@@ -958,13 +814,8 @@ PipelineMiniCPU::preloadTbReadmemh32Image(
              static_cast<unsigned long long>(capacity), path);
 
     for (size_t byte = 0; byte < image.data.size(); ++byte) {
-        if (dutKuiMemoryEnabled()) {
-            dutKuiMemory.writeByte(static_cast<uint32_t>(base + byte),
-                                   image.data[byte]);
-        } else {
-            tbCrossbar.writeByte(static_cast<uint32_t>(base + byte),
-                                 image.data[byte]);
-        }
+        dutKuiMemory.writeByte(static_cast<uint32_t>(base + byte),
+                               image.data[byte]);
     }
     inform("preloadTbReadmemh32Image: wrote %llu bytes at %#x from %s",
            static_cast<unsigned long long>(image.data.size()), base, path);
@@ -972,111 +823,24 @@ PipelineMiniCPU::preloadTbReadmemh32Image(
 }
 
 void
-PipelineMiniCPU::processTbMemoryCycle(const brs::VeuMemoryOutput &veu)
+PipelineMiniCPU::processDutKuiMemoryCycle(
+    const brs::SauMemoryOutput &sau)
 {
-    // All sequential RTL blocks sample their old input pins on the same edge.
-    // Feed the VEU the response that was already visible before this edge;
-    // the crossbar response produced below becomes visible on the next edge.
-    core.clockVeuMemory(tbVeuResponsePins);
+    const brs::DutKuiMemoryOutputs outputs = dutKuiMemory.evaluate();
+    core.clockSauMemory(outputs.sau);
+    // dut_kui maps sau_crossbar_done to external interrupt source bit 3.
+    // Set the current CPU input pins before the closing edge; PipelineCore's
+    // CSRU/IRCU input register samples them in clockOneCycle().
+    const uint32_t externalIrq = configuredExternalIrq |
+        (sau.crossbarDone ? (uint32_t{1} << 3) : 0);
+    core.setInterruptInputs(
+        externalIrq, configuredSoftwareIrq, configuredTimerIrq);
+    core.evaluateOneCycle();
+    writeDutKuiCycleTrace(sau, outputs);
+    dutKuiMemory.clockEdge(core.timingVeuOwnsSharedDmem(), sau);
 
-    brs::TbCrossbarInputs inputs;
-    inputs.ibus = tbIbusPulse;
-    inputs.dbus = tbDbusPulse;
-
-    inputs.veu.valid = veu.request.valid;
-    inputs.veu.address = veu.request.address;
-    inputs.veu.read = veu.request.valid && !veu.request.isWrite();
-    inputs.veu.write = veu.request.valid && veu.request.isWrite();
-    inputs.veu.writeStrobe = veu.request.writeStrobe;
-    inputs.veu.writeData = veu.request.writeData;
-    inputs.lockStart = veu.lockStart;
-    inputs.lockFinish = veu.lockFinish;
-
-    const brs::TbCrossbarOutputs outputs = tbCrossbar.clock(inputs);
-    const std::string uartOutput = tbCrossbar.takeUartOutput();
-    if (!uartOutput.empty() && uartLog.is_open()) {
-        uartLog.write(uartOutput.data(), uartOutput.size());
-        uartLog.flush();
-    }
-    writeTbCycleTrace(inputs, outputs);
-    tbIbusPulse = {};
-    tbDbusPulse = {};
-
-    if (outputs.ibus.valid) {
-        completeTbFetch(outputs.ibus);
-    }
-    if (outputs.dbus.valid) {
-        completeTbData(outputs.dbus);
-    }
-
-    tbVeuResponsePins.valid = outputs.veu.valid;
-    tbVeuResponsePins.readData = outputs.veu.readData;
-    tbVeuResponsePins.lockActive = outputs.lockActive;
-}
-
-void
-PipelineMiniCPU::writeTbCycleTrace(
-    const brs::TbCrossbarInputs &inputs,
-    const brs::TbCrossbarOutputs &outputs)
-{
-    if (!cycleTrace.is_open()) {
-        return;
-    }
-
-    const PipelineRetireEvent &retire = core.lastRetireEvent();
-    const unsigned dbusReadLane =
-        static_cast<unsigned>((pendingDataAddr >> 2) & 0x3u);
-    const unsigned stallMask = core.spiritExecuteStalled() ? 0x7u :
-        ((core.stall_pc || core.stall_ifid) ? 0x3u : 0u);
-    cycleTrace << "edge=" << elapsedClockEdges
-        << " reset=0"
-        << " cpu_cycle=" << core.getCycle()
-        << " ibus_req=" << inputs.ibus.valid
-        << " ibus_addr=0x" << std::hex << inputs.ibus.address
-        << " ibus_re=" << inputs.ibus.read
-        << " ibus_resp=" << outputs.ibus.valid
-        << " ibus_r0=0x" << outputs.ibus.readData[0]
-        << " ibus_r1=0x" << outputs.ibus.readData[1]
-        << " ibus_r2=0x" << outputs.ibus.readData[2]
-        << " ibus_r3=0x" << outputs.ibus.readData[3]
-        << " dbus_req=" << std::dec << inputs.dbus.valid
-        << " dbus_addr=0x" << std::hex << inputs.dbus.address
-        << " dbus_re=" << std::dec << inputs.dbus.read
-        << " dbus_we=" << inputs.dbus.write
-        << " dbus_wstrb=0x" << std::hex << inputs.dbus.writeStrobe
-        << " dbus_wdata=0x" << inputs.dbus.writeData[0]
-        << " dbus_resp=" << std::dec << outputs.dbus.valid
-        << " dbus_rdata=0x" << std::hex
-        << outputs.dbus.readData[dbusReadLane]
-        << " grant=" << std::dec
-        << static_cast<unsigned>(outputs.grantedMaster)
-        << " retire=" << retire.valid
-        << " retire_pc=0x" << std::hex << retire.pc
-        << " retire_instr=0x" << retire.instr
-        << " wb_we=" << std::dec << retire.regWrite
-        << " wb_fp=" << retire.fpWrite
-        << " wb_rd=" << static_cast<unsigned>(retire.rd)
-        << " wb_data=0x" << std::hex << retire.data
-        << " stall_mask=0x" << stallMask
-        << " stall_pc=" << std::dec << core.stall_pc
-        << " stall_ifid=" << core.stall_ifid
-        << " bubble_idex=" << core.bubble_idex
-        << " stall_veu=" << core.veuStalled()
-        << " stall_mdu=" << core.mduStalled()
-        << " stall_lsu=" << core.lsuStalled()
-        << " stall_fp=" << core.fpStalled()
-        << " redirect=" << core.redirect_pc
-        << " redirect_target=0x" << std::hex << core.redirect_target
-        << " done=" << std::dec << tbDoneRequested
-        << " done_value=" << tbDoneValue << '\n';
-    cycleTrace.flush();
-}
-
-void
-PipelineMiniCPU::processDutKuiMemoryCycle()
-{
-    const brs::DutKuiMemoryOutputs outputs =
-        dutKuiMemory.clock(core.timingVeuOwnsSharedDmem());
+    // Commit responses sampled from the old output pins. They affect the next
+    // evaluate phase, independent of C++ call order within this edge.
     if (outputs.ibus.valid) {
         completeDutKuiFetch(outputs.ibus);
     }
@@ -1090,32 +854,120 @@ PipelineMiniCPU::processDutKuiMemoryCycle()
     if (outputs.veuWrite.valid) {
         core.acceptVeuMemoryWrite(outputs.veuWrite.transactionId);
     }
+    core.clockOneCycle();
+}
+
+void
+PipelineMiniCPU::writeDutKuiCycleTrace(
+    const brs::SauMemoryOutput &sau,
+    const brs::DutKuiMemoryOutputs &outputs)
+{
+    if (!cycleTrace.is_open()) {
+        return;
+    }
+
+    const PipelineRetireEvent &retire = core.lastRetireEvent();
+    const brs::HcRequest &hcRequest = core.getHcRequest();
+    const brs::HcResponse &hcResponse = core.getHcResponse();
+    const brs::DutKuiIbusRequest &ibus = dutKuiMemory.currentIbusRequest();
+    const brs::DutKuiDbusRequest &dbus = dutKuiMemory.currentDbusRequest();
+    const brs::DutKuiVeuRequest &veu = dutKuiMemory.currentVeuRequest();
+    const unsigned stallMask = core.spiritExecuteStalled() ? 0x7u :
+        ((core.stall_pc || core.stall_ifid) ? 0x3u : 0u);
+
+    cycleTrace << "edge=" << elapsedClockEdges
+        << " reset=0"
+        << " phase=evaluate"
+        << " platform=rtl-dut-kui-tb"
+        << " cpu_cycle=" << core.getCycle()
+        << " converter_state_pre=" << std::dec
+        << static_cast<unsigned>(dutKuiMemory.converterState())
+        << " xbar_state_pre="
+        << static_cast<unsigned>(dutKuiMemory.crossbarState())
+        << " ibus_req=" << dutKuiMemory.ibusAcceptedThisTick()
+        << " ibus_addr=0x" << std::hex << ibus.address
+        << " ibus_resp=" << std::dec << outputs.ibus.valid
+        << " dbus_req=" << dutKuiMemory.dbusAcceptedThisTick()
+        << " dbus_addr=0x" << std::hex << dbus.address
+        << " dbus_wstrb=0x" << static_cast<unsigned>(dbus.writeStrobe)
+        << " dbus_wdata=0x" << dbus.writeData
+        << " dbus_resp=" << std::dec << outputs.dbus.valid
+        << " dbus_rdata=0x" << std::hex << outputs.dbus.readData
+        << " veu_req=" << std::dec << dutKuiMemory.veuAcceptedThisTick()
+        << " veu_addr=0x" << std::hex << veu.address
+        << " veu_write=" << std::dec << veu.isWrite
+        << " veu_rresp=" << outputs.veuRead.valid
+        << " veu_wresp=" << outputs.veuWrite.valid
+        << " hc_req=" << hcRequest.hasTransaction()
+        << " hc_addr=0x" << std::hex << hcRequest.csrAddr
+        << " hc_re=" << std::dec << hcRequest.csrRead
+        << " hc_we=" << hcRequest.csrWrite
+        << " hc_target=" << static_cast<unsigned>(core.getHcTarget())
+        << " hc_valid=" << hcResponse.valid
+        << " hc_rdata=0x" << std::hex << hcResponse.readData
+        << " sau_sram_req=" << std::dec << sau.request.valid
+        << " sau_sram_addr=0x" << std::hex << sau.request.address
+        << " sau_sram_wstrb=0x" << sau.request.writeStrobe
+        << " sau_xbar_start=" << std::dec << sau.crossbarStart
+        << " sau_xbar_done=" << sau.crossbarDone
+        << " sau_sram_resp=" << outputs.sau.valid
+        << " sau_sram_accept="
+        << outputs.masterAccepted[
+            static_cast<uint8_t>(brs::DutKuiDataMaster::Sau)]
+        << " sau_sram_drop="
+        << outputs.masterDropped[
+            static_cast<uint8_t>(brs::DutKuiDataMaster::Sau)]
+        << " veu_sram_accept="
+        << outputs.masterAccepted[
+            static_cast<uint8_t>(brs::DutKuiDataMaster::Veu)]
+        << " veu_sram_drop="
+        << outputs.masterDropped[
+            static_cast<uint8_t>(brs::DutKuiDataMaster::Veu)]
+        << " xbar_same_bank_collision=" << outputs.sameBankCollision
+        << " xbar_bank_req=0x" << std::hex
+        << (static_cast<unsigned>(outputs.bankRequest[0]) |
+            (static_cast<unsigned>(outputs.bankRequest[1]) << 1) |
+            (static_cast<unsigned>(outputs.bankRequest[2]) << 2) |
+            (static_cast<unsigned>(outputs.bankRequest[3]) << 3))
+        << " sau_irq3=" << std::dec
+        << ((configuredExternalIrq |
+             (sau.crossbarDone ? (uint32_t{1} << 3) : 0)) >> 3 & 1u)
+        << " retire=" << retire.valid
+        << " retire_pc=0x" << std::hex << retire.pc
+        << " retire_instr=0x" << retire.instr
+        << " wb_we=" << std::dec << retire.regWrite
+        << " wb_fp=" << retire.fpWrite
+        << " wb_rd=" << static_cast<unsigned>(retire.rd)
+        << " wb_data=0x" << std::hex << retire.data
+        << " stall_mask=0x" << stallMask
+        << " stall_pc=" << std::dec << core.stall_pc
+        << " stall_ifid=" << core.stall_ifid
+        << " bubble_idex=" << core.bubble_idex
+        << " stall_sau=" << core.sauStalled()
+        << " stall_veu=" << core.veuStalled()
+        << " stall_mdu=" << core.mduStalled()
+        << " stall_lsu=" << core.lsuStalled()
+        << " stall_fp=" << core.fpStalled()
+        << '\n';
+    cycleTrace.flush();
 }
 
 void
 PipelineMiniCPU::startup()
 {
     if (tbMemoryEnabled) {
-        if (legacyTbMemoryEnabled()) {
-            // The legacy RTL SRAM arrays start at zero before their image
-            // loaders run. The cycle trace mirrors aerith_tb_top.sv pins.
-            tbCrossbar.clearMemory();
-            uartLog.open(simout.resolve("uart.log"),
-                         std::ios::out | std::ios::binary | std::ios::trunc);
-            fatal_if(!uartLog.is_open(), "Failed to open RTL UART log");
-            if (!cycleTraceFile.empty()) {
-                cycleTrace.open(simout.resolve(cycleTraceFile),
-                                std::ios::out | std::ios::trunc);
-                fatal_if(!cycleTrace.is_open(),
-                         "Failed to open cycle trace file: %s",
-                         cycleTraceFile);
-                cycleTrace << "# brs-cycle-trace-v1 source=gem5 "
-                           << "sampling=posedge-pre-nba reset_edges="
-                           << resetCyclesRemaining << '\n';
-                cycleTrace.flush();
-            }
-        } else {
-            dutKuiMemory.reset();
+        dutKuiMemory.reset();
+        if (!cycleTraceFile.empty()) {
+            cycleTrace.open(simout.resolve(cycleTraceFile),
+                            std::ios::out | std::ios::trunc);
+            fatal_if(!cycleTrace.is_open(),
+                     "Failed to open cycle trace file: %s",
+                     cycleTraceFile);
+            cycleTrace << "# brs-cycle-trace-v2 source=gem5 "
+                       << "sampling=evaluate-before-clock "
+                       << "platform=rtl-dut-kui-tb"
+                       << " reset_edges=" << resetCyclesRemaining << '\n';
+            cycleTrace.flush();
         }
         if (!tbImemImageFile.empty()) {
             preloadedProgramSize = preloadTbRawImage(
@@ -1147,10 +999,8 @@ PipelineMiniCPU::processTick()
 {
     ++elapsedClockEdges;
 
-    // Match aerith_tb_top.sv: the DUT remains inactive for 100 rising
-    // edges by default. These reset edges advance gem5 time, but they do
-    // not advance PipelineCore::cycle. The first active CPU edge is the
-    // rising edge immediately after the configured reset interval.
+    // Reset edges advance gem5 time but do not advance PipelineCore::cycle.
+    // The first active CPU edge follows the configured reset interval.
     if (resetCyclesRemaining > 0) {
         --resetCyclesRemaining;
         if (cycleTrace.is_open()) {
@@ -1159,32 +1009,19 @@ PipelineMiniCPU::processTick()
             cycleTrace.flush();
         }
         if (tbMemoryEnabled && elapsedClockEdges >= maxCycles) {
-            exitSimLoop("Aerith RTL testbench timeout");
+            exitSimLoop("dut_kui RTL testbench timeout");
             return;
         }
         schedule(tickEvent, clockEdge(Cycles(1)));
         return;
     }
 
-    // Sample the VEU's current-cycle pins before either endpoint is clocked.
-    // The CPU request callbacks below likewise represent signals driven during
-    // this cycle and captured by the crossbar at its closing edge.
-    const brs::VeuMemoryOutput veuMemory = legacyTbMemoryEnabled() ?
-        core.evaluateVeuMemory() : brs::VeuMemoryOutput{};
-    core.stepOneCycle();
-    if (legacyTbMemoryEnabled()) {
-        // The core drives its one-cycle request pulses during this cycle. The
-        // crossbar captures them on this edge; registered responses are made
-        // visible to PipelineCore on the following CPU cycle.
-        processTbMemoryCycle(veuMemory);
-        if (tbDoneRequested) {
-            exitSimLoop(tbDoneValue == 2 ?
-                "Aerith RTL testbench DONE (PASS)" :
-                "Aerith RTL testbench DONE (ERROR)");
-            return;
-        }
-    } else if (dutKuiMemoryEnabled()) {
-        processDutKuiMemoryCycle();
+    const brs::SauMemoryOutput sauMemory = dutKuiMemoryEnabled() ?
+        core.evaluateSauMemory() : brs::SauMemoryOutput{};
+    if (dutKuiMemoryEnabled()) {
+        processDutKuiMemoryCycle(sauMemory);
+    } else {
+        core.stepOneCycle();
     }
 
     pipeStats.cycle_count = core.getCycle();
@@ -1275,7 +1112,7 @@ PipelineMiniCPU::processTick()
         << " align=" << core.getAlignedInstrCount()
         << std::endl;
 
-    if (!legacyTbMemoryEnabled() && core.done() && pendingVeuReq == nullptr &&
+    if (core.done() && pendingVeuReq == nullptr &&
         veuPacketsInFlight == 0 && core.timingVeu.quiescent()) {
         exitSimLoop("PipelineMiniCPU completed test");
         return;

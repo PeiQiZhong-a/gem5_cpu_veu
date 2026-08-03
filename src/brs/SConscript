@@ -15,7 +15,12 @@ Source('pipeline/hazard_unit.cc')
 Source('pipeline/forwarding_unit.cc')
 Source('pipeline/memory_backend_local.cc')
 Source('memory/dut_kui_memory_model.cc')
-Source('memory/tb_crossbar_model.cc')
+Source('memory/dut_kui_data_crossbar.cc')
+Source('memory/sram_converter_32to256.cc')
+Source('hc/hc_cbu.cc')
+Source('hc/hc_router.cc')
+Source('sau/sau_cbu.cc')
+Source('sau/stub_sau.cc')
 Source('veu/veu_cbu.cc')
 Source('veu/fake_veu.cc')
 Source('veu/timing_veu.cc')
@@ -30,13 +35,19 @@ GTest('brs_compressed_decode.test',
       'pipeline/compressed_decode.test.cc',
       'pipeline/compressed_decode.cc')
 
-GTest('brs_tb_crossbar_model.test',
-      'memory/tb_crossbar_model.test.cc',
-      'memory/tb_crossbar_model.cc')
-
 GTest('brs_dut_kui_memory_model.test',
       'memory/dut_kui_memory_model.test.cc',
-      'memory/dut_kui_memory_model.cc')
+      'memory/dut_kui_memory_model.cc',
+      'memory/dut_kui_data_crossbar.cc',
+      'memory/sram_converter_32to256.cc')
+
+GTest('brs_sram_converter_32to256.test',
+      'memory/sram_converter_32to256.test.cc',
+      'memory/sram_converter_32to256.cc')
+
+GTest('brs_dut_kui_data_crossbar.test',
+      'memory/dut_kui_data_crossbar.test.cc',
+      'memory/dut_kui_data_crossbar.cc')
 
 GTest('brs_program_image.test',
       'pipeline/program_image.test.cc')
@@ -49,7 +60,16 @@ GTest('brs_veu_decode.test',
 
 GTest('brs_veu_cbu.test',
       'veu/veu_cbu.test.cc',
+      'hc/hc_cbu.cc',
       'veu/veu_cbu.cc')
+
+GTest('brs_hc_cbu.test',
+      'hc/hc_cbu.test.cc',
+      'hc/hc_cbu.cc')
+
+GTest('brs_hc_router.test',
+      'hc/hc_router.test.cc',
+      'hc/hc_router.cc')
 
 GTest('brs_hazard_forwarding.test',
       'pipeline/hazard_forwarding.test.cc',
@@ -58,6 +78,7 @@ GTest('brs_hazard_forwarding.test',
 
 GTest('brs_fake_veu.test',
       'veu/fake_veu.test.cc',
+      'hc/hc_cbu.cc',
       'veu/fake_veu.cc',
       'veu/veu_cbu.cc')
 
@@ -69,6 +90,44 @@ GTest('brs_timing_veu.test',
 
 GTest('brs_veu_issue.test',
       'pipeline/veu_issue.test.cc')
+
+GTest('brs_sau_decode.test',
+      'pipeline/sau_decode.test.cc')
+
+GTest('brs_sau_cbu.test',
+      'sau/sau_cbu.test.cc',
+      'hc/hc_cbu.cc',
+      'sau/sau_cbu.cc')
+
+GTest('brs_stub_sau.test',
+      'sau/stub_sau.test.cc',
+      'sau/stub_sau.cc')
+
+GTest('brs_sau_issue.test',
+      'pipeline/sau_issue.test.cc')
+
+GTest('brs_pipeline_sau.test',
+      'pipeline/pipeline_sau.test.cc',
+      'pipeline/pipeline_core.cc',
+      'pipeline/stage_if.cc',
+      'pipeline/stage_id.cc',
+      'pipeline/compressed_decode.cc',
+      'pipeline/stage_ex.cc',
+      'pipeline/stage_mem.cc',
+      'pipeline/stage_wb.cc',
+      'pipeline/frontend_fetch_unit.cc',
+      'pipeline/hazard_unit.cc',
+      'pipeline/forwarding_unit.cc',
+      'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
+      'veu/veu_cbu.cc',
+      'veu/fake_veu.cc',
+      'veu/timing_veu.cc',
+      'veu/veu_functional.cc',
+      'veu/veu_timing_profile.cc')
 
 GTest('brs_pipeline_veu_stall.test',
       'pipeline/pipeline_veu_stall.test.cc',
@@ -85,6 +144,10 @@ GTest('brs_pipeline_veu_stall.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
@@ -104,6 +167,10 @@ GTest('brs_pipeline_rv32m.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
@@ -123,6 +190,10 @@ GTest('brs_pipeline_lsu_timing.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
@@ -142,6 +213,10 @@ GTest('brs_pipeline_csr_trap.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
@@ -161,6 +236,10 @@ GTest('brs_pipeline_control_fp.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
@@ -180,6 +259,10 @@ GTest('brs_pipeline_veu_writeback.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
@@ -199,6 +282,10 @@ GTest('brs_pipeline_veu_end_to_end.test',
       'pipeline/hazard_unit.cc',
       'pipeline/forwarding_unit.cc',
       'pipeline/memory_backend_local.cc',
+      'hc/hc_cbu.cc',
+      'hc/hc_router.cc',
+      'sau/sau_cbu.cc',
+      'sau/stub_sau.cc',
       'veu/veu_cbu.cc',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',

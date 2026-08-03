@@ -74,6 +74,27 @@ PipelineCore::configureFakeVeu(
 }
 
 void
+PipelineCore::configureStubSau(uint32_t latencyCycles)
+{
+    stubSau.setResponseLatencyCycles(latencyCycles);
+    useStubSauEndpoint();
+}
+
+void
+PipelineCore::attachSauEndpoint(brs::SauEndpoint &endpoint)
+{
+    sauEndpoint = &endpoint;
+    sauEndpoint->reset();
+}
+
+void
+PipelineCore::useStubSauEndpoint()
+{
+    sauEndpoint = &stubSau;
+    sauEndpoint->reset();
+}
+
+void
 PipelineCore::configureTimingVeu(const brs::VeuTimingConfig &config)
 {
     timingVeu.configure(config);
@@ -193,20 +214,34 @@ PipelineCore::reset()
     data_response_value = 0;
     data_response_is_store = false;
     veu_stall = false;
+    sau_stall = false;
     mdu_stall = false;
     lsu_stall = false;
     fp_stall = false;
     mdu_busy = false;
     mdu_cycles_remaining = 0;
     mdu_result = 0;
+    hcResponse = {};
+    hcCbuOutput = {};
+    hcIssue = {};
+    hcRoutedRequests = {};
+    sauMemoryResponse = {};
+    veuMemoryResponse = {};
+    cycleEvaluated = false;
+    instrRetiringThisCycle = false;
+    sauResponse = {};
+    sau_issue_count = 0;
+    sau_complete_count = 0;
+    sau_csr_handshake_cycles = 0;
+    hcCbu.reset();
+    if (sauEndpoint) {
+        sauEndpoint->reset();
+    }
     veuResponse = {};
-    veuCbuOutput = {};
-    veuIssue = {};
     veu_issue_count = 0;
     veu_complete_count = 0;
     veu_csr_handshake_cycles = 0;
     rv_dmem_blocked_by_veu_cycles = 0;
-    veuCbu.reset();
     if (veuEndpoint) {
         veuEndpoint->reset();
     }
@@ -385,7 +420,7 @@ PipelineCore::freezeFetchDecodeForExecuteStall() const
     // the current long-latency instruction remains in ID/EX, IF/ID is preserved, and
     // no younger instruction is decoded/fetched until the CBU/MDU/LSU
     // completes. EX/MEM and MEM/WB still advance so older work can retire.
-    return veu_stall || mdu_stall || lsu_stall || fp_stall;
+    return veu_stall || sau_stall || mdu_stall || lsu_stall || fp_stall;
 }
 
 uint32_t
@@ -798,32 +833,50 @@ PipelineCore::evaluateVeuMemory() const
 void
 PipelineCore::clockVeuMemory(const brs::VeuMemoryResponse &response)
 {
-    if (veuEndpoint) {
-        veuEndpoint->clockMemory(response);
-    }
+    veuMemoryResponse = response;
+}
+
+brs::SauMemoryOutput
+PipelineCore::evaluateSauMemory() const
+{
+    return sauEndpoint ? sauEndpoint->evaluateMemory() :
+        brs::SauMemoryOutput{};
 }
 
 void
-PipelineCore::stepOneCycle()
+PipelineCore::clockSauMemory(const brs::SauMemoryResponse &response)
 {
-    if (done_flag) {
+    sauMemoryResponse = response;
+}
+
+void
+PipelineCore::evaluateOneCycle()
+{
+    if (done_flag || cycleEvaluated) {
         return;
     }
+    cycleEvaluated = true;
 
-    const bool instrRetiringThisCycle = memwb_cur.valid;
+    instrRetiringThisCycle = memwb_cur.valid;
     last_retire_event = {};
 
     redirect_pc = false;
     redirect_target = 0;
     flush_idex = false;
     veu_stall = false;
+    sau_stall = false;
     mdu_stall = false;
     lsu_stall = false;
     fp_stall = false;
     debug_instr_caught_ebreak = false;
-    veuIssue = {};
+    hcIssue = {};
+    sauResponse = sauEndpoint ? sauEndpoint->evaluate() : brs::SauResponse{};
     veuResponse = veuEndpoint ? veuEndpoint->evaluate() : brs::VeuResponse{};
-    veuCbuOutput = veuCbu.evaluate(veuResponse);
+    const brs::HcCbuOutput hcProbe = hcCbu.evaluate({});
+    hcResponse = hcRouter.routeResponse(
+        hcProbe.request, veuResponse, sauResponse);
+    hcCbuOutput = hcCbu.evaluate(hcResponse);
+    hcRoutedRequests = hcRouter.routeRequest(hcCbuOutput.request);
 
     if (csr_debug_mode && debug_resume_sampled) {
         csr_debug_mode = false;
@@ -866,11 +919,26 @@ PipelineCore::stepOneCycle()
         ++stall_count;
     }
 
-    veuCbu.clock(veuIssue, veuResponse);
-    if (veuEndpoint) {
-        veuEndpoint->clock(veuCbuOutput.request);
+}
+
+void
+PipelineCore::clockOneCycle()
+{
+    if (!cycleEvaluated) {
+        return;
     }
 
+    hcCbu.clock(hcIssue, hcResponse);
+    if (sauEndpoint) {
+        sauEndpoint->clockTick(
+            hcRoutedRequests.sau, sauMemoryResponse);
+    }
+    if (veuEndpoint) {
+        veuEndpoint->clockTick(
+            hcRoutedRequests.veu, veuMemoryResponse);
+    }
+    sauMemoryResponse = {};
+    veuMemoryResponse = {};
     commitNext();
 
     // Software/timer/external inputs are registered by CSRU/IRCU.  Updating
@@ -915,6 +983,14 @@ PipelineCore::stepOneCycle()
             done_flag = true;
         }
     }
+    cycleEvaluated = false;
+}
+
+void
+PipelineCore::stepOneCycle()
+{
+    evaluateOneCycle();
+    clockOneCycle();
 }
 
 void

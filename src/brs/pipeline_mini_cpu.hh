@@ -22,7 +22,6 @@
 #include "brs/pipeline/program_image.hh"
 #include "brs/pipeline_stats.hh"
 #include "brs/memory/dut_kui_memory_model.hh"
-#include "brs/memory/tb_crossbar_model.hh"
 
 namespace gem5
 {
@@ -59,6 +58,9 @@ class PipelineMiniCPU : public ClockedObject
     uint64_t elapsedClockEdges = 0;
     Addr textBase;
     System *system;
+    uint32_t configuredExternalIrq;
+    bool configuredSoftwareIrq;
+    bool configuredTimerIrq;
     PipelineCore core;
     EventFunctionWrapper tickEvent;
     std::string programFile;
@@ -73,23 +75,15 @@ class PipelineMiniCPU : public ClockedObject
     RequestorID veuRequestorId;
 
     bool tbMemoryEnabled;
-    std::string tbMemoryPlatform;
     std::string tbImemImageFile;
     std::string tbDmemImageFile;
     Addr tbInstBase;
     Addr tbInstSize;
     Addr tbDataBase;
     Addr tbDataStorageSize;
-    brs::TbCrossbarModel tbCrossbar;
     brs::DutKuiMemoryModel dutKuiMemory;
-    brs::TbBusRequest tbIbusPulse;
-    brs::TbBusRequest tbDbusPulse;
     bool tbInstOutstanding = false;
     bool tbDataOutstanding = false;
-    bool tbDoneRequested = false;
-    uint32_t tbDoneValue = 0;
-    brs::VeuMemoryResponse tbVeuResponsePins;
-    std::ofstream uartLog;
     std::string cycleTraceFile;
     std::ofstream cycleTrace;
 
@@ -141,12 +135,10 @@ class PipelineMiniCPU : public ClockedObject
     bool fetchInstrFunctional(uint32_t addr, uint32_t &inst);
     bool requestInstrTiming(uint32_t addr);
     bool completeTimingFetch(PacketPtr pkt);
-    void completeTbFetch(const brs::TbBusResponse &response);
     void retryInstFetch();
     bool requestDataTiming(uint32_t addr, unsigned size,
                            bool isWrite, uint32_t writeData);
     bool completeTimingData(PacketPtr pkt);
-    void completeTbData(const brs::TbBusResponse &response);
     void completeDutKuiFetch(const brs::DutKuiIbusResponse &response);
     void completeDutKuiData(const brs::DutKuiDbusResponse &response);
     void retryDataRequest();
@@ -161,12 +153,10 @@ class PipelineMiniCPU : public ClockedObject
         const std::string &path, Addr base, Addr capacity);
     Addr preloadTbReadmemh32Image(
         const std::string &path, Addr base, Addr capacity);
-    void processTbMemoryCycle(const brs::VeuMemoryOutput &veu);
-    void writeTbCycleTrace(
-        const brs::TbCrossbarInputs &inputs,
-        const brs::TbCrossbarOutputs &outputs);
-    void processDutKuiMemoryCycle();
-    bool legacyTbMemoryEnabled() const;
+    void writeDutKuiCycleTrace(
+        const brs::SauMemoryOutput &sau,
+        const brs::DutKuiMemoryOutputs &outputs);
+    void processDutKuiMemoryCycle(const brs::SauMemoryOutput &sau);
     bool dutKuiMemoryEnabled() const;
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);

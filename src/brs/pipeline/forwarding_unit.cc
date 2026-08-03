@@ -64,7 +64,7 @@ ForwardingUnit::resolve(const IDEX &idex_cur,
     const bool usesRs2 = fpInstruction ?
         (idex_cur.kind == InstrKind::FSW || fusedFp || binaryFp) :
         sources.usesRs2;
-    const bool usesRs3 = fusedFp;
+    const bool usesRs3 = fpInstruction ? fusedFp : sources.usesRs3;
 
     d.sel_a = selectSource(usesRs1, idex_cur.rs1, idex_cur.rs1_fp);
 

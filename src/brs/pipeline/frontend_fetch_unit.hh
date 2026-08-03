@@ -10,6 +10,8 @@ namespace gem5
 
 struct FetchBlock
 {
+    // fetchAddr is the exact address driven on Spirit's IBus. blockAddr is
+    // addr[31:2] << 2, the address corresponding to words[0].
     uint32_t fetchAddr = 0;
     uint32_t blockAddr = 0;
     std::array<uint32_t, 4> words = {};
@@ -142,6 +144,7 @@ class FrontendFetchUnit
         uint32_t instr = 0;
         uint8_t instrLen = 4;
         bool requestValid = false;
+        // Exact Spirit ibus_out_addr value, without 16-byte alignment.
         uint32_t requestAddr = 0;
         uint32_t requestFetchAddr = 0;
     };

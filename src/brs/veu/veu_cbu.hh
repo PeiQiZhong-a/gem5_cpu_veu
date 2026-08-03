@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "brs/hc/hc_cbu.hh"
 #include "brs/veu/veu_protocol.hh"
 
 namespace gem5
@@ -24,24 +25,12 @@ struct VeuCbuIssue
     uint32_t operand3 = 0;
 };
 
-struct VeuCbuOutput
-{
-    bool ready = false;
-    bool busy = false;
-    bool complete = false;
-    uint32_t result = 0;
-    VeuRequest request;
-};
+using VeuCbuOutput = HcCbuOutput;
 
 class VeuCbu
 {
   public:
-    enum class State : uint8_t
-    {
-        Idle,
-        SendFirst,
-        WaitSecond
-    };
+    using State = HcCbu::State;
 
     VeuCbu();
 
@@ -55,14 +44,11 @@ class VeuCbu
     // when recording the signals observed during that cycle.
     void clock(const VeuCbuIssue &issue, const VeuResponse &response);
 
-    State state() const { return currentState; }
-    bool busy() const { return currentState != State::Idle; }
+    State state() const { return commonCbu.state(); }
+    bool busy() const { return commonCbu.busy(); }
 
   private:
-    State currentState = State::Idle;
-    VeuRequest requestReg;
-    uint32_t operand3Reg = 0;
-    bool twoShot = false;
+    HcCbu commonCbu;
 };
 
 } // namespace brs

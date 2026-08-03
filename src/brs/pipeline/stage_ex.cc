@@ -1,4 +1,5 @@
 #include "brs/pipeline/pipeline_core.hh"
+#include "brs/pipeline/sau_issue.hh"
 #include "brs/pipeline/veu_issue.hh"
 
 #include <cstdint>
@@ -236,6 +237,7 @@ PipelineCore::stageEX()
         memwb_value = memwb_cur.mem_data;
         break;
       case WbSel::VEU:
+      case WbSel::SAU:
         memwb_value = memwb_cur.alu_result;
         break;
       default:
@@ -274,14 +276,42 @@ PipelineCore::stageEX()
         ++forward_count;
     }
 
+    if (idex_cur.kind == InstrKind::SAU) {
+        if (hcCbuOutput.complete) {
+            exmem_next.valid = true;
+            exmem_next.pc = idex_cur.pc;
+            exmem_next.kind = idex_cur.kind;
+            exmem_next.rd = idex_cur.rd;
+            exmem_next.alu_result = hcCbuOutput.result;
+            exmem_next.instr = idex_cur.instr;
+            exmem_next.instr_len = idex_cur.instr_len;
+            exmem_next.reg_write = idex_cur.reg_write;
+            exmem_next.mem_read = false;
+            exmem_next.mem_write = false;
+            exmem_next.wb_sel = idex_cur.wb_sel;
+            ++sau_complete_count;
+        } else {
+            exmem_next = {};
+            ++sau_csr_handshake_cycles;
+            if (hcCbuOutput.ready) {
+                hcIssue = makeSauHcCbuIssue(idex_cur, op_a, op_b);
+                if (hcIssue.valid) {
+                    ++sau_issue_count;
+                }
+            }
+            sau_stall = true;
+        }
+        return;
+    }
+
     if (idex_cur.kind == InstrKind::VEU) {
-        if (veuCbuOutput.complete) {
+        if (hcCbuOutput.complete) {
             exmem_next.valid = true;
             exmem_next.pc = idex_cur.pc;
             exmem_next.kind = idex_cur.kind;
             exmem_next.rd = idex_cur.rd;
             exmem_next.rd_fp = idex_cur.rd_fp;
-            exmem_next.alu_result = veuCbuOutput.result;
+            exmem_next.alu_result = hcCbuOutput.result;
             exmem_next.instr = idex_cur.instr;
             exmem_next.instr_len = idex_cur.instr_len;
             exmem_next.reg_write = idex_cur.reg_write;
@@ -292,10 +322,10 @@ PipelineCore::stageEX()
         } else {
             exmem_next = {};
             ++veu_csr_handshake_cycles;
-            if (veuCbuOutput.ready) {
-                veuIssue = makeVeuCbuIssue(
+            if (hcCbuOutput.ready) {
+                hcIssue = makeVeuHcCbuIssue(
                     idex_cur, op_a, op_b, op_c);
-                if (veuIssue.valid) {
+                if (hcIssue.valid) {
                     ++veu_issue_count;
                 }
             }

@@ -6,6 +6,9 @@
 #include <deque>
 #include <unordered_map>
 
+#include "brs/memory/dut_kui_data_crossbar.hh"
+#include "brs/memory/sram_converter_32to256.hh"
+#include "brs/sau/sau_endpoint.hh"
 #include "brs/veu/veu_functional.hh"
 
 namespace gem5
@@ -63,6 +66,13 @@ struct DutKuiMemoryOutputs
     DutKuiDbusResponse dbus;
     DutKuiVeuResponse veuRead;
     DutKuiVeuResponse veuWrite;
+    SauMemoryResponse sau;
+    // Registered observability from the accelerator side of crossbar_mi.
+    // Master indices use DutKuiDataMaster (SAU=0, VEU=1).
+    std::array<bool, 2> masterAccepted{};
+    std::array<bool, 2> masterDropped{};
+    std::array<bool, 4> bankRequest{};
+    bool sameBankCollision = false;
 };
 
 // Cycle model of the memory-facing portion of dut_kui. Instruction fetch is
@@ -73,18 +83,21 @@ class DutKuiMemoryModel
   public:
     struct Config
     {
-        uint32_t ibusResponseLatency = 3;
-        uint32_t dbusResponseLatency = 4;
-        // PipelineMiniCPU delivers the model response after the current core
-        // step; TimingVEU consumes it on the following edge. These internal
-        // delays therefore produce RTL-visible issue-to-return deltas of 4/1.
-        uint32_t veuReadLatency = 3;
-        uint32_t veuWriteLatency = 0;
+        // A request captured on edge N produces the registered IBus response
+        // during cycle N+1. The unified tick engine samples it at the next
+        // edge; no C++ call-order delay is part of this value.
+        uint32_t ibusResponseLatency = 0;
+        // crossbar_mi pipelines both the selected master and the SRAM ack by
+        // two registers. DBUS uses the same crossbar pipeline before the
+        // 256-to-32 converter samples the return.
+        uint32_t crossbarMasterResponseLatency = 2;
+        uint32_t crossbarDbusResponseLatency = 2;
         uint32_t instBase = 0x00000000;
         uint32_t instSize = 0x00040000;
         uint32_t dataBase = 0x29120000;
         uint32_t bankSize = 0x00010000;
         uint32_t bankCount = 4;
+        uint32_t realBankCount = 3;
         uint32_t maxVeuOutstanding = 4;
     };
 
@@ -95,7 +108,17 @@ class DutKuiMemoryModel
     bool acceptIbus(const DutKuiIbusRequest &request);
     bool acceptDbus(const DutKuiDbusRequest &request, bool veuLockActive);
     bool acceptVeu(const DutKuiVeuRequest &request);
-    DutKuiMemoryOutputs clock(bool veuLockActive);
+    // Outputs visible during the current cycle.  They remain stable until
+    // clockEdge() commits the next edge.
+    const DutKuiMemoryOutputs &evaluate() const { return visibleOutputs; }
+    void clockEdge(
+        bool veuLockActive,
+        const SauMemoryOutput &sau = {});
+    // Compatibility helper for existing callers: commit one edge and return
+    // the outputs made visible by that edge.
+    DutKuiMemoryOutputs clock(
+        bool veuLockActive,
+        const SauMemoryOutput &sau = {});
 
     void writeByte(uint32_t address, uint8_t value);
     uint8_t readByte(uint32_t address) const;
@@ -104,6 +127,29 @@ class DutKuiMemoryModel
 
     uint32_t veuOutstandingCount() const { return veuOutstanding; }
     bool dbusHasOutstanding() const { return dbusOutstanding; }
+    DutKuiDataCrossbar::State crossbarState() const
+    {
+        return dataCrossbar.state();
+    }
+    SramConverter32To256::State converterState() const
+    {
+        return dbusConverter.state();
+    }
+    bool ibusAcceptedThisTick() const { return ibusAcceptedThisCycle; }
+    bool dbusAcceptedThisTick() const { return dbusAcceptedThisCycle; }
+    bool veuAcceptedThisTick() const { return veuAcceptedThisCycle; }
+    const DutKuiIbusRequest &currentIbusRequest() const
+    {
+        return acceptedIbus;
+    }
+    const DutKuiDbusRequest &currentDbusRequest() const
+    {
+        return acceptedDbus;
+    }
+    const DutKuiVeuRequest &currentVeuRequest() const
+    {
+        return acceptedVeu;
+    }
 
   private:
     template <class Response>
@@ -115,7 +161,8 @@ class DutKuiMemoryModel
 
     Config config;
     std::unordered_map<uint32_t, uint8_t> instructionMemory;
-    std::unordered_map<uint32_t, uint8_t> dataMemory;
+    SramConverter32To256 dbusConverter;
+    DutKuiDataCrossbar dataCrossbar;
 
     bool ibusOutstanding = false;
     bool dbusOutstanding = false;
@@ -126,18 +173,16 @@ class DutKuiMemoryModel
     DutKuiIbusRequest acceptedIbus;
     DutKuiDbusRequest acceptedDbus;
     DutKuiVeuRequest acceptedVeu;
+    std::deque<DutKuiVeuRequest> pendingVeuRequests;
+    std::deque<DutKuiVeuRequest> issuedVeuRequests;
+    bool previousVeuLockActive = false;
 
     std::deque<DelayedResponse<DutKuiIbusResponse>> ibusResponses;
-    std::deque<DelayedResponse<DutKuiDbusResponse>> dbusResponses;
-    std::deque<DelayedResponse<DutKuiVeuResponse>> veuReadResponses;
-    std::deque<DelayedResponse<DutKuiVeuResponse>> veuWriteResponses;
-
+    DutKuiMemoryOutputs visibleOutputs;
     bool instructionMapped(uint32_t address) const;
     bool dataMapped(uint32_t address) const;
-    uint32_t alignedDataAddress(uint32_t address) const;
-    VeuVector readVector(uint32_t address) const;
-    void writeVector(uint32_t address, uint32_t strobe,
-                     const VeuVector &data);
+    DutKuiMemoryOutputs advance(
+        bool veuLockActive, const SauMemoryOutput &sau);
 };
 
 } // namespace brs

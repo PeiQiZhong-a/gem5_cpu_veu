@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "brs/pipeline/sau_decode.hh"
 #include "brs/pipeline/veu_decode.hh"
 
 namespace gem5
@@ -25,6 +26,16 @@ decodeSourceOperands(uint32_t instruction)
     sources.rs1 = static_cast<uint8_t>((instruction >> 15) & 0x1f);
     sources.rs2 = static_cast<uint8_t>((instruction >> 20) & 0x1f);
     sources.rs3 = static_cast<uint8_t>((instruction >> 27) & 0x1f);
+
+    const brs::SauDecodeInfo sau =
+        brs::decodeSpiritSauInstruction(instruction);
+    if (sau.valid) {
+        sources.rs1 = sau.rs1;
+        sources.rs2 = sau.rs2;
+        sources.usesRs1 = sau.usesRs1;
+        sources.usesRs2 = sau.usesRs2;
+        return sources;
+    }
 
     const brs::VeuDecodeInfo veu =
         brs::decodeSpiritVeuInstruction(instruction);
@@ -67,6 +78,16 @@ static_assert(decodeSourceOperands(0x0000006b).usesRs2,
               "VADD must use rs2");
 static_assert(decodeSourceOperands(0x0200002b).usesRs3,
               "VMSUB must use rs3");
+static_assert(
+    decodeSourceOperands(
+        brs::encodeSauInstruction(brs::SauInstruction::Get7Msb, 1, 2, 3))
+        .usesRs1,
+    "Spirit enables rs1 even for MGET instructions");
+static_assert(
+    decodeSourceOperands(
+        brs::encodeSauInstruction(brs::SauInstruction::Get7Msb, 1, 2, 3))
+        .usesRs2,
+    "Spirit enables rs2 even for MGET instructions");
 
 } // namespace gem5
 

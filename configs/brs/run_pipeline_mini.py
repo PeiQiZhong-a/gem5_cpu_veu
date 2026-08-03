@@ -16,7 +16,7 @@ parser.add_argument(
     type=int,
     default=None,
     help=("Timeout in cycles. Defaults to 2,000,000 total clock edges "
-          "including reset for rtl-aerith-tb, or 200 active CPU cycles "
+          "including reset for rtl-dut-kui-tb, or 200 active CPU cycles "
           "for other memory modes."),
 )
 parser.add_argument(
@@ -28,8 +28,7 @@ parser.add_argument(
     "--reset-cycles",
     type=int,
     default=None,
-    help=("Reset clock edges before CPU cycle 1. Defaults to 100 for the "
-          "legacy Aerith RTL testbench and 10 for other memory modes."),
+    help="Reset clock edges before CPU cycle 1. Defaults to 10.",
 )
 parser.add_argument(
     "--fake-veu-latency",
@@ -84,13 +83,11 @@ parser.add_argument(
     "--mem-system",
     choices=[
         "ddr3", "simple", "split", "spirit-like",
-        "rtl-aerith-tb", "rtl-tb", "rtl-dut-kui-tb", "rtl-veu-tb",
+        "rtl-dut-kui-tb",
     ],
-    default="spirit-like",
-    help=("Memory platform. rtl-aerith-tb is the legacy full CPU+VEU+crossbar "
-          "testbench; rtl-tb is its compatibility alias. rtl-veu-tb names "
-          "the separate standalone VEU testbench and is not interchangeable. "
-          "rtl-dut-kui-tb models the current 32-bit DBus and 256-bit VEU SRAM path."),
+    default="rtl-dut-kui-tb",
+    help=("Memory platform. rtl-dut-kui-tb is the current tick-level model "
+          "with 32-bit DBus and shared 256-bit SAU/VEU SRAM paths."),
 )
 parser.add_argument(
     "--mem-latency",
@@ -112,9 +109,7 @@ parser.add_argument(
 parser.add_argument(
     "--dmem-hex",
     default="",
-    help=("DMEM text image. spirit-like uses one byte per token; "
-          "rtl-dut-kui-tb also uses byte tokens; rtl-aerith-tb matches "
-          "$readmemh with one 32-bit word per token."),
+    help="DMEM text image with one byte per token.",
 )
 parser.add_argument(
     "--imem-base",
@@ -156,17 +151,8 @@ parser.add_argument("--frontend-burst-bytes", type=int, default=16)
 parser.add_argument("--instr-fifo-depth", type=int, default=12)
 args = parser.parse_args()
 
-if args.mem_system == "rtl-veu-tb":
-    parser.error(
-        "rtl-veu-tb is the standalone VEU testbench (direct load/store "
-        "arrays, no CPU crossbar). It requires a real VEU endpoint and a "
-        "separate timing model; use rtl-aerith-tb for the current full-system "
-        "cycle comparison."
-    )
-
-legacy_rtl_tb_mode = args.mem_system in ("rtl-aerith-tb", "rtl-tb")
 dut_kui_tb_mode = args.mem_system == "rtl-dut-kui-tb"
-rtl_tb_mode = legacy_rtl_tb_mode or dut_kui_tb_mode
+rtl_tb_mode = dut_kui_tb_mode
 
 max_cycles = args.max_cycles
 if max_cycles is None:
@@ -176,7 +162,7 @@ if max_cycles <= 0:
 
 reset_cycles = args.reset_cycles
 if reset_cycles is None:
-    reset_cycles = 100 if legacy_rtl_tb_mode else 10
+    reset_cycles = 10
 
 
 def parse_addr(value):
@@ -193,7 +179,7 @@ if (args.mem_system == "spirit-like" or rtl_tb_mode) and args.imem_image and arg
     parser.error("Use only one of raw --imem-image or hex --program-file")
 
 if rtl_tb_mode and not (args.imem_image or args.program_file):
-    parser.error("Aerith RTL-testbench mode requires --imem-image or --program-file")
+    parser.error("rtl-dut-kui-tb requires --imem-image or --program-file")
 
 if args.mem_system == "spirit-like" and parse_addr(args.imem_base) != parse_addr(args.dmem_base):
     parser.error("spirit-like mode requires --imem-base and --dmem-base to be identical")
@@ -205,7 +191,8 @@ if args.dmem_hex and args.dmem_image:
     parser.error("Use only one of --dmem-hex or raw --dmem-image")
 
 if args.dmem_hex and args.mem_system != "spirit-like" and not rtl_tb_mode:
-    parser.error("--dmem-hex is supported only with spirit-like or rtl-tb memory")
+    parser.error(
+        "--dmem-hex is supported only with spirit-like or rtl-dut-kui-tb")
 
 if reset_cycles < 0:
     parser.error("--reset-cycles must be non-negative")
@@ -240,7 +227,7 @@ system.mem_mode = "timing"
 if rtl_tb_mode:
     rtl_inst_base = 0x00000000
     rtl_inst_size = 0x00040000
-    rtl_data_base = 0x29120000 if dut_kui_tb_mode else 0x20010000
+    rtl_data_base = 0x29120000
     rtl_data_size = 0x00040000
     system.mem_ranges = [
         AddrRange(start=rtl_inst_base, size=rtl_inst_size),
@@ -318,12 +305,8 @@ system.pipeline = PipelineMiniCPU(
     frontend_burst_bytes=args.frontend_burst_bytes,
     instr_fifo_depth=args.instr_fifo_depth,
     tb_memory_enabled=rtl_tb_mode,
-    tb_memory_platform="dut-kui" if dut_kui_tb_mode else "aerith-legacy",
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
-    tb_ibus_response_delay=2,
-    tb_dbus_response_delay=2,
-    tb_veu_pipeline_stages=3,
     tb_inst_base=0x00000000,
     tb_inst_size=0x00040000,
     tb_data_base=rtl_data_base if rtl_tb_mode else 0x20010000,
@@ -501,13 +484,11 @@ elif args.mem_system == "spirit-like":
         print("DMEM hex: {} (loaded by CPU via dataPort)".format(args.dmem_hex))
     else:
         print("DMEM image: {}".format(dmem_image_file if dmem_image_file else "<none>"))
-elif rtl_tb_mode:
+elif dut_kui_tb_mode:
     print("RTL IMEM range: 0x00000000..0x0003ffff")
-    print("RTL DMEM decode: 0x20010000..0x2004ffff (128 KiB SRAM backing)")
-    print("RTL UART range: 0x40000000..0x40000fff")
-    print("RTL DONE monitor: 0x4001e004")
-    print("RTL response stages: IBus=2 DBus=2 VEU=3")
-    print("Shared arbitration priority: VEU > IBus > DBus")
+    print("RTL DMEM range: 0x29120000..0x2915ffff")
+    print("RTL response timing: IBus/DBus external=N+1 core-visible=N+2")
+    print("Shared arbitration: VEU lock blocks DBus; IBus remains independent")
 print("Internal I-cache: {}".format("enabled" if args.icache_enabled else "disabled"))
 
 exit_event = m5.simulate()

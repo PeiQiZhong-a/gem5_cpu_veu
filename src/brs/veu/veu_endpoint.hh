@@ -24,6 +24,14 @@ class VeuEndpoint
     // memory, so defaults keep existing endpoints source-compatible.
     virtual VeuMemoryOutput evaluateMemory() const { return {}; }
     virtual void clockMemory(const VeuMemoryResponse &) {}
+
+    virtual void clockTick(
+        const VeuRequest &request,
+        const VeuMemoryResponse &memoryResponse)
+    {
+        clock(request);
+        clockMemory(memoryResponse);
+    }
 };
 
 } // namespace brs

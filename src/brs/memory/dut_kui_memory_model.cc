@@ -8,7 +8,15 @@ namespace brs
 DutKuiMemoryModel::DutKuiMemoryModel() : DutKuiMemoryModel(Config{})
 {}
 
-DutKuiMemoryModel::DutKuiMemoryModel(Config config) : config(config)
+DutKuiMemoryModel::DutKuiMemoryModel(Config config)
+  : config(config),
+    dataCrossbar(DutKuiDataCrossbar::Config{
+        config.dataBase,
+        config.bankSize,
+        config.bankCount,
+        config.realBankCount,
+        config.crossbarMasterResponseLatency,
+        config.crossbarDbusResponseLatency})
 {
     reset();
 }
@@ -25,10 +33,13 @@ DutKuiMemoryModel::reset()
     acceptedIbus = {};
     acceptedDbus = {};
     acceptedVeu = {};
+    pendingVeuRequests.clear();
+    issuedVeuRequests.clear();
+    previousVeuLockActive = false;
     ibusResponses.clear();
-    dbusResponses.clear();
-    veuReadResponses.clear();
-    veuWriteResponses.clear();
+    dbusConverter.reset();
+    dataCrossbar.reset();
+    visibleOutputs = {};
 }
 
 bool
@@ -41,16 +52,7 @@ DutKuiMemoryModel::instructionMapped(uint32_t address) const
 bool
 DutKuiMemoryModel::dataMapped(uint32_t address) const
 {
-    const uint64_t size = static_cast<uint64_t>(config.bankSize) *
-        config.bankCount;
-    return address >= config.dataBase &&
-        static_cast<uint64_t>(address - config.dataBase) < size;
-}
-
-uint32_t
-DutKuiMemoryModel::alignedDataAddress(uint32_t address) const
-{
-    return address & ~uint32_t{0x1f};
+    return dataCrossbar.decodeBank(address) >= 0;
 }
 
 bool
@@ -66,22 +68,24 @@ DutKuiMemoryModel::acceptIbus(const DutKuiIbusRequest &request)
 }
 
 bool
-DutKuiMemoryModel::acceptDbus(const DutKuiDbusRequest &request,
-                              bool veuLockActive)
+DutKuiMemoryModel::acceptDbus(
+    const DutKuiDbusRequest &request, bool veuLockActive)
 {
-    if (veuLockActive || dbusOutstanding || dbusAcceptedThisCycle) {
+    if (dbusOutstanding || dbusAcceptedThisCycle) {
         return false;
     }
     acceptedDbus = request;
     dbusAcceptedThisCycle = true;
     dbusOutstanding = true;
+    (void)veuLockActive;
     return true;
 }
 
 bool
 DutKuiMemoryModel::acceptVeu(const DutKuiVeuRequest &request)
 {
-    if (veuAcceptedThisCycle || veuOutstanding >= config.maxVeuOutstanding) {
+    if (veuAcceptedThisCycle ||
+        veuOutstanding >= config.maxVeuOutstanding) {
         return false;
     }
     acceptedVeu = request;
@@ -90,40 +94,9 @@ DutKuiMemoryModel::acceptVeu(const DutKuiVeuRequest &request)
     return true;
 }
 
-VeuVector
-DutKuiMemoryModel::readVector(uint32_t address) const
-{
-    VeuVector data = {};
-    const uint32_t base = alignedDataAddress(address);
-    if (!dataMapped(base)) {
-        return data;
-    }
-    for (uint32_t byte = 0; byte < VeuVectorBytes; ++byte) {
-        const auto found = dataMemory.find(base + byte);
-        if (found != dataMemory.end()) {
-            data[byte] = found->second;
-        }
-    }
-    return data;
-}
-
-void
-DutKuiMemoryModel::writeVector(uint32_t address, uint32_t strobe,
-                               const VeuVector &data)
-{
-    const uint32_t base = alignedDataAddress(address);
-    if (!dataMapped(base)) {
-        return;
-    }
-    for (uint32_t byte = 0; byte < VeuVectorBytes; ++byte) {
-        if (strobe & (uint32_t{1} << byte)) {
-            dataMemory[base + byte] = data[byte];
-        }
-    }
-}
-
 DutKuiMemoryOutputs
-DutKuiMemoryModel::clock(bool veuLockActive)
+DutKuiMemoryModel::advance(
+    bool veuLockActive, const SauMemoryOutput &sau)
 {
     DutKuiMemoryOutputs outputs;
 
@@ -140,26 +113,15 @@ DutKuiMemoryModel::clock(bool veuLockActive)
     };
 
     advance(ibusResponses, outputs.ibus);
-    advance(dbusResponses, outputs.dbus);
-    advance(veuReadResponses, outputs.veuRead);
-    advance(veuWriteResponses, outputs.veuWrite);
-
     if (outputs.ibus.valid) {
         ibusOutstanding = false;
-    }
-    if (outputs.dbus.valid) {
-        dbusOutstanding = false;
-    }
-    if (outputs.veuRead.valid && veuOutstanding > 0) {
-        --veuOutstanding;
-    }
-    if (outputs.veuWrite.valid && veuOutstanding > 0) {
-        --veuOutstanding;
     }
 
     if (ibusAcceptedThisCycle) {
         DutKuiIbusResponse response;
         response.valid = true;
+        // dut_kui.sv presents the CPU's original IBus address at its CPU
+        // boundary, then aligns the SRAM-side address to the 128-bit line.
         const uint32_t base = acceptedIbus.address & ~uint32_t{0x0f};
         if (instructionMapped(base)) {
             for (uint32_t word = 0; word < 4; ++word) {
@@ -169,68 +131,122 @@ DutKuiMemoryModel::clock(bool veuLockActive)
         ibusResponses.push_back({config.ibusResponseLatency, response});
     }
 
-    if (dbusAcceptedThisCycle) {
-        DutKuiDbusResponse response;
-        response.valid = true;
-        response.isWrite = acceptedDbus.isWrite();
-        const uint32_t base = alignedDataAddress(acceptedDbus.address);
-        const uint32_t wordOffset = (acceptedDbus.address >> 2) & 0x7;
-        if (acceptedDbus.isWrite() && dataMapped(base)) {
-            VeuVector writeData = {};
-            uint32_t vectorStrobe = 0;
-            for (uint32_t byte = 0; byte < 4; ++byte) {
-                writeData[wordOffset * 4 + byte] =
-                    static_cast<uint8_t>(acceptedDbus.writeData >> (byte * 8));
-                if (acceptedDbus.writeStrobe & (uint8_t{1} << byte)) {
-                    vectorStrobe |= uint32_t{1} << (wordOffset * 4 + byte);
-                }
-            }
-            writeVector(base, vectorStrobe, writeData);
-        } else if (dataMapped(base)) {
-            const VeuVector data = readVector(base);
-            for (uint32_t byte = 0; byte < 4; ++byte) {
-                response.readData |= static_cast<uint32_t>(
-                    data[wordOffset * 4 + byte]) << (byte * 8);
-            }
-        }
-        dbusResponses.push_back({config.dbusResponseLatency, response});
+    if (veuAcceptedThisCycle) {
+        pendingVeuRequests.push_back(acceptedVeu);
     }
 
-    if (veuAcceptedThisCycle) {
+    const SramConverter32To256Output converterBefore =
+        dbusConverter.evaluate();
+    const DutKuiDataCrossbarOutputs crossbarBefore =
+        dataCrossbar.evaluate();
+
+    Sram32Request dbusInput;
+    if (dbusAcceptedThisCycle && dbusConverter.canAccept()) {
+        dbusInput.valid = true;
+        dbusInput.address = acceptedDbus.address;
+        dbusInput.writeStrobe = acceptedDbus.writeStrobe;
+        dbusInput.writeData = acceptedDbus.writeData;
+        dbusAcceptedThisCycle = false;
+        acceptedDbus = {};
+    }
+    dbusConverter.clock(dbusInput, crossbarBefore.dbus);
+
+    DutKuiDataCrossbarInputs crossbarInputs;
+    crossbarInputs.dbus = converterBefore.sram;
+    crossbarInputs.masters[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)] = sau.request;
+    crossbarInputs.crossbarStart[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)] = sau.crossbarStart;
+    crossbarInputs.crossbarDone[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)] = sau.crossbarDone;
+
+    if (!pendingVeuRequests.empty()) {
+        const DutKuiVeuRequest &request = pendingVeuRequests.front();
+        Sram256Request &veu = crossbarInputs.masters[
+            static_cast<uint8_t>(DutKuiDataMaster::Veu)];
+        veu.valid = true;
+        veu.address = request.address;
+        veu.writeStrobe = request.isWrite ? request.writeStrobe : 0;
+        veu.writeData = request.data;
+    }
+    crossbarInputs.crossbarStart[
+        static_cast<uint8_t>(DutKuiDataMaster::Veu)] =
+        veuLockActive && !previousVeuLockActive;
+    crossbarInputs.crossbarDone[
+        static_cast<uint8_t>(DutKuiDataMaster::Veu)] =
+        !veuLockActive && previousVeuLockActive;
+
+    dataCrossbar.clock(crossbarInputs);
+    const DutKuiDataCrossbarOutputs crossbarAfter =
+        dataCrossbar.evaluate();
+    // These are the response pins made visible by this edge. The old
+    // crossbarBefore values were sampled as inputs above and must not be
+    // returned again, or the outer tick engine would insert an implicit
+    // extra cycle.
+    outputs.sau = crossbarAfter.masters[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)];
+    outputs.masterAccepted = crossbarAfter.acceptedMaster;
+    outputs.masterDropped = crossbarAfter.droppedMaster;
+    outputs.bankRequest = crossbarAfter.bankRequest;
+    outputs.sameBankCollision = crossbarAfter.sameBankCollision;
+    if (crossbarAfter.masters[
+            static_cast<uint8_t>(DutKuiDataMaster::Veu)].valid &&
+        !issuedVeuRequests.empty()) {
+        const DutKuiVeuRequest completed = issuedVeuRequests.front();
+        issuedVeuRequests.pop_front();
         DutKuiVeuResponse response;
         response.valid = true;
-        response.transactionId = acceptedVeu.transactionId;
-        response.isWrite = acceptedVeu.isWrite;
-        if (acceptedVeu.isWrite) {
-            writeVector(acceptedVeu.address, acceptedVeu.writeStrobe,
-                        acceptedVeu.data);
+        response.transactionId = completed.transactionId;
+        response.isWrite = completed.isWrite;
+        response.readData =
+            crossbarAfter.masters[
+                static_cast<uint8_t>(DutKuiDataMaster::Veu)].readData;
+        if (completed.isWrite) {
+            outputs.veuWrite = response;
         } else {
-            response.readData = readVector(acceptedVeu.address);
+            outputs.veuRead = response;
         }
-        const uint32_t latency = acceptedVeu.isWrite ?
-            config.veuWriteLatency : config.veuReadLatency;
-        if (latency == 0) {
-            auto &output = acceptedVeu.isWrite ?
-                outputs.veuWrite : outputs.veuRead;
-            output = response;
-            if (veuOutstanding > 0) {
-                --veuOutstanding;
-            }
-        } else if (acceptedVeu.isWrite) {
-            veuWriteResponses.push_back({latency, response});
-        } else {
-            veuReadResponses.push_back({latency, response});
+        if (veuOutstanding > 0) {
+            --veuOutstanding;
         }
     }
+    if (crossbarAfter.acceptedMaster[
+            static_cast<uint8_t>(DutKuiDataMaster::Veu)] &&
+        !pendingVeuRequests.empty()) {
+        issuedVeuRequests.push_back(pendingVeuRequests.front());
+        pendingVeuRequests.pop_front();
+    }
 
+    const SramConverter32To256Output converterAfter =
+        dbusConverter.evaluate();
+    if (converterAfter.master.valid) {
+        outputs.dbus.valid = true;
+        outputs.dbus.isWrite = converterAfter.master.isWrite;
+        outputs.dbus.readData = converterAfter.master.readData;
+        dbusOutstanding = false;
+    }
+
+    previousVeuLockActive = veuLockActive;
     ibusAcceptedThisCycle = false;
-    dbusAcceptedThisCycle = false;
     veuAcceptedThisCycle = false;
     acceptedIbus = {};
-    acceptedDbus = {};
     acceptedVeu = {};
-    (void)veuLockActive;
     return outputs;
+}
+
+void
+DutKuiMemoryModel::clockEdge(
+    bool veuLockActive, const SauMemoryOutput &sau)
+{
+    visibleOutputs = advance(veuLockActive, sau);
+}
+
+DutKuiMemoryOutputs
+DutKuiMemoryModel::clock(
+    bool veuLockActive, const SauMemoryOutput &sau)
+{
+    clockEdge(veuLockActive, sau);
+    return visibleOutputs;
 }
 
 void
@@ -238,18 +254,19 @@ DutKuiMemoryModel::writeByte(uint32_t address, uint8_t value)
 {
     if (instructionMapped(address)) {
         instructionMemory[address] = value;
-    } else if (dataMapped(address)) {
-        dataMemory[address] = value;
+    } else {
+        dataCrossbar.writeByte(address, value);
     }
 }
 
 uint8_t
 DutKuiMemoryModel::readByte(uint32_t address) const
 {
-    const auto &memory = instructionMapped(address) ?
-        instructionMemory : dataMemory;
-    const auto found = memory.find(address);
-    return found == memory.end() ? 0 : found->second;
+    if (instructionMapped(address)) {
+        const auto found = instructionMemory.find(address);
+        return found == instructionMemory.end() ? 0 : found->second;
+    }
+    return dataCrossbar.readByte(address);
 }
 
 void

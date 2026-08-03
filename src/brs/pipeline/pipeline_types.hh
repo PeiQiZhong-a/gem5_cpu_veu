@@ -81,6 +81,7 @@ enum class InstrKind
     WFI,
 
     VEU,
+    SAU,
 
     INVALID
 };
@@ -114,7 +115,8 @@ enum class WbSel
     ALU,
     MEM,
     PC4,
-    VEU
+    VEU,
+    SAU
 };
 
 } // namespace gem5

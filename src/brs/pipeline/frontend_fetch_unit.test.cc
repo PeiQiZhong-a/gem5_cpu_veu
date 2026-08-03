@@ -112,15 +112,15 @@ TEST(FetchFifoTest, PushesOnlyValidWordsForMisalignedFetch)
     FetchFifo fifo(12);
     FetchBlock block;
     block.fetchAddr = 8;
-    block.blockAddr = 0;
+    block.blockAddr = 8;
     block.words = {0, 1, 2, 3};
 
     EXPECT_TRUE(fifo.pushBlock(block));
     ASSERT_EQ(fifo.count(), 2);
-    EXPECT_EQ(fifo.front().addr, 8);
+    EXPECT_EQ(fifo.front().addr, 16);
     EXPECT_EQ(fifo.front().word, 2);
     fifo.pop();
-    EXPECT_EQ(fifo.front().addr, 12);
+    EXPECT_EQ(fifo.front().addr, 20);
     EXPECT_EQ(fifo.front().word, 3);
 }
 
@@ -184,6 +184,22 @@ TEST(FetchBusUnitTest, DiscardsFlushedInFlightResponse)
     oldBlock.fetchAddr = 0;
     EXPECT_FALSE(ibu.acceptResponse(oldBlock));
     EXPECT_EQ(ibu.requestBlockAddr(), 0x40);
+}
+
+TEST(FetchBusUnitTest, TracksExactRequestAndWordAlignedResponse)
+{
+    FetchBusUnit ibu;
+    ibu.reset(6);
+
+    EXPECT_EQ(ibu.requestFetchAddr(), 6);
+    EXPECT_EQ(ibu.requestBlockAddr(), 4);
+    ibu.markRequestIssued();
+
+    FetchBlock block;
+    block.fetchAddr = 6;
+    block.blockAddr = 4;
+    EXPECT_TRUE(ibu.acceptResponse(block));
+    EXPECT_EQ(ibu.requestFetchAddr(), 16);
 }
 
 TEST(FrontendFetchUnitTest, WaitsTwoActiveCyclesAfterReset)
@@ -274,12 +290,12 @@ TEST(FrontendFetchUnitTest, BypassesFirstValidWordForMisalignedFetch)
     input.textEnd = 16;
     auto out = frontend.step(input);
     ASSERT_TRUE(out.requestValid);
-    EXPECT_EQ(out.requestAddr, 0);
+    EXPECT_EQ(out.requestAddr, 8);
     frontend.markRequestIssued();
 
     FetchBlock block;
     block.fetchAddr = 8;
-    block.blockAddr = 0;
+    block.blockAddr = 8;
     block.words = {0x00100093, 0x00200113, 0x00300193, 0x00400213};
 
     out = frontend.step(responseInput(16, block));
@@ -378,7 +394,7 @@ TEST(FrontendFetchUnitTest, RequestsTrueFetchAddrForMisalignedResetPc)
     input.textEnd = 32;
     auto out = frontend.step(input);
     ASSERT_TRUE(out.requestValid);
-    EXPECT_EQ(out.requestAddr, 0);
+    EXPECT_EQ(out.requestAddr, 6);
     EXPECT_EQ(out.requestFetchAddr, 6);
 }
 
@@ -420,7 +436,7 @@ TEST(FrontendFetchUnitTest, RequestsTrueFetchAddrAfterMisalignedRedirect)
     input.textEnd = 32;
     out = frontend.step(input);
     ASSERT_TRUE(out.requestValid);
-    EXPECT_EQ(out.requestAddr, 0);
+    EXPECT_EQ(out.requestAddr, 8);
     EXPECT_EQ(out.requestFetchAddr, 8);
 }
 

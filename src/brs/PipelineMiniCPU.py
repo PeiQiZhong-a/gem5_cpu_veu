@@ -14,27 +14,21 @@ class PipelineMiniCPU(ClockedObject):
 
     dmem_hex_file = Param.String(
         "",
-        "DMEM text image: byte tokens for spirit-like/dut-kui memory, or "
-        "32-bit $readmemh words for the legacy Aerith full-system testbench",
+        "DMEM text image: byte tokens for spirit-like or dut-kui memory",
     )
 
     tb_memory_enabled = Param.Bool(
         False,
-        "Route CPU IBus, DBus, and the VEU TCM master through the Aerith full-system RTL-testbench crossbar",
+        "Route CPU IBus, DBus, VEU, and SAU through DutKuiMemoryModel",
     )
-    tb_memory_platform = Param.String(
-        "aerith-legacy",
-        "Internal RTL-testbench memory platform: aerith-legacy or dut-kui",
-    )
-    tb_imem_image_file = Param.String("", "Raw image loaded into the internal testbench instruction SRAM")
-    tb_dmem_image_file = Param.String("", "Raw image loaded into the internal testbench data SRAM")
-    tb_ibus_response_delay = Param.UInt32(2, "crossbar.sv IBUS_RESP_DELAY")
-    tb_dbus_response_delay = Param.UInt32(2, "crossbar.sv DBUS_RESP_DELAY")
-    tb_veu_pipeline_stages = Param.UInt32(3, "crossbar.sv VEU_PIPELINE_STAGES")
-    tb_inst_base = Param.Addr(0x00000000, "Aerith testbench instruction SRAM base")
-    tb_inst_size = Param.Addr(0x00040000, "Aerith testbench instruction SRAM size")
-    tb_data_base = Param.Addr(0x20010000, "Aerith testbench data SRAM base")
-    tb_data_size = Param.Addr(0x00040000, "Aerith testbench data SRAM size")
+    tb_imem_image_file = Param.String(
+        "", "Raw image loaded into the dut_kui instruction SRAM")
+    tb_dmem_image_file = Param.String(
+        "", "Raw image loaded into the dut_kui data SRAM")
+    tb_inst_base = Param.Addr(0x00000000, "dut_kui instruction SRAM base")
+    tb_inst_size = Param.Addr(0x00040000, "dut_kui instruction SRAM size")
+    tb_data_base = Param.Addr(0x29120000, "dut_kui data SRAM base")
+    tb_data_size = Param.Addr(0x00040000, "dut_kui decoded data window size")
 
     max_cycles = Param.UInt64(
         2_000_000,

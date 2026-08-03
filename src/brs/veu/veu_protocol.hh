@@ -4,6 +4,8 @@
 #include <array>
 #include <cstdint>
 
+#include "brs/hc/hc_protocol.hh"
+
 namespace gem5
 {
 namespace brs
@@ -25,13 +27,7 @@ enum class VeuCsr : uint16_t
     ReadAddress3 = 0x107
 };
 
-enum class VeuWriteType : uint8_t
-{
-    Write = 0,
-    Set = 1,
-    Clear = 2,
-    VectorStart = 3
-};
+using VeuWriteType = HcWriteType;
 
 enum class VeuInstruction : uint8_t
 {
@@ -80,26 +76,8 @@ constexpr uint32_t VeuCsrInstructionMask = 0x0000707f;
 constexpr uint32_t VeuVectorInstructionMask = 0xfe00707f;
 constexpr uint32_t VeuThreeSourceInstructionMask = 0x0600707f;
 
-struct VeuRequest
-{
-    uint16_t csrAddr = 0;
-    bool csrRead = false;
-    bool csrWrite = false;
-    uint8_t writeType = 0;
-    uint64_t writeData = 0;
-    uint32_t veStart = 0;
-
-    bool hasTransaction() const
-    {
-        return csrRead || csrWrite;
-    }
-};
-
-struct VeuResponse
-{
-    bool valid = false;
-    uint32_t readData = 0;
-};
+using VeuRequest = HcRequest;
+using VeuResponse = HcResponse;
 
 // VEU-to-TCM signals exposed by the RTL VEU wrapper. The frozen Aerith
 // testbench uses one 128-bit beat (four 32-bit words) per request.
@@ -145,20 +123,19 @@ isVeuWriteType(uint8_t writeType)
 constexpr uint64_t
 packVeuOperands(uint32_t operand1, uint32_t operand2)
 {
-    return static_cast<uint64_t>(operand1) |
-           (static_cast<uint64_t>(operand2) << 32);
+    return packHcOperands(operand1, operand2);
 }
 
 constexpr uint32_t
 unpackVeuOperand1(uint64_t writeData)
 {
-    return static_cast<uint32_t>(writeData);
+    return unpackHcOperand1(writeData);
 }
 
 constexpr uint32_t
 unpackVeuOperand2(uint64_t writeData)
 {
-    return static_cast<uint32_t>(writeData >> 32);
+    return unpackHcOperand2(writeData);
 }
 
 constexpr uint32_t

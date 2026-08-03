@@ -35,6 +35,7 @@ PipelineCore::stageWB()
             has_rd_write = true;
             break;
           case WbSel::VEU:
+          case WbSel::SAU:
             wb_data = memwb_cur.alu_result;
             regs[memwb_cur.rd] = wb_data;
             has_rd_write = true;
