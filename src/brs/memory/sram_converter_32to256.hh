@@ -3,29 +3,13 @@
 
 #include <cstdint>
 
+#include "brs/memory/sram_32_protocol.hh"
 #include "brs/memory/sram_256_protocol.hh"
 
 namespace gem5
 {
 namespace brs
 {
-
-struct Sram32Request
-{
-    bool valid = false;
-    uint32_t address = 0;
-    uint8_t writeStrobe = 0;
-    uint32_t writeData = 0;
-
-    constexpr bool isWrite() const { return writeStrobe != 0; }
-};
-
-struct Sram32Response
-{
-    bool valid = false;
-    uint32_t readData = 0;
-    bool isWrite = false;
-};
 
 struct SramConverter32To256Output
 {

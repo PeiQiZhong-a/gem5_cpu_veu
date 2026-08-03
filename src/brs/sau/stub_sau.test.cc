@@ -26,7 +26,7 @@ runTransaction(
     return {};
 }
 
-TEST(StubSauTest, WritesAndReadsAllSevenRegisterPairs)
+TEST(StubSauTest, WritesAndReadsAllFourRegisterPairs)
 {
     StubSau sau(1);
 
@@ -55,8 +55,8 @@ TEST(StubSauTest, WritesAndReadsAllSevenRegisterPairs)
         sau.clock({});
     }
 
-    EXPECT_EQ(sau.acceptedRequestCount(), 21);
-    EXPECT_EQ(sau.responseCount(), 21);
+    EXPECT_EQ(sau.acceptedRequestCount(), SauSlotCount * 3);
+    EXPECT_EQ(sau.responseCount(), SauSlotCount * 3);
 }
 
 TEST(StubSauTest, EmitsOneValidPulseAndDoesNotDuplicateHeldRequest)
@@ -85,7 +85,7 @@ TEST(StubSauTest, ResetClearsProtocolAndRegisterState)
 {
     StubSau sau;
     SauRequest request;
-    request.csrAddr = 0x20c;
+    request.csrAddr = sauCsrAddress(SauInstruction::Set4);
     request.csrWrite = true;
     request.writeData = 0xffffffffffffffffULL;
     sau.clock(request);
@@ -94,7 +94,7 @@ TEST(StubSauTest, ResetClearsProtocolAndRegisterState)
 
     EXPECT_EQ(sau.state(), StubSau::State::Idle);
     EXPECT_EQ(sau.acceptedRequestCount(), 0);
-    EXPECT_EQ(sau.slotValue(7), 0);
+    EXPECT_EQ(sau.slotValue(4), 0);
     EXPECT_FALSE(sau.evaluate().valid);
 }
 

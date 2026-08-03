@@ -1,7 +1,7 @@
 #ifndef __BRS_SAU_SAU_ENDPOINT_HH__
 #define __BRS_SAU_SAU_ENDPOINT_HH__
 
-#include "brs/memory/sram_256_protocol.hh"
+#include "brs/memory/sram_128_protocol.hh"
 #include "brs/sau/sau_protocol.hh"
 
 namespace gem5
@@ -11,12 +11,12 @@ namespace brs
 
 struct SauMemoryOutput
 {
-    Sram256Request request;
+    Sram128Request request;
     bool crossbarStart = false;
     bool crossbarDone = false;
 };
 
-using SauMemoryResponse = Sram256Response;
+using SauMemoryResponse = Sram128Response;
 
 // Frozen CPU-side boundary for a cycle-level SAU gem5 model.
 //

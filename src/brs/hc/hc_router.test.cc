@@ -27,9 +27,13 @@ TEST(HcRouterTest, RoutesVeuAndSauRangesMutuallyExclusively)
     EXPECT_FALSE(routed.veu.hasTransaction());
     EXPECT_TRUE(routed.sau.hasTransaction());
 
-    request.csrAddr = 0x20d;
+    request.csrAddr = 0x207;
     routed = router.routeRequest(request);
     EXPECT_EQ(routed.target, HcTarget::Sau);
+
+    request.csrAddr = 0x208;
+    routed = router.routeRequest(request);
+    EXPECT_EQ(routed.target, HcTarget::None);
 }
 
 TEST(HcRouterTest, InvalidAndIdleRequestsReachNoEndpoint)

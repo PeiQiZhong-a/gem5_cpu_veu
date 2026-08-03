@@ -12,8 +12,8 @@ namespace brs
 {
 
 // Register-accurate SAU CSR stub for CPU-side bring-up. It intentionally
-// models only the HC request/response path; compute and SRAM traffic are
-// added through SauEndpoint in P3.
+// models only the HC request/response path. Compute and SRAM traffic belong
+// to a future RTL-derived SauEndpoint implementation.
 class StubSau : public SauEndpoint
 {
   public:

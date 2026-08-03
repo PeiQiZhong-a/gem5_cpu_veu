@@ -22,6 +22,7 @@
 #include "brs/pipeline/program_image.hh"
 #include "brs/pipeline_stats.hh"
 #include "brs/memory/dut_kui_memory_model.hh"
+#include "brs/memory/npu_lpnpu_mikui_memory_model.hh"
 
 namespace gem5
 {
@@ -75,6 +76,7 @@ class PipelineMiniCPU : public ClockedObject
     RequestorID veuRequestorId;
 
     bool tbMemoryEnabled;
+    std::string tbMemoryKind;
     std::string tbImemImageFile;
     std::string tbDmemImageFile;
     Addr tbInstBase;
@@ -82,6 +84,7 @@ class PipelineMiniCPU : public ClockedObject
     Addr tbDataBase;
     Addr tbDataStorageSize;
     brs::DutKuiMemoryModel dutKuiMemory;
+    brs::NpuLpnpuMikuiMemoryModel npuLpnpuMikuiMemory;
     bool tbInstOutstanding = false;
     bool tbDataOutstanding = false;
     std::string cycleTraceFile;
@@ -158,6 +161,7 @@ class PipelineMiniCPU : public ClockedObject
         const brs::DutKuiMemoryOutputs &outputs);
     void processDutKuiMemoryCycle(const brs::SauMemoryOutput &sau);
     bool dutKuiMemoryEnabled() const;
+    bool npuLpnpuMikuiMemoryEnabled() const;
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);

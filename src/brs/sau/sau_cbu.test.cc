@@ -70,7 +70,7 @@ TEST(SauCbuTest, IgnoresSecondIssueWhileBusy)
     SauCbu cbu;
     SauCbuIssue first = makeIssue();
     SauCbuIssue second = first;
-    second.csrAddr = 0x20c;
+    second.csrAddr = sauCsrAddress(SauInstruction::Set4);
 
     cbu.clock(first, {});
     cbu.clock(second, {});

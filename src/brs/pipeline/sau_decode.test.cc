@@ -9,7 +9,7 @@ namespace brs
 namespace
 {
 
-TEST(SpiritSauDecodeTest, DecodesAllTwentyOneInstructions)
+TEST(SpiritSauDecodeTest, DecodesAllTwelveInstructions)
 {
     for (uint8_t index = 0; index < SauSlotCount * 3; ++index) {
         const SauInstruction operation =

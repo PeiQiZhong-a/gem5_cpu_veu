@@ -35,6 +35,7 @@ DutKuiMemoryModel::reset()
     acceptedVeu = {};
     pendingVeuRequests.clear();
     issuedVeuRequests.clear();
+    issuedSauHalfOffsets.clear();
     previousVeuLockActive = false;
     ibusResponses.clear();
     dbusConverter.reset();
@@ -153,8 +154,19 @@ DutKuiMemoryModel::advance(
 
     DutKuiDataCrossbarInputs crossbarInputs;
     crossbarInputs.dbus = converterBefore.sram;
-    crossbarInputs.masters[
-        static_cast<uint8_t>(DutKuiDataMaster::Sau)] = sau.request;
+    constexpr uint8_t SauUpperHalfOffset = Sram128Bytes;
+    const uint8_t sauHalfOffset =
+        (sau.request.address & Sram128Bytes) ? SauUpperHalfOffset : 0;
+    Sram256Request &legacySau = crossbarInputs.masters[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)];
+    legacySau.valid = sau.request.valid;
+    legacySau.address = sau.request.address;
+    legacySau.writeStrobe =
+        static_cast<uint32_t>(sau.request.writeStrobe) << sauHalfOffset;
+    for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
+        legacySau.writeData[sauHalfOffset + byte] =
+            sau.request.writeData[byte];
+    }
     crossbarInputs.crossbarStart[
         static_cast<uint8_t>(DutKuiDataMaster::Sau)] = sau.crossbarStart;
     crossbarInputs.crossbarDone[
@@ -183,8 +195,22 @@ DutKuiMemoryModel::advance(
     // crossbarBefore values were sampled as inputs above and must not be
     // returned again, or the outer tick engine would insert an implicit
     // extra cycle.
-    outputs.sau = crossbarAfter.masters[
-        static_cast<uint8_t>(DutKuiDataMaster::Sau)];
+    const uint8_t sauMaster =
+        static_cast<uint8_t>(DutKuiDataMaster::Sau);
+    if (crossbarAfter.acceptedMaster[sauMaster]) {
+        issuedSauHalfOffsets.push_back(sauHalfOffset);
+    }
+    const Sram256Response &legacySauResponse =
+        crossbarAfter.masters[sauMaster];
+    if (legacySauResponse.valid && !issuedSauHalfOffsets.empty()) {
+        outputs.sau.valid = true;
+        const uint8_t completedHalf = issuedSauHalfOffsets.front();
+        issuedSauHalfOffsets.pop_front();
+        for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
+            outputs.sau.readData[byte] =
+                legacySauResponse.readData[completedHalf + byte];
+        }
+    }
     outputs.masterAccepted = crossbarAfter.acceptedMaster;
     outputs.masterDropped = crossbarAfter.droppedMaster;
     outputs.bankRequest = crossbarAfter.bankRequest;

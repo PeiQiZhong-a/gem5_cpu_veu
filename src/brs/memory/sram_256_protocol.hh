@@ -12,7 +12,9 @@ namespace brs
 constexpr uint32_t Sram256Bits = 256;
 constexpr uint32_t Sram256Bytes = Sram256Bits / 8;
 
-// Byte-addressed 256-bit SRAM port used at the SAU/system boundary.
+// Byte-addressed 256-bit SRAM port used inside the legacy dut_kui memory
+// platform. The frozen SAU endpoint uses sram_128_protocol.hh; its legacy
+// compatibility adapter selects one half of this wider port.
 //
 // valid is a per-cycle beat strobe, not a ready/valid level handshake.  Every
 // cycle with valid=true is a distinct request, including consecutive cycles.

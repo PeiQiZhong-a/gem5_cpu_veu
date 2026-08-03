@@ -80,12 +80,12 @@ static_assert(decodeSourceOperands(0x0200002b).usesRs3,
               "VMSUB must use rs3");
 static_assert(
     decodeSourceOperands(
-        brs::encodeSauInstruction(brs::SauInstruction::Get7Msb, 1, 2, 3))
+        brs::encodeSauInstruction(brs::SauInstruction::Get4Msb, 1, 2, 3))
         .usesRs1,
     "Spirit enables rs1 even for MGET instructions");
 static_assert(
     decodeSourceOperands(
-        brs::encodeSauInstruction(brs::SauInstruction::Get7Msb, 1, 2, 3))
+        brs::encodeSauInstruction(brs::SauInstruction::Get4Msb, 1, 2, 3))
         .usesRs2,
     "Spirit enables rs2 even for MGET instructions");
 

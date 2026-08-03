@@ -16,7 +16,7 @@ parser.add_argument(
     type=int,
     default=None,
     help=("Timeout in cycles. Defaults to 2,000,000 total clock edges "
-          "including reset for rtl-dut-kui-tb, or 200 active CPU cycles "
+          "including reset for RTL testbench modes, or 200 active CPU cycles "
           "for other memory modes."),
 )
 parser.add_argument(
@@ -83,11 +83,11 @@ parser.add_argument(
     "--mem-system",
     choices=[
         "ddr3", "simple", "split", "spirit-like",
-        "rtl-dut-kui-tb",
+        "rtl-dut-kui-tb", "rtl-npu-lpnpu-mikui",
     ],
     default="rtl-dut-kui-tb",
-    help=("Memory platform. rtl-dut-kui-tb is the current tick-level model "
-          "with 32-bit DBus and shared 256-bit SAU/VEU SRAM paths."),
+    help=("RTL choices: rtl-dut-kui-tb keeps the legacy 256-bit platform; "
+          "rtl-npu-lpnpu-mikui reproduces the two-bank 128-bit dut_mikui."),
 )
 parser.add_argument(
     "--mem-latency",
@@ -152,7 +152,8 @@ parser.add_argument("--instr-fifo-depth", type=int, default=12)
 args = parser.parse_args()
 
 dut_kui_tb_mode = args.mem_system == "rtl-dut-kui-tb"
-rtl_tb_mode = dut_kui_tb_mode
+mikui_tb_mode = args.mem_system == "rtl-npu-lpnpu-mikui"
+rtl_tb_mode = dut_kui_tb_mode or mikui_tb_mode
 
 max_cycles = args.max_cycles
 if max_cycles is None:
@@ -179,7 +180,12 @@ if (args.mem_system == "spirit-like" or rtl_tb_mode) and args.imem_image and arg
     parser.error("Use only one of raw --imem-image or hex --program-file")
 
 if rtl_tb_mode and not (args.imem_image or args.program_file):
-    parser.error("rtl-dut-kui-tb requires --imem-image or --program-file")
+    parser.error("RTL testbench modes require --imem-image or --program-file")
+
+if mikui_tb_mode and (args.irq_external or args.irq_software or args.irq_timer):
+    parser.error(
+        "rtl-npu-lpnpu-mikui ties external, software, and timer IRQ inputs to 0"
+    )
 
 if args.mem_system == "spirit-like" and parse_addr(args.imem_base) != parse_addr(args.dmem_base):
     parser.error("spirit-like mode requires --imem-base and --dmem-base to be identical")
@@ -192,7 +198,7 @@ if args.dmem_hex and args.dmem_image:
 
 if args.dmem_hex and args.mem_system != "spirit-like" and not rtl_tb_mode:
     parser.error(
-        "--dmem-hex is supported only with spirit-like or rtl-dut-kui-tb")
+        "--dmem-hex is supported only with spirit-like or RTL testbench modes")
 
 if reset_cycles < 0:
     parser.error("--reset-cycles must be non-negative")
@@ -226,13 +232,23 @@ system.mem_mode = "timing"
 
 if rtl_tb_mode:
     rtl_inst_base = 0x00000000
-    rtl_inst_size = 0x00040000
-    rtl_data_base = 0x29120000
-    rtl_data_size = 0x00040000
-    system.mem_ranges = [
-        AddrRange(start=rtl_inst_base, size=rtl_inst_size),
-        AddrRange(start=rtl_data_base, size=rtl_data_size),
-    ]
+    if mikui_tb_mode:
+        rtl_inst_size = 0x00004000
+        rtl_data_base = 0x20010000
+        rtl_data_size = 0x00010000
+        system.mem_ranges = [
+            AddrRange(start=rtl_inst_base, size=rtl_inst_size),
+            AddrRange(start=0x20010000, size=0x00010000),
+            AddrRange(start=0x20020000, size=0x00010000),
+        ]
+    else:
+        rtl_inst_size = 0x00040000
+        rtl_data_base = 0x29120000
+        rtl_data_size = 0x00040000
+        system.mem_ranges = [
+            AddrRange(start=rtl_inst_base, size=rtl_inst_size),
+            AddrRange(start=rtl_data_base, size=rtl_data_size),
+        ]
     pipeline_program_file = args.program_file
     pipeline_elf_file = ""
     pipeline_text_base = rtl_inst_base
@@ -305,12 +321,13 @@ system.pipeline = PipelineMiniCPU(
     frontend_burst_bytes=args.frontend_burst_bytes,
     instr_fifo_depth=args.instr_fifo_depth,
     tb_memory_enabled=rtl_tb_mode,
+    tb_memory_kind="npu-lpnpu-mikui" if mikui_tb_mode else "dut-kui",
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
     tb_inst_base=0x00000000,
-    tb_inst_size=0x00040000,
+    tb_inst_size=rtl_inst_size if rtl_tb_mode else 0x00040000,
     tb_data_base=rtl_data_base if rtl_tb_mode else 0x20010000,
-    tb_data_size=0x00040000,
+    tb_data_size=rtl_data_size if rtl_tb_mode else 0x00040000,
 )
 system.pipeline.clk_domain = system.clk_domain
 
@@ -389,8 +406,14 @@ elif rtl_tb_mode:
 
     system.imem_stub = SimpleMemory(range=system.mem_ranges[0])
     system.imem_stub.port = system.membus.mem_side_ports
-    system.dmem_stub = SimpleMemory(range=system.mem_ranges[1])
-    system.dmem_stub.port = system.membus.mem_side_ports
+    if mikui_tb_mode:
+        system.dmem_stub0 = SimpleMemory(range=system.mem_ranges[1])
+        system.dmem_stub0.port = system.membus.mem_side_ports
+        system.dmem_stub1 = SimpleMemory(range=system.mem_ranges[2])
+        system.dmem_stub1.port = system.membus.mem_side_ports
+    else:
+        system.dmem_stub = SimpleMemory(range=system.mem_ranges[1])
+        system.dmem_stub.port = system.membus.mem_side_ports
 
 elif args.mem_system == "spirit-like":
     imem_latency = args.imem_latency if args.imem_latency else args.mem_latency
@@ -489,6 +512,12 @@ elif dut_kui_tb_mode:
     print("RTL DMEM range: 0x29120000..0x2915ffff")
     print("RTL response timing: IBus/DBus external=N+1 core-visible=N+2")
     print("Shared arbitration: VEU lock blocks DBus; IBus remains independent")
+elif mikui_tb_mode:
+    print("RTL IMEM range: 0x00000000..0x00003fff")
+    print("RTL SRAM bank 0: 0x20010000..0x2001ffff")
+    print("RTL SRAM bank 1: 0x20020000..0x2002ffff")
+    print("RTL datapath: 32-to-128 DBus, native 128-bit SAU/VEU masters")
+    print("RTL interrupts: external/software/timer tied to zero")
 print("Internal I-cache: {}".format("enabled" if args.icache_enabled else "disabled"))
 
 exit_event = m5.simulate()

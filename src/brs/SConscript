@@ -17,6 +17,9 @@ Source('pipeline/memory_backend_local.cc')
 Source('memory/dut_kui_memory_model.cc')
 Source('memory/dut_kui_data_crossbar.cc')
 Source('memory/sram_converter_32to256.cc')
+Source('memory/npu_lpnpu_mikui_memory_model.cc')
+Source('memory/npu_lpnpu_mikui_crossbar.cc')
+Source('memory/sram_converter_32to128.cc')
 Source('hc/hc_cbu.cc')
 Source('hc/hc_router.cc')
 Source('sau/sau_cbu.cc')
@@ -44,6 +47,20 @@ GTest('brs_dut_kui_memory_model.test',
 GTest('brs_sram_converter_32to256.test',
       'memory/sram_converter_32to256.test.cc',
       'memory/sram_converter_32to256.cc')
+
+GTest('brs_sram_converter_32to128.test',
+      'memory/sram_converter_32to128.test.cc',
+      'memory/sram_converter_32to128.cc')
+
+GTest('brs_npu_lpnpu_mikui_crossbar.test',
+      'memory/npu_lpnpu_mikui_crossbar.test.cc',
+      'memory/npu_lpnpu_mikui_crossbar.cc')
+
+GTest('brs_npu_lpnpu_mikui_memory_model.test',
+      'memory/npu_lpnpu_mikui_memory_model.test.cc',
+      'memory/npu_lpnpu_mikui_memory_model.cc',
+      'memory/npu_lpnpu_mikui_crossbar.cc',
+      'memory/sram_converter_32to128.cc')
 
 GTest('brs_dut_kui_data_crossbar.test',
       'memory/dut_kui_data_crossbar.test.cc',

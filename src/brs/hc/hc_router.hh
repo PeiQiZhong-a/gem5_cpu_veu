@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "brs/hc/hc_protocol.hh"
+#include "brs/sau/sau_protocol.hh"
 
 namespace gem5
 {
@@ -30,7 +31,8 @@ class HcRouter
     static constexpr HcTarget decode(uint16_t address)
     {
         return address >= 0x100 && address <= 0x107 ? HcTarget::Veu :
-               address >= 0x200 && address <= 0x20d ? HcTarget::Sau :
+               address >= SauCsrBase &&
+                   address < SauCsrBase + SauSlotCount * 2 ? HcTarget::Sau :
                HcTarget::None;
     }
 

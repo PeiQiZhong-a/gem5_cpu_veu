@@ -10,10 +10,11 @@ namespace gem5
 namespace brs
 {
 
-// Authoritative sources:
-//   npu_lpnpu/hardware/src/spirit_core/common/Instructions.scala
-//   npu_lpnpu/hardware/src/spirit_core/decode/Decoder.scala
-//   npu_lpnpu/hardware/src/sa_element/csr.sv
+// Authoritative RTL baseline:
+//   npu_lpnpu mikui_v2.0 @ 86c289c
+//   hardware/src/spirit/Decoder.sv
+//   hardware/src/spirit/CBU.sv
+//   hardware/src/sa_element/csr.sv
 
 enum class SauInstruction : uint8_t
 {
@@ -29,16 +30,7 @@ enum class SauInstruction : uint8_t
     Get3Msb,
     Set4,
     Get4Lsb,
-    Get4Msb,
-    Set5,
-    Get5Lsb,
-    Get5Msb,
-    Set6,
-    Get6Lsb,
-    Get6Msb,
-    Set7,
-    Get7Lsb,
-    Get7Msb
+    Get4Msb
 };
 
 using SauWriteType = HcWriteType;
@@ -47,7 +39,7 @@ constexpr uint32_t SauOpcode = 0x6b;
 constexpr uint32_t SauFunct3 = 0x1;
 constexpr uint32_t SauInstructionMask = 0xfe00707f;
 constexpr uint16_t SauCsrBase = 0x200;
-constexpr uint8_t SauSlotCount = 7;
+constexpr uint8_t SauSlotCount = 4;
 
 using SauRequest = HcRequest;
 using SauResponse = HcResponse;
@@ -174,9 +166,13 @@ static_assert(
     encodeSauInstruction(SauInstruction::Get3Lsb, 8) == 0x0e00146b,
     "MGETINS3LSB encoding must match the Spirit toolchain");
 static_assert(
-    sauCsrAddress(SauInstruction::Set7) == 0x20c &&
-        sauCsrAddress(SauInstruction::Get7Msb) == 0x20d,
-    "SAU slot seven must map to the final RTL CSR pair");
+    packSauOperands(0x11223344, 0x55667788) ==
+        0x5566778811223344ULL,
+    "CBU writeData must place encoded rs1 low and encoded rs2 high");
+static_assert(
+    sauCsrAddress(SauInstruction::Set4) == 0x206 &&
+        sauCsrAddress(SauInstruction::Get4Msb) == 0x207,
+    "SAU slot four must map to the final RTL CSR pair");
 
 } // namespace brs
 } // namespace gem5

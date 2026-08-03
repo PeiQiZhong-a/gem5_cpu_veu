@@ -135,13 +135,13 @@ TEST(PipelineSauTest, ForwardsBothSetOperandsFromOlderInstructions)
     core.program.instr_mem[0] = encodeAddi(1, 0, 0x123);
     core.program.instr_mem[1] = encodeAddi(2, 0, 0x456);
     core.program.instr_mem[2] = brs::encodeSauInstruction(
-        brs::SauInstruction::Set7, 0, 1, 2);
+        brs::SauInstruction::Set4, 0, 1, 2);
     core.program.program_words = 3;
 
     runUntilDone(core);
 
     ASSERT_TRUE(core.done());
-    EXPECT_EQ(core.getStubSauSlotValue(7), 0x0000045600000123ULL);
+    EXPECT_EQ(core.getStubSauSlotValue(4), 0x0000045600000123ULL);
     EXPECT_GE(core.getForwardCount(), 1);
 }
 
@@ -236,7 +236,7 @@ TEST(PipelineSauTest, AttachedSauEndpointCarriesResetHcAndSramSignals)
 
     brs::SauMemoryResponse memoryResponse;
     memoryResponse.valid = true;
-    memoryResponse.readData[31] = 0x7e;
+    memoryResponse.readData[15] = 0x7e;
     core.clockSauMemory(memoryResponse);
     // clockSauMemory() only drives the response pins.  The endpoint samples
     // those pins atomically with HC at the next committed core edge.
@@ -246,7 +246,7 @@ TEST(PipelineSauTest, AttachedSauEndpointCarriesResetHcAndSramSignals)
     core.clockOneCycle();
     EXPECT_EQ(endpoint.memoryClockCount, 1);
     EXPECT_TRUE(endpoint.lastMemoryResponse.valid);
-    EXPECT_EQ(endpoint.lastMemoryResponse.readData[31], 0x7e);
+    EXPECT_EQ(endpoint.lastMemoryResponse.readData[15], 0x7e);
 
     // Discard the intentionally empty tick used to verify the endpoint API.
     core.reset(0x80000000u, 0x80000004u);

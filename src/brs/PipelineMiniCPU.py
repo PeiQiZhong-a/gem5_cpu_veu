@@ -19,16 +19,20 @@ class PipelineMiniCPU(ClockedObject):
 
     tb_memory_enabled = Param.Bool(
         False,
-        "Route CPU IBus, DBus, VEU, and SAU through DutKuiMemoryModel",
+        "Route CPU IBus, DBus, VEU, and SAU through an RTL memory model",
+    )
+    tb_memory_kind = Param.String(
+        "dut-kui",
+        "RTL memory model: dut-kui or npu-lpnpu-mikui",
     )
     tb_imem_image_file = Param.String(
-        "", "Raw image loaded into the dut_kui instruction SRAM")
+        "", "Raw image loaded into the selected RTL instruction SRAM")
     tb_dmem_image_file = Param.String(
-        "", "Raw image loaded into the dut_kui data SRAM")
-    tb_inst_base = Param.Addr(0x00000000, "dut_kui instruction SRAM base")
-    tb_inst_size = Param.Addr(0x00040000, "dut_kui instruction SRAM size")
-    tb_data_base = Param.Addr(0x29120000, "dut_kui data SRAM base")
-    tb_data_size = Param.Addr(0x00040000, "dut_kui decoded data window size")
+        "", "Raw image loaded into the selected RTL data SRAM")
+    tb_inst_base = Param.Addr(0x00000000, "RTL instruction SRAM base")
+    tb_inst_size = Param.Addr(0x00040000, "RTL instruction SRAM size")
+    tb_data_base = Param.Addr(0x29120000, "RTL data SRAM base")
+    tb_data_size = Param.Addr(0x00040000, "RTL decoded data window size")
 
     max_cycles = Param.UInt64(
         2_000_000,

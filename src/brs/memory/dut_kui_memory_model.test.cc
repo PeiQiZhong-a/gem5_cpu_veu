@@ -157,6 +157,52 @@ TEST(DutKuiMemoryModelTest, SauAndVeuShareTheSameThreeRealBanks)
     EXPECT_EQ(model.readByte(0x29150000), 0);
 }
 
+TEST(DutKuiMemoryModelTest, AdaptsSau128BitBeatsToLegacy256BitHalves)
+{
+    DutKuiMemoryModel::Config config;
+    config.crossbarMasterResponseLatency = 0;
+    DutKuiMemoryModel model(config);
+
+    SauMemoryOutput sau;
+    sau.crossbarStart = true;
+    model.clock(false, sau);
+
+    // A lower-half SAU beat maps byte 0 to the 256-bit line's byte 0.
+    sau = {};
+    sau.request.valid = true;
+    sau.request.address = 0x29120020;
+    sau.request.writeStrobe = uint16_t{1} << 0;
+    sau.request.writeData[0] = 0x12;
+    auto outputs = model.clock(false, sau);
+    EXPECT_TRUE(outputs.masterAccepted[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)]);
+    EXPECT_EQ(model.readByte(0x29120020), 0x12);
+
+    // Address bit 4 selects the upper half: canonical byte 0 becomes the
+    // legacy 256-bit line's byte 16, without changing SAU byte ordering.
+    sau.request.address = 0x29120030;
+    sau.request.writeData[0] = 0x34;
+    outputs = model.clock(false, sau);
+    EXPECT_TRUE(outputs.sau.valid); // completion of the preceding write
+    EXPECT_TRUE(outputs.masterAccepted[
+        static_cast<uint8_t>(DutKuiDataMaster::Sau)]);
+    EXPECT_EQ(model.readByte(0x29120030), 0x34);
+    EXPECT_EQ(model.readByte(0x29120020), 0x12);
+
+    // Drain the upper-half write response, then prove read data is sliced
+    // back down to canonical bytes 0..15.
+    EXPECT_TRUE(model.clock(false).sau.valid);
+    model.writeByte(0x2912003f, 0x7e);
+    sau = {};
+    sau.request.valid = true;
+    sau.request.address = 0x29120030;
+    model.clock(false, sau);
+    outputs = model.clock(false);
+    ASSERT_TRUE(outputs.sau.valid);
+    EXPECT_EQ(outputs.sau.readData[0], 0x34);
+    EXPECT_EQ(outputs.sau.readData[15], 0x7e);
+}
+
 TEST(DutKuiMemoryModelTest, ReportsRtlSameBankWinnerAndDroppedSauBeat)
 {
     DutKuiMemoryModel model;

@@ -45,8 +45,8 @@ decodeSpiritSauInstruction(uint32_t instruction)
     decoded.rs1 = static_cast<uint8_t>((instruction >> 15) & 0x1f);
     decoded.rs2 = static_cast<uint8_t>((instruction >> 20) & 0x1f);
 
-    // Decoder.scala enables both source ports and rd_we for every one of
-    // the 21 SAU encodings. MGET normally encodes x0 for both sources and
+    // Decoder.sv enables both source ports and rd_we for all 12 SAU
+    // encodings. MGET normally encodes x0 for both sources and
     // MSET normally encodes x0 for rd, but arbitrary encodings still carry
     // these architectural dependencies in the RTL.
     decoded.usesRs1 = true;

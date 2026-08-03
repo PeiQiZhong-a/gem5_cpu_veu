@@ -12,8 +12,8 @@ TEST(SauIssueTest, CopiesDecodedControlAndForwardedOperands)
     IDEX decoded;
     decoded.valid = true;
     decoded.kind = InstrKind::SAU;
-    decoded.sau_operation = brs::SauInstruction::Set7;
-    decoded.sau_csr_addr = 0x20c;
+    decoded.sau_operation = brs::SauInstruction::Set4;
+    decoded.sau_csr_addr = 0x206;
     decoded.sau_csr_write = true;
     decoded.sau_write_type = brs::SauWriteType::Set;
 
@@ -21,8 +21,8 @@ TEST(SauIssueTest, CopiesDecodedControlAndForwardedOperands)
         makeSauCbuIssue(decoded, 0x11223344, 0x55667788);
 
     EXPECT_TRUE(issue.valid);
-    EXPECT_EQ(issue.operation, brs::SauInstruction::Set7);
-    EXPECT_EQ(issue.csrAddr, 0x20c);
+    EXPECT_EQ(issue.operation, brs::SauInstruction::Set4);
+    EXPECT_EQ(issue.csrAddr, 0x206);
     EXPECT_FALSE(issue.csrRead);
     EXPECT_TRUE(issue.csrWrite);
     EXPECT_EQ(issue.writeType, brs::SauWriteType::Set);
