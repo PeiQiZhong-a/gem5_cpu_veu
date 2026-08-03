@@ -56,6 +56,20 @@ TEST(FrontendAlignerTest, EmitsAlignedRv32Instruction)
     EXPECT_FALSE(out.stopFetch);
 }
 
+TEST(FrontendAlignerTest, DoesNotReplayRv32InstructionWithoutNewWord)
+{
+    FrontendAligner aligner;
+    aligner.reset(0);
+
+    const auto first = aligner.step(
+        alignerInput(true, 0x00500093, 0));
+    ASSERT_TRUE(first.alignedInstrValid);
+
+    const auto waiting = aligner.step(
+        alignerInput(false, 0, first.nextInstrAddr));
+    EXPECT_FALSE(waiting.alignedInstrValid);
+}
+
 TEST(FrontendAlignerTest, EmitsTwoCompressedInstructionsFromOneWord)
 {
     FrontendAligner aligner;

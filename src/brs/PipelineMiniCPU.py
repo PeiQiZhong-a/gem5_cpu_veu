@@ -92,11 +92,11 @@ class PipelineMiniCPU(ClockedObject):
         "Optional TimingVEU structural cycle trace CSV output",
     )
     veu_startup_cycles = Param.UInt32(
-        0,
+        4,
         "TimingVEU startup cycles before issuing the first load",
     )
     veu_finish_cycles = Param.UInt32(
-        0,
+        4,
         "TimingVEU finish cycles before reporting completion",
     )
 

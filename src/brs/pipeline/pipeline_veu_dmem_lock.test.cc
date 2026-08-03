@@ -106,7 +106,12 @@ TEST(PipelineVeuDmemLockTest, DefersRvLoadUntilVeuStoreCompletes)
     completeCsrRequest(
         core.timingVeu,
         csrWrite(brs::VeuCsr::VectorLength, brs::VeuVectorBits));
-    completeCsrRequest(core.timingVeu, vaddStart(0x100, 0x200));
+    completeCsrRequest(
+        core.timingVeu, csrWrite(brs::VeuCsr::Mask, 0xffffffffu));
+    core.timingVeu.clock(vaddStart(0x100, 0x200));
+    ASSERT_TRUE(core.timingVeu.evaluate().valid);
+    EXPECT_FALSE(core.timingVeuOwnsSharedDmem());
+    core.timingVeu.clock({});
     ASSERT_TRUE(core.timingVeuOwnsSharedDmem());
 
     uint64_t rvDataRequests = 0;
@@ -136,14 +141,17 @@ TEST(PipelineVeuDmemLockTest, DefersRvLoadUntilVeuStoreCompletes)
     core.idex_cur.mem_read = true;
     core.idex_cur.wb_sel = WbSel::MEM;
 
+    uint64_t expectedBlockedCycles = 0;
     for (int cycle = 0;
          cycle < 80 && core.timingVeuOwnsSharedDmem(); ++cycle) {
         core.stepOneCycle();
+        ++expectedBlockedCycles;
         EXPECT_EQ(rvDataRequests, 0u);
     }
 
     ASSERT_FALSE(core.timingVeuOwnsSharedDmem());
-    EXPECT_GT(core.getRvDmemBlockedByVeuCycles(), 0u);
+    EXPECT_GT(expectedBlockedCycles, 0u);
+    EXPECT_EQ(core.getRvDmemBlockedByVeuCycles(), expectedBlockedCycles);
     EXPECT_EQ(rvDataRequests, 0u);
     EXPECT_EQ(readLane(memory[0x300], 0), 11u);
 

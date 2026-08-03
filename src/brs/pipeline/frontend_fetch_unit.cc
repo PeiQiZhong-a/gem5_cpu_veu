@@ -132,6 +132,12 @@ FrontendAligner::step(const Input &in)
         out.nextInstrAddr = 0;
         out.stopFetch = false;
         out.alignedInstrValid = false;
+    } else {
+        // alignedInstrValid is a pulse for the word consumed on this edge.
+        // Holding it while the FIFO waits for the next 16-byte IBus block
+        // replays the previous instruction at the new PC.
+        out.alignedInstrValid = false;
+        nextAlignedInstrValid = false;
     }
 
     if (in.fetchInstrValid) {

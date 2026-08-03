@@ -958,8 +958,13 @@ PipelineMiniCPU::preloadTbReadmemh32Image(
              static_cast<unsigned long long>(capacity), path);
 
     for (size_t byte = 0; byte < image.data.size(); ++byte) {
-        tbCrossbar.writeByte(static_cast<uint32_t>(base + byte),
-                             image.data[byte]);
+        if (dutKuiMemoryEnabled()) {
+            dutKuiMemory.writeByte(static_cast<uint32_t>(base + byte),
+                                   image.data[byte]);
+        } else {
+            tbCrossbar.writeByte(static_cast<uint32_t>(base + byte),
+                                 image.data[byte]);
+        }
     }
     inform("preloadTbReadmemh32Image: wrote %llu bytes at %#x from %s",
            static_cast<unsigned long long>(image.data.size()), base, path);
@@ -1236,6 +1241,16 @@ PipelineMiniCPU::processTick()
     pipeStats.veu_profile_hits = core.timingVeu.profileHitCount();
     pipeStats.veu_profile_misses = core.timingVeu.profileMissCount();
     pipeStats.veu_profile_fallbacks = core.timingVeu.profileFallbackCount();
+    pipeStats.veu_timing_rtl_sim_uses =
+        core.timingVeu.rtlSimTimingUseCount();
+    pipeStats.veu_timing_legacy_uses =
+        core.timingVeu.legacyTimingUseCount();
+    pipeStats.veu_timing_default_uses =
+        core.timingVeu.defaultTimingUseCount();
+    pipeStats.veu_control_timing_rtl_sim_uses =
+        core.timingVeu.rtlSimControlTimingUseCount();
+    pipeStats.veu_control_timing_default_uses =
+        core.timingVeu.defaultControlTimingUseCount();
     pipeStats.veu_zero_length_noops = core.timingVeu.zeroLengthNoopCount();
     pipeStats.veu_illegal_operations = core.timingVeu.illegalOperationCount();
 

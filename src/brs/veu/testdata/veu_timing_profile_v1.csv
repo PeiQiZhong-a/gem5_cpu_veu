@@ -1,0 +1,2 @@
+profile_id,op,mode,scalar_en,mask_class,source_set,vfu_latency,vfu_ii,write_policy,fifo_depth,max_outstanding_reads,vsu_latency
+legacy_vadd,vadd,*,0,*,src1+src2,2,1,per_chunk,4,4,1

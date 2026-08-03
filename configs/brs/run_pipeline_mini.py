@@ -77,8 +77,8 @@ parser.add_argument("--veu-execute-ii", type=int, default=1)
 parser.add_argument("--veu-vsu-latency", type=int, default=1)
 parser.add_argument("--veu-timing-profile", default="")
 parser.add_argument("--veu-cycle-trace", default="")
-parser.add_argument("--veu-startup-cycles", type=int, default=0)
-parser.add_argument("--veu-finish-cycles", type=int, default=0)
+parser.add_argument("--veu-startup-cycles", type=int, default=4)
+parser.add_argument("--veu-finish-cycles", type=int, default=4)
 parser.add_argument("--mem-size", default="64MiB")
 parser.add_argument(
     "--mem-system",

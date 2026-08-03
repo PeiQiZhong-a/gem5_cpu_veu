@@ -9,7 +9,7 @@ ROOT="test_by_agent/rv_veu_e2e"
 PROFILE="configs/brs/veu_timing_profile.csv"
 GENERATOR="$ROOT/gen_veu_e2e_hex.py"
 VERIFIER="$ROOT/verify_veu_e2e.py"
-OUTROOT="$ROOT/m5out_veu_matrix"
+OUTROOT="${BRS_VEU_E2E_OUTROOT:-$ROOT/m5out_veu_matrix}"
 SUMMARY="$OUTROOT/summary.csv"
 MAX_CYCLES=10000
 
@@ -24,7 +24,7 @@ fi
 
 mkdir -p "$OUTROOT"
 printf '%s\n' \
-    'case,op,vlen,status,cycle_count,chunks,reads,writes,max_outstanding,retries,profile_hits,profile_fallbacks,detail' \
+    'case,op,vlen,status,cycle_count,chunks,reads,writes,max_outstanding,retries,profile_hits,profile_fallbacks,timing_source,evidence_id,control_timing_source,control_evidence_id,detail' \
     > "$SUMMARY"
 
 mapfile -t CASES < <(python3 "$GENERATOR" --list-cases)
@@ -35,7 +35,7 @@ append_failure() {
     local op_name="$2"
     local vlen="$3"
     local detail="$4"
-    printf '%s,%s,%s,FAIL,,,,,,,,,%s\n' \
+    printf '%s,%s,%s,FAIL,,,,,,,,,,,%s\n' \
         "$case_name" "$op_name" "$vlen" "$detail" >> "$SUMMARY"
 }
 
@@ -93,4 +93,18 @@ if (( failures != 0 )); then
     echo "RV-VEU E2E matrix failed: $failures case(s)" >&2
     exit 1
 fi
+data_rtl=$(awk -F, 'NR > 1 && $13 == "rtl_sim" { count++ } END { print count + 0 }' \
+    "$SUMMARY")
+data_default=$(awk -F, 'NR > 1 && $13 == "default" { count++ } END { print count + 0 }' \
+    "$SUMMARY")
+control_rtl=$(awk -F, 'NR > 1 && $15 == "rtl_sim" { count++ } END { print count + 0 }' \
+    "$SUMMARY")
+control_default=$(awk -F, 'NR > 1 && $15 == "default" { count++ } END { print count + 0 }' \
+    "$SUMMARY")
+if (( data_rtl != 44 || data_default != 0 ||
+      control_rtl != 44 || control_default != 0 )); then
+    echo "unexpected timing sources: data rtl/default=$data_rtl/$data_default control rtl/default=$control_rtl/$control_default" >&2
+    exit 1
+fi
 echo "RV-VEU E2E matrix PASS: $((${#CASES[@]} * 2)) cases"
+echo "Timing sources: data rtl_sim/default=$data_rtl/$data_default control rtl_sim/default=$control_rtl/$control_default"

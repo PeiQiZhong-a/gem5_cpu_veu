@@ -123,6 +123,8 @@ TEST(PipelineVeuAsyncTest, ReleasesRvAfterCsrHandshakeWhileOperationRuns)
     completeCsrRequest(
         core.timingVeu,
         csrWrite(brs::VeuCsr::VectorLength, brs::VeuVectorBits));
+    completeCsrRequest(
+        core.timingVeu, csrWrite(brs::VeuCsr::Mask, 0xffffffffu));
 
     core.fetchInstr = [](uint32_t, uint32_t &) { return false; };
     core.idex_cur = makeVectorAddInExecute();

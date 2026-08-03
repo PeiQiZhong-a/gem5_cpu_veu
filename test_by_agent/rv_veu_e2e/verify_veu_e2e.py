@@ -59,13 +59,46 @@ def number(value: str) -> int:
     return int(value, 0)
 
 
-def validate_trace(events: list[dict[str, str]], metadata: dict[str, object]) -> None:
+def parse_detail(detail: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for item in detail.split(";"):
+        if "=" in item:
+            key, value = item.split("=", 1)
+            fields[key] = value
+    return fields
+
+
+def validate_trace(
+    events: list[dict[str, str]], metadata: dict[str, object],
+) -> dict[str, str]:
     starts = [row for row in events if row["event"] == "operation_start"]
     finishes = [row for row in events if row["event"] == "operation_finish"]
     if len(starts) != 1 or len(finishes) != 1:
         fail(f"trace operation start/finish count is {len(starts)}/{len(finishes)}, expected 1/1")
     if starts[0]["op"] != metadata["op"]:
         fail(f"trace op {starts[0]['op']} does not match {metadata['op']}")
+    provenance = parse_detail(starts[0]["detail"])
+    if provenance.get("timing_source") != metadata["expected_timing_source"]:
+        fail(
+            "trace timing source "
+            f"{provenance.get('timing_source')} does not match "
+            f"{metadata['expected_timing_source']}"
+        )
+    if (
+        provenance.get("control_timing_source")
+        != metadata["expected_control_timing_source"]
+    ):
+        fail(
+            "trace control timing source "
+            f"{provenance.get('control_timing_source')} does not match "
+            f"{metadata['expected_control_timing_source']}"
+        )
+    if (
+        not provenance.get("profile_id")
+        or not provenance.get("evidence_id")
+        or not provenance.get("control_evidence_id")
+    ):
+        fail("operation_start trace is missing timing provenance")
 
     read_requests = [row for row in events if row["event"] == "read_request"]
     write_requests = [row for row in events if row["event"] == "write_request"]
@@ -86,6 +119,7 @@ def validate_trace(events: list[dict[str, str]], metadata: dict[str, object]) ->
     }
     if request_ids != response_ids:
         fail("trace request and response transaction IDs do not match")
+    return provenance
 
 
 def main() -> None:
@@ -108,11 +142,25 @@ def main() -> None:
         "veu_chunks": int(metadata["chunks"]),
         "veu_memory_reads": int(metadata["expected_reads"]),
         "veu_memory_writes": int(metadata["expected_writes"]),
-        "veu_profile_hits": 1,
-        "veu_profile_misses": 0,
-        "veu_profile_fallbacks": 0,
+        "veu_profile_hits": int(metadata["expected_profile_hits"]),
+        "veu_profile_misses": int(metadata["expected_profile_fallbacks"]),
+        "veu_profile_fallbacks": int(metadata["expected_profile_fallbacks"]),
+        "veu_timing_rtl_sim_uses":
+            1 if metadata["expected_timing_source"] == "rtl_sim" else 0,
+        "veu_timing_legacy_uses": 0,
+        "veu_timing_default_uses":
+            1 if metadata["expected_timing_source"] == "default" else 0,
+        "veu_control_timing_rtl_sim_uses":
+            1
+            if metadata["expected_control_timing_source"] == "rtl_sim"
+            else 0,
+        "veu_control_timing_default_uses":
+            1
+            if metadata["expected_control_timing_source"] == "default"
+            else 0,
         "veu_unexpected_responses": 0,
-        "veu_illegal_operations": 0,
+        "veu_illegal_operations":
+            int(metadata["expected_illegal_operations"]),
         "veu_current_outstanding_reads": 0,
     }
     actual = {name: stat(stats, name) for name in expected}
@@ -126,7 +174,7 @@ def main() -> None:
     if stat(stats, "veu_retries") < 0:
         fail("retry count is negative")
 
-    validate_trace(trace_events(args.trace), metadata)
+    provenance = validate_trace(trace_events(args.trace), metadata)
     print(
         ",".join(
             (
@@ -142,6 +190,10 @@ def main() -> None:
                 str(stat(stats, "veu_retries")),
                 str(actual["veu_profile_hits"]),
                 str(actual["veu_profile_fallbacks"]),
+                provenance["timing_source"],
+                provenance["evidence_id"],
+                provenance["control_timing_source"],
+                provenance["control_evidence_id"],
                 "full-result-and-trace-checked",
             )
         )
