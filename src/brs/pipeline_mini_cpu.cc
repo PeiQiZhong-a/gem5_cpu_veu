@@ -4,6 +4,7 @@
 #include "base/output.hh"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -20,20 +21,22 @@ namespace gem5
 namespace
 {
 
+template <std::size_t ByteCount>
 std::string
-sramDataHex(const std::array<uint8_t, brs::Sram256Bytes> &data)
+sramDataHex(const std::array<uint8_t, ByteCount> &data)
 {
     std::ostringstream value;
     value << std::hex << std::setfill('0');
-    for (int byte = brs::Sram256Bytes - 1; byte >= 0; --byte) {
+    for (std::size_t byte = data.size(); byte > 0; --byte) {
         value << std::setw(2)
-              << static_cast<unsigned>(data[byte]);
+              << static_cast<unsigned>(data[byte - 1]);
     }
     return value.str();
 }
 
+template <typename Request>
 std::string
-sramWriteDataHex(const brs::Sram256Request &request)
+sramWriteDataHex(const Request &request)
 {
     return sramDataHex(request.writeData);
 }
