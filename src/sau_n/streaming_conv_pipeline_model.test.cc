@@ -127,6 +127,7 @@ struct RunObservations
     bool sawBusyNextTile = false;
     bool sawFullPopPush = false;
     bool sawDDepthOneTurnover = false;
+    bool sawDWritebackOnly = false;
 };
 
 RunObservations
@@ -137,6 +138,20 @@ runToDrained(StreamingConvPipelineModel &model)
     std::optional<uint64_t> instructionCycle;
     for (uint64_t attempts = 0; attempts < 200000; ++attempts) {
         const auto cycle = model.tick();
+        const auto hasRequest = [](const SramRequest &request) {
+            return std::any_of(
+                request.valid.begin(), request.valid.end(),
+                [](bool valid) { return valid; });
+        };
+        if (hasRequest(cycle.dRequest)) {
+            const bool readGrant =
+                hasRequest(cycle.producer.grant) ||
+                hasRequest(cycle.bGrant) || hasRequest(cycle.cGrant);
+            EXPECT_FALSE(readGrant);
+            if (hasRequest(cycle.dGrant)) {
+                result.sawDWritebackOnly = true;
+            }
+        }
         if (cycle.fifoPush && cycle.fifoCount == 0) {
             EXPECT_FALSE(cycle.fifoPop);
             result.sawNoEmptyBypass = true;
@@ -224,11 +239,11 @@ TEST(StreamingConvPipeline, OneTileLaunchAndOutputAreCanonical)
     EXPECT_EQ(model.stats().dPendingPeak, uint64_t{1});
     EXPECT_GT(model.stats().spadReadRequestsA, uint64_t{0});
     EXPECT_EQ(
-        model.stats().spadReadRequestsA,
-        model.stats().spadReadGrantsA);
-    EXPECT_EQ(
         model.stats().spadReadGrantsA,
         model.stats().spadReadResponsesA);
+    EXPECT_LE(
+        model.stats().spadReadGrantsA,
+        model.stats().spadReadRequestsA);
     const uint64_t perBankReads = std::accumulate(
         model.stats().perBankReadCycles.begin(),
         model.stats().perBankReadCycles.end(), uint64_t{0});
@@ -337,6 +352,7 @@ TEST(StreamingConvPipeline, WritesDAndRebuildsOutputFromScratchpad)
 
     EXPECT_EQ(model.outputs(), expected);
     EXPECT_TRUE(run.sawDDepthOneTurnover);
+    EXPECT_TRUE(run.sawDWritebackOnly);
     EXPECT_EQ(
         model.stats().spadWriteGrantsD,
         model.derived().expectedOutputs);

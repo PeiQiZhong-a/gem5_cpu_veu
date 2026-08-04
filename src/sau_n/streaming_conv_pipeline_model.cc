@@ -1064,10 +1064,22 @@ StreamingConvPipelineModel::tick()
         cWasReady ? CRequestContext{} : buildCRequest();
     const SramRequest dRequest =
         cWasReady ? buildDRequest() : SramRequest{};
+    const bool dWritebackActive = anySpadRequest(dRequest);
     SramRequest bGrant;
     SramRequest cGrant;
     SramRequest dGrant;
     SramRequest combinedGrant;
+
+    // Mikui's external scratchpad interface does not issue tensor reads on
+    // a writeback beat.  A response from an earlier read may still be
+    // consumed in this tick; only new read grants are suppressed.
+    const auto arbitrateABD = [&](const SramRequest &aRequest) {
+        if (dWritebackActive) {
+            return arbitrateSharedSpad({}, {}, {}, dRequest);
+        }
+        return arbitrateSharedSpad(
+            aRequest, bContext.request, {}, dRequest);
+    };
 
     PipelinedIm2ColCycle producerCycle;
     if (!cWasReady) {
@@ -1081,8 +1093,7 @@ StreamingConvPipelineModel::tick()
             fifoPushReady,
             aResponse,
             [&](const SramRequest &aRequest) {
-                const auto arbitration = arbitrateSharedSpad(
-                    aRequest, bContext.request, {}, dRequest);
+                const auto arbitration = arbitrateABD(aRequest);
                 bGrant = arbitration.bGrant;
                 dGrant = arbitration.dGrant;
                 combinedGrant = arbitration.readGrant;
@@ -1102,8 +1113,7 @@ StreamingConvPipelineModel::tick()
         producerCycle.s2Ready = fifoPushReady;
         producerCycle.producerExhausted = true;
         producerCycle.drained = true;
-        const auto arbitration = arbitrateSharedSpad(
-            {}, bContext.request, {}, dRequest);
+        const auto arbitration = arbitrateABD({});
         bGrant = arbitration.bGrant;
         dGrant = arbitration.dGrant;
         combinedGrant = arbitration.readGrant;
