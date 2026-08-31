@@ -83,15 +83,18 @@ class DutKuiMemoryModel
   public:
     struct Config
     {
-        // A request captured on edge N produces the registered IBus response
-        // during cycle N+1. The unified tick engine samples it at the next
-        // edge; no C++ call-order delay is part of this value.
-        uint32_t ibusResponseLatency = 0;
+        // The RTL application SRAM path has one registered latency stage in
+        // addition to the unified tick boundary: a request observed on edge
+        // N is returned on edge N+3 in the canonical pre-NBA trace.
+        uint32_t ibusResponseLatency = 2;
         // crossbar_mi pipelines both the selected master and the SRAM ack by
         // two registers. DBUS uses the same crossbar pipeline before the
         // 256-to-32 converter samples the return.
         uint32_t crossbarMasterResponseLatency = 2;
-        uint32_t crossbarDbusResponseLatency = 2;
+        // The RV DBUS path has one additional registered return edge beyond
+        // the native 256-bit master path.  Together with the converter this
+        // makes a request at N expose dbus_resp at N+7 in the RTL trace.
+        uint32_t crossbarDbusResponseLatency = 3;
         uint32_t instBase = 0x00000000;
         uint32_t instSize = 0x00040000;
         uint32_t dataBase = 0x29120000;

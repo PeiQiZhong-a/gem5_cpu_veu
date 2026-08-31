@@ -86,6 +86,41 @@ cycle trace for every case. This matrix validates model functionality and
 internal timing/transaction consistency; it does not compare gem5 cycles or
 traces against RTL.
 
+## Shared RTL/gem5 firmware conversion
+
+Convert the archived 44-case local-address matrix into the current RTL
+application address map with:
+
+```sh
+python3 test_by_agent/rv_veu_e2e/convert_veu_matrix_shared.py \
+  --source /home/zpq/文档/m5out_veu_matrix \
+  --output /home/zpq/文档/m5out_veu_matrix_shared
+```
+
+Each converted case contains `instr_mem.hex` and `data_mem.hex` for gem5,
+plus packed 128-bit `instruction.hex` and `memory.hex` for the RTL QSPI
+testbench.  The instruction image contains the two-word boot header, executes
+from `0x29110008`, uses data addresses under `0x29120000`, and reports the
+self-check result by writing PASS (`0x2`) or FAIL (`0x4`) to `0x4001e004`.
+The root `manifest.json` records SHA-256 hashes for every generated file.
+
+Run the converted matrix sequentially and generate a CPU/VEU trace pair for
+every case with:
+
+```sh
+test_by_agent/rv_veu_e2e/run_shared_matrix.sh \
+  --gem5 /path/to/build/RISCV/gem5.opt \
+  --input-root /home/zpq/文档/m5out_veu_matrix_shared \
+  --output-root /home/zpq/文档/m5out_veu_matrix_shared_runs
+```
+
+The runner continues after individual failures and writes `summary.csv`.
+Every case output contains `brs_cycle_trace.log`, `veu_cycle_trace.csv`,
+`run.log`, `stats.txt`, the exact `command.sh`, and verification output. It
+also requires a `done=1` controller-status write and rejects `error=1` in the
+CPU trace. Use `--case vmac_256` for a single-case smoke test or `--dry-run`
+to inspect the complete command list.
+
 ## Current dut_kui memory path: focused VADD
 
 The focused runner routes TimingVEU through the internal cycle model of the

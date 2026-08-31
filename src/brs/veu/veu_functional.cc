@@ -205,8 +205,6 @@ VeuFunctionalExecutor::describe(VeuInstruction instruction,
       case VeuInstruction::Multiply:
       case VeuInstruction::MultiplyHigh:
         info.sourceMask = scalarEnabled ? src2 : (src1 | src2);
-        info.rtlIllegal =
-            instruction == VeuInstruction::MultiplyHigh;
         break;
       case VeuInstruction::MultiplyAdd:
       case VeuInstruction::MultiplySubtract:

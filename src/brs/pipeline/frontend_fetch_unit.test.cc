@@ -348,6 +348,43 @@ TEST(FrontendFetchUnitTest, AcceptsResponseWhileStalled)
     EXPECT_EQ(out.instr, 0x00500093);
 }
 
+TEST(FrontendFetchUnitTest, WaitsOneEdgeAfterPoppingFullFifoToRequest)
+{
+    FrontendFetchUnit frontend;
+    frontend.reset(0);
+    advanceResetEnd(frontend, 64);
+
+    FrontendFetchUnit::Input input;
+    input.textEnd = 64;
+    auto out = frontend.step(input);
+    ASSERT_TRUE(out.requestValid);
+    frontend.markRequestIssued();
+
+    FetchBlock block;
+    block.fetchAddr = 0;
+    block.blockAddr = 0;
+    block.words = {
+        0x00500093, 0x00600113, 0x00700193, 0x00800213};
+
+    // Holding the frontend prevents the response bypass from consuming a
+    // word, so the registered FIFO becomes full.
+    out = frontend.step(responseInput(64, block, true));
+    EXPECT_FALSE(out.requestValid);
+
+    // This edge pops the first word.  RTL still observes the old full count
+    // for its request decision, so a replacement request is not yet visible.
+    input = {};
+    input.textEnd = 64;
+    out = frontend.step(input);
+    EXPECT_FALSE(out.requestValid);
+
+    // On the following edge the registered count has room and the next block
+    // request may be issued.
+    out = frontend.step(input);
+    EXPECT_TRUE(out.requestValid);
+    EXPECT_EQ(out.requestFetchAddr, 16);
+}
+
 TEST(FrontendFetchUnitTest, HoldsIfOutputRegisterWhileStalled)
 {
     FrontendFetchUnit frontend;

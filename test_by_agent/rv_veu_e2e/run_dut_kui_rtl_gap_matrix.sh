@@ -52,6 +52,7 @@ while IFS= read -r rtl_test; do
 
     BRS_RETIRE_TRACE=1 "$GEM5" -d "$case_dir" "$CONFIG" \
         --mem-system rtl-dut-kui-tb \
+        --entry-point 0x29110000 \
         --veu-model timing \
         --veu-timing-profile "$PROFILE" \
         --veu-cycle-trace "$case_dir/veu_cycle_trace.csv" \

@@ -57,6 +57,7 @@ class PipelineMiniCPU : public ClockedObject
     uint64_t resetCyclesRemaining;
     uint64_t elapsedClockEdges = 0;
     Addr textBase;
+    Addr entryPoint;
     System *system;
     uint32_t configuredExternalIrq;
     bool configuredSoftwareIrq;
@@ -84,6 +85,7 @@ class PipelineMiniCPU : public ClockedObject
     brs::DutKuiMemoryModel dutKuiMemory;
     bool tbInstOutstanding = false;
     bool tbDataOutstanding = false;
+    bool tbControllerStatusSeen = false;
     std::string cycleTraceFile;
     std::ofstream cycleTrace;
 

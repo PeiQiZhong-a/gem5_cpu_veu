@@ -22,9 +22,34 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-TRACE_HEADERS = ("brs-cycle-trace-v1", "brs-cycle-trace-v2")
+TRACE_HEADERS = (
+    "brs-cycle-trace-v1", "brs-cycle-trace-v2", "brs-cycle-trace-v3")
 INT_RE = re.compile(r"^[+-]?[0-9]+$")
 HEX_RE = re.compile(r"^0x[0-9a-f]+$")
+
+V3_REQUIRED_HEADER_FIELDS = frozenset({
+    "source", "sampling", "platform", "predictor_present", "btb_enabled",
+})
+V3_REQUIRED_RECORD_FIELDS = frozenset({
+    "edge", "reset", "phase", "source", "platform", "cpu_cycle",
+    "ibus_req", "ibus_addr", "ibus_re", "ibus_resp",
+    "ibus_r0", "ibus_r1", "ibus_r2", "ibus_r3",
+    "dbus_req", "dbus_addr", "dbus_re", "dbus_we", "dbus_wstrb",
+    "dbus_wdata", "dbus_resp", "dbus_rdata",
+    "retire", "retire_pc", "retire_instr", "wb_we", "wb_fp", "wb_rd",
+    "wb_data", "stall_mask", "redirect", "redirect_target", "grant",
+    "set_btb_off", "btb_match", "predict_failed",
+    "hc_req", "hc_addr", "hc_re", "hc_we", "hc_write_type", "hc_wdata",
+    "hc_vestart", "hc_valid", "hc_rdata",
+    "done", "done_value", "error", "error_value",
+})
+V3_STRING_RECORD_FIELDS = frozenset({"phase", "source", "platform"})
+V3_BOOLEAN_RECORD_FIELDS = frozenset({
+    "reset", "ibus_req", "ibus_re", "ibus_resp", "dbus_req", "dbus_re",
+    "dbus_we", "dbus_resp", "retire", "wb_we", "wb_fp", "redirect",
+    "grant", "set_btb_off", "btb_match", "predict_failed", "hc_req",
+    "hc_re", "hc_we", "hc_valid", "done", "error",
+})
 
 
 def parse_value(value: str) -> int | str:
@@ -40,6 +65,8 @@ def parse_value(value: str) -> int | str:
 class Trace:
     path: Path
     source: str
+    version: int
+    metadata: dict[str, Any]
     records: tuple[dict[str, Any], ...]
 
     @property
@@ -65,6 +92,8 @@ class Trace:
 def load_trace(path: Path) -> Trace:
     records: list[dict[str, Any]] = []
     source = "unknown"
+    version = 0
+    metadata: dict[str, Any] = {}
     saw_header = False
     previous_edge = 0
 
@@ -74,11 +103,17 @@ def load_trace(path: Path) -> Trace:
             if not line:
                 continue
             if line.startswith("#"):
-                if any(header in line for header in TRACE_HEADERS):
+                matched_header = next(
+                    (header for header in TRACE_HEADERS if header in line),
+                    None)
+                if matched_header is not None:
                     saw_header = True
+                    version = int(matched_header.rsplit("v", 1)[1])
                     for token in line[1:].split():
-                        if token.startswith("source="):
-                            source = token.split("=", 1)[1]
+                        if "=" in token:
+                            key, value = token.split("=", 1)
+                            metadata[key] = parse_value(value)
+                    source = str(metadata.get("source", "unknown"))
                 continue
 
             fields: dict[str, Any] = {}
@@ -96,9 +131,65 @@ def load_trace(path: Path) -> Trace:
                 raise ValueError(
                     f"{path}:{line_number}: edge {edge} is not strictly "
                     f"after {previous_edge}")
+            if version == 3 and edge != previous_edge + 1:
+                raise ValueError(
+                    f"{path}:{line_number}: v3 edge {edge} is not contiguous "
+                    f"after {previous_edge}")
             if "reset" not in fields or "cpu_cycle" not in fields:
                 raise ValueError(
                     f"{path}:{line_number}: missing reset/cpu_cycle")
+            if version == 3:
+                missing = sorted(V3_REQUIRED_RECORD_FIELDS - fields.keys())
+                if missing:
+                    raise ValueError(
+                        f"{path}:{line_number}: brs-cycle-trace-v3 missing "
+                        f"required fields: {','.join(missing)}")
+                non_integer = sorted(
+                    key for key in V3_REQUIRED_RECORD_FIELDS -
+                    V3_STRING_RECORD_FIELDS
+                    if not isinstance(fields[key], int))
+                if non_integer:
+                    raise ValueError(
+                        f"{path}:{line_number}: v3 fields contain unknown or "
+                        f"non-integer values: {','.join(non_integer)}")
+                invalid_boolean = sorted(
+                    key for key in V3_BOOLEAN_RECORD_FIELDS
+                    if fields[key] not in (0, 1))
+                if invalid_boolean:
+                    raise ValueError(
+                        f"{path}:{line_number}: v3 boolean fields are not "
+                        f"0/1: {','.join(invalid_boolean)}")
+                if (fields["ibus_re"] != fields["ibus_req"] or
+                        fields["dbus_re"] + fields["dbus_we"] !=
+                        fields["dbus_req"] or
+                        fields["hc_req"] !=
+                        int(bool(fields["hc_re"] or fields["hc_we"])) or
+                        fields["grant"] != fields["hc_valid"]):
+                    raise ValueError(
+                        f"{path}:{line_number}: inconsistent v3 request/"
+                        "valid aliases")
+                if (metadata.get("btb_enabled") == 0 and
+                        (fields["set_btb_off"] != 1 or
+                         fields["btb_match"] != 0)):
+                    raise ValueError(
+                        f"{path}:{line_number}: no-BTB header requires "
+                        "set_btb_off=1 and btb_match=0")
+                if fields["source"] != source:
+                    raise ValueError(
+                        f"{path}:{line_number}: record source "
+                        f"{fields['source']!r} differs from header {source!r}")
+                if fields["platform"] != metadata.get("platform"):
+                    raise ValueError(
+                        f"{path}:{line_number}: record platform differs from "
+                        "header")
+                if fields["phase"] != metadata.get("sampling"):
+                    raise ValueError(
+                        f"{path}:{line_number}: record phase differs from "
+                        "header sampling")
+                if fields["reset"] != 0 or fields["cpu_cycle"] != edge:
+                    raise ValueError(
+                        f"{path}:{line_number}: v3 active interval requires "
+                        "reset=0 and cpu_cycle=edge")
             previous_edge = edge
             records.append(fields)
 
@@ -108,7 +199,87 @@ def load_trace(path: Path) -> Trace:
             f"({', '.join(TRACE_HEADERS)})")
     if not records:
         raise ValueError(f"{path}: no cycle records")
-    return Trace(path, source, tuple(records))
+    if version == 3:
+        missing = sorted(V3_REQUIRED_HEADER_FIELDS - metadata.keys())
+        if missing:
+            raise ValueError(
+                f"{path}: brs-cycle-trace-v3 header missing required fields: "
+                f"{','.join(missing)}")
+        if metadata["sampling"] != "posedge-pre-nba":
+            raise ValueError(
+                f"{path}: unsupported v3 sampling {metadata['sampling']!r}")
+        if metadata["btb_enabled"] not in (0, 1):
+            raise ValueError(
+                f"{path}: btb_enabled must be 0 or 1")
+        if metadata["predictor_present"] not in (0, 1):
+            raise ValueError(
+                f"{path}: predictor_present must be 0 or 1")
+    return Trace(path, source, version, metadata, tuple(records))
+
+
+def select_comparison_window(
+    trace: Trace,
+    anchor_retire_pc: int | None = None,
+    stop_at_done: bool = False,
+) -> Trace:
+    """Select and rebase the interval used for strict comparison.
+
+    RTL regression traces include the boot ROM, while direct-application gem5
+    traces begin at the application SRAM entry.  Anchoring both traces at the
+    first retirement of the same application PC removes only that intentional
+    startup-path difference.  All records from the anchor through DONE remain
+    strict edge-by-edge comparisons.
+    """
+    start_edge = trace.records[0]["edge"]
+    if anchor_retire_pc is not None:
+        anchor = next(
+            (
+                record
+                for record in trace.records
+                if record.get("retire") == 1
+                and record.get("retire_pc") == anchor_retire_pc
+            ),
+            None,
+        )
+        if anchor is None:
+            raise ValueError(
+                f"{trace.path}: no retired instruction at anchor PC "
+                f"{anchor_retire_pc:#x}"
+            )
+        start_edge = anchor["edge"]
+
+    end_edge = trace.records[-1]["edge"]
+    if stop_at_done:
+        done = next(
+            (
+                record
+                for record in trace.records
+                if record["edge"] >= start_edge and record.get("done") == 1
+            ),
+            None,
+        )
+        if done is None:
+            raise ValueError(f"{trace.path}: no DONE record after window anchor")
+        end_edge = done["edge"]
+
+    selected: list[dict[str, Any]] = []
+    for record in trace.records:
+        if not start_edge <= record["edge"] <= end_edge:
+            continue
+        rebased = dict(record)
+        rebased["original_edge"] = record["edge"]
+        rebased["edge"] = record["edge"] - start_edge + 1
+        rebased["cpu_cycle"] = rebased["edge"]
+        selected.append(rebased)
+
+    metadata = dict(trace.metadata)
+    metadata["comparison_window_start_edge"] = start_edge
+    metadata["comparison_window_end_edge"] = end_edge
+    if anchor_retire_pc is not None:
+        metadata["comparison_anchor_retire_pc"] = anchor_retire_pc
+    return Trace(
+        trace.path, trace.source, trace.version, metadata, tuple(selected)
+    )
 
 
 def normalized_retire(record: dict[str, Any]) -> tuple[Any, ...]:
@@ -135,7 +306,9 @@ def differing_fields(
         return differences
 
     compare(("ibus_req", "ibus_resp", "dbus_req", "dbus_resp",
-             "grant", "retire", "stall_mask", "redirect", "done"))
+             "grant", "retire", "stall_mask", "redirect", "done",
+             "error", "set_btb_off", "btb_match", "predict_failed",
+             "hc_req", "hc_valid"))
 
     if rtl.get("ibus_req") == 1 or gem5.get("ibus_req") == 1:
         compare(("ibus_addr", "ibus_re"))
@@ -153,8 +326,15 @@ def differing_fields(
                 compare(("wb_fp", "wb_rd", "wb_data"))
     if rtl.get("redirect") == 1 or gem5.get("redirect") == 1:
         compare(("redirect_target",))
+    if rtl.get("hc_req") == 1 or gem5.get("hc_req") == 1:
+        compare(("hc_addr", "hc_re", "hc_we", "hc_write_type",
+                 "hc_wdata", "hc_vestart"))
+    if rtl.get("hc_valid") == 1 or gem5.get("hc_valid") == 1:
+        compare(("hc_rdata",))
     if rtl.get("done") == 1 or gem5.get("done") == 1:
         compare(("done_value",))
+    if rtl.get("error") == 1 or gem5.get("error") == 1:
+        compare(("error_value",))
     return differences
 
 
@@ -195,7 +375,10 @@ def format_record(record: dict[str, Any] | None) -> str:
         "wb_we", "wb_fp", "wb_rd", "wb_data", "ibus_req", "ibus_addr",
         "ibus_resp", "dbus_req", "dbus_addr", "dbus_we", "dbus_wstrb",
         "dbus_resp", "stall_mask", "redirect", "redirect_target", "grant",
-        "done", "done_value")
+        "set_btb_off", "btb_match", "predict_failed", "hc_req", "hc_addr",
+        "hc_re", "hc_we", "hc_write_type", "hc_wdata", "hc_vestart",
+        "hc_valid", "hc_rdata", "done", "done_value", "error",
+        "error_value")
     return " ".join(f"{key}={record[key]}" for key in preferred
                     if key in record)
 
@@ -250,6 +433,12 @@ def compare(rtl: Trace, gem5: Trace, window: int) -> dict[str, Any]:
             "retires": len(rtl.retires),
             "done_edge": None if rtl_done is None else rtl_done["edge"],
             "done_value": None if rtl_done is None else rtl_done.get("done_value"),
+            "window_start_original_edge": rtl.metadata.get(
+                "comparison_window_start_edge"
+            ),
+            "window_end_original_edge": rtl.metadata.get(
+                "comparison_window_end_edge"
+            ),
         },
         "gem5": {
             "path": str(gem5.path),
@@ -257,6 +446,12 @@ def compare(rtl: Trace, gem5: Trace, window: int) -> dict[str, Any]:
             "retires": len(gem5.retires),
             "done_edge": None if gem5_done is None else gem5_done["edge"],
             "done_value": None if gem5_done is None else gem5_done.get("done_value"),
+            "window_start_original_edge": gem5.metadata.get(
+                "comparison_window_start_edge"
+            ),
+            "window_end_original_edge": gem5.metadata.get(
+                "comparison_window_end_edge"
+            ),
         },
         "retire_mismatch_index": (
             None if retire_mismatch is None else retire_mismatch[0]),
@@ -277,6 +472,12 @@ def print_report(report: dict[str, Any]) -> None:
         data = report[side]
         print(f"  {side:4s}: cycles={data['cycles']} retires={data['retires']} "
               f"done_edge={data['done_edge']} done_value={data['done_value']}")
+        if data["window_start_original_edge"] is not None:
+            print(
+                f"        original_window="
+                f"{data['window_start_original_edge']}.."
+                f"{data['window_end_original_edge']}"
+            )
     if report["match"]:
         print("  DONE, retire timing/writeback, and cycle bus/control all match.")
         return
@@ -305,6 +506,19 @@ def main(argv: list[str] | None = None) -> int:
                         help="cycles before/after first mismatch to print")
     parser.add_argument("--json-report", type=Path,
                         help="also write the machine-readable result")
+    parser.add_argument(
+        "--anchor-retire-pc",
+        type=lambda value: int(value, 0),
+        help=(
+            "start each trace at the first retirement of this PC and rebase "
+            "that edge to one"
+        ),
+    )
+    parser.add_argument(
+        "--stop-at-done",
+        action="store_true",
+        help="discard records after the first DONE edge in the selected window",
+    )
     args = parser.parse_args(argv)
     if args.window < 0:
         parser.error("--window must be non-negative")
@@ -312,6 +526,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         rtl = load_trace(args.rtl_trace)
         gem5 = load_trace(args.gem5_trace)
+        rtl = select_comparison_window(
+            rtl, args.anchor_retire_pc, args.stop_at_done
+        )
+        gem5 = select_comparison_window(
+            gem5, args.anchor_retire_pc, args.stop_at_done
+        )
         report = compare(rtl, gem5, args.window)
     except (OSError, ValueError) as error:
         print(f"trace comparison error: {error}", file=sys.stderr)

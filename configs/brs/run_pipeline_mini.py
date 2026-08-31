@@ -12,6 +12,12 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--binary", default="", help="Path to RISC-V ELF binary")
 parser.add_argument("--program-file", default="", help="Path to instruction hex file")
 parser.add_argument(
+    "--entry-point",
+    default="",
+    help=("CPU reset PC. rtl-dut-kui-tb defaults to the RTL application "
+          "entry 0x29110008; other modes default to their IMEM base."),
+)
+parser.add_argument(
     "--max-cycles",
     type=int,
     default=None,
@@ -169,6 +175,15 @@ def parse_addr(value):
     return int(value, 0)
 
 
+requested_entry_point = (
+    parse_addr(args.entry_point) if args.entry_point else None
+)
+if requested_entry_point is not None and not (
+    0 <= requested_entry_point <= 0xFFFFFFFF
+):
+    parser.error("--entry-point must fit in the 32-bit Spirit address space")
+
+
 if (args.mem_system == "spirit-like" or rtl_tb_mode) and args.binary:
     parser.error(
         "This memory mode uses --imem-image/--program-file and "
@@ -225,8 +240,11 @@ system.clk_domain.voltage_domain = VoltageDomain()
 system.mem_mode = "timing"
 
 if rtl_tb_mode:
-    rtl_inst_base = 0x00000000
-    rtl_inst_size = 0x00040000
+    # Match the application SRAM window in RTL rom_axi. PC=0 remains the
+    # boot ROM and is intentionally outside this direct-application model.
+    rtl_inst_base = 0x29110000
+    rtl_inst_size = 0x00010000
+    rtl_entry_point = 0x29110008
     rtl_data_base = 0x29120000
     rtl_data_size = 0x00040000
     system.mem_ranges = [
@@ -236,6 +254,20 @@ if rtl_tb_mode:
     pipeline_program_file = args.program_file
     pipeline_elf_file = ""
     pipeline_text_base = rtl_inst_base
+    pipeline_entry_point = (
+        requested_entry_point
+        if requested_entry_point is not None
+        else rtl_entry_point
+    )
+    if not (
+        rtl_inst_base
+        <= pipeline_entry_point
+        < rtl_inst_base + rtl_inst_size
+    ):
+        parser.error(
+            "rtl-dut-kui-tb entry point must lie in "
+            "0x29110000..0x2911ffff"
+        )
     pipeline_preloaded_program = bool(args.imem_image)
     # PipelineMiniCPU replaces this placeholder with the raw file's byte size.
     pipeline_preloaded_program_size = 1 if args.imem_image else 0
@@ -249,6 +281,11 @@ elif args.mem_system == "spirit-like":
     pipeline_program_file = args.program_file
     pipeline_elf_file = ""
     pipeline_text_base = imem_base
+    pipeline_entry_point = (
+        requested_entry_point
+        if requested_entry_point is not None
+        else imem_base
+    )
     pipeline_preloaded_program = bool(args.imem_image)
     pipeline_preloaded_program_size = toMemorySize(args.imem_size) if args.imem_image else 0
     pipeline_dmem_hex_file = args.dmem_hex
@@ -262,6 +299,11 @@ else:
     pipeline_program_file = args.program_file
     pipeline_elf_file = args.binary
     pipeline_text_base = 0x80000000
+    pipeline_entry_point = (
+        requested_entry_point
+        if requested_entry_point is not None
+        else pipeline_text_base
+    )
     pipeline_preloaded_program = False
     pipeline_preloaded_program_size = 0
     pipeline_dmem_hex_file = ""
@@ -297,6 +339,7 @@ system.pipeline = PipelineMiniCPU(
     preloaded_program=pipeline_preloaded_program,
     preloaded_program_size=pipeline_preloaded_program_size,
     text_base=pipeline_text_base,
+    entry_point=pipeline_entry_point,
     dmem_base=pipeline_dmem_base,
     dmem_hex_file=pipeline_dmem_hex_file,
     icache_enabled=args.icache_enabled,
@@ -307,8 +350,8 @@ system.pipeline = PipelineMiniCPU(
     tb_memory_enabled=rtl_tb_mode,
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
-    tb_inst_base=0x00000000,
-    tb_inst_size=0x00040000,
+    tb_inst_base=rtl_inst_base if rtl_tb_mode else 0x00000000,
+    tb_inst_size=rtl_inst_size if rtl_tb_mode else 0x00040000,
     tb_data_base=rtl_data_base if rtl_tb_mode else 0x20010000,
     tb_data_size=0x00040000,
 )
@@ -485,7 +528,8 @@ elif args.mem_system == "spirit-like":
     else:
         print("DMEM image: {}".format(dmem_image_file if dmem_image_file else "<none>"))
 elif dut_kui_tb_mode:
-    print("RTL IMEM range: 0x00000000..0x0003ffff")
+    print("RTL IMEM range: 0x29110000..0x2911ffff")
+    print("CPU entry point: 0x{:08x}".format(pipeline_entry_point))
     print("RTL DMEM range: 0x29120000..0x2915ffff")
     print("RTL response timing: IBus/DBus external=N+1 core-visible=N+2")
     print("Shared arbitration: VEU lock blocks DBus; IBus remains independent")

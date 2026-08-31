@@ -25,8 +25,8 @@ class PipelineMiniCPU(ClockedObject):
         "", "Raw image loaded into the dut_kui instruction SRAM")
     tb_dmem_image_file = Param.String(
         "", "Raw image loaded into the dut_kui data SRAM")
-    tb_inst_base = Param.Addr(0x00000000, "dut_kui instruction SRAM base")
-    tb_inst_size = Param.Addr(0x00040000, "dut_kui instruction SRAM size")
+    tb_inst_base = Param.Addr(0x29110000, "dut_kui application instruction SRAM base")
+    tb_inst_size = Param.Addr(0x00010000, "dut_kui application instruction SRAM size")
     tb_data_base = Param.Addr(0x29120000, "dut_kui data SRAM base")
     tb_data_size = Param.Addr(0x00040000, "dut_kui decoded data window size")
 
@@ -94,7 +94,8 @@ class PipelineMiniCPU(ClockedObject):
         "TimingVEU finish cycles before reporting completion",
     )
 
-    text_base    = Param.Addr(0x80000000, "Code base address")
+    text_base    = Param.Addr(0x80000000, "Code image load base address")
+    entry_point  = Param.Addr(0x80000000, "CPU reset PC")
     dmem_base    = Param.Addr(0x80200000, "DMEM base address")
 
     icache_enabled = Param.Bool(

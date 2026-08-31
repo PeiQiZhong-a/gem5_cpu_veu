@@ -13,9 +13,10 @@ the current Spirit CPU-facing memory system:
 
 ## Sampling contract
 
-Cycle traces use `brs-cycle-trace-v2`.
-`phase=evaluate` records signals visible immediately before the closing clock
-edge. State changes made by that edge appear in the following tick.
+Cycle traces use the strict [`brs-cycle-trace-v3`](brs-cycle-trace-v3.md)
+contract. Reset edges are excluded, and `phase=posedge-pre-nba` records the
+logical state visible immediately before the active edge commits its state
+updates. State changes made by that edge appear in the following record.
 
 Important fields include:
 
@@ -34,21 +35,29 @@ Important fields include:
 build\RISCV\gem5.opt --outdir=m5out `
   configs\brs\run_pipeline_mini.py `
   --mem-system rtl-dut-kui-tb `
-  --program-file inst_mem.hex `
+  --program-file instruction_words.hex `
   --dmem-hex data_mem.hex `
   --cycle-trace gem5_cycle_trace.log
 ```
 
 `--mem-system` defaults to `rtl-dut-kui-tb`. The instruction image may instead
-be provided with `--imem-image`; use only one instruction image input.
+be provided with `--imem-image`; use only one instruction image input. This
+mode maps the RTL application instruction SRAM at `0x29110000..0x2911ffff`
+and defaults the CPU reset PC to `0x29110008`. Use `--entry-point` only when a
+synthetic image intentionally starts at another address inside that window.
 
 ## Compare traces
 
 ```powershell
 python util\brs\compare_cycle_traces.py `
   rtl_cycle_trace.log m5out\gem5_cycle_trace.log `
+  --anchor-retire-pc 0x29110008 --stop-at-done `
   --window 12 --json-report cycle_compare.json
 ```
 
-The comparator stops at the first mismatch. Payload fields are compared only
-when their corresponding valid signal is asserted.
+The application anchor is required when RTL starts in the boot ROM but gem5
+uses the direct-application memory model.  Each trace is rebased at the first
+retirement of the entry PC and truncated at its first DONE store; everything
+inside that application window remains a strict edge-by-edge comparison.  The
+comparator stops at the first mismatch. Payload fields are compared only when
+their corresponding valid signal is asserted.

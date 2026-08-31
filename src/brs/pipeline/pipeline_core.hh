@@ -220,6 +220,14 @@ class PipelineCore
 
     bool redirect_pc = false;
     uint32_t redirect_target = 0;
+    // ID-stage branch/jump misprediction pulse. Unlike redirect_pc this does
+    // not include trap, mret, or debug redirects.
+    bool predict_failed = false;
+    // JCU resolves control flow from the ID instruction, while Spirit exposes
+    // its predict_failed/redirect pulse through a register on the following
+    // edge (the branch's EX edge).
+    bool jcu_redirect_pending = false;
+    uint32_t jcu_redirect_target_pending = 0;
     bool flush_idex = false;
 
     bool halt_requested = false;

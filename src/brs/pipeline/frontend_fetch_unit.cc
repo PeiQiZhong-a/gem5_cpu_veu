@@ -394,6 +394,11 @@ FrontendFetchUnit::step(const Input &in)
     // In particular, an old response coincident with a redirect must be
     // discarded without also issuing the redirected request one cycle early.
     const bool ibuCouldRequestAtEdgeStart = ibu.canRequest();
+    // Match the registered PFU FIFO-count test in Spirit.  A pop performed on
+    // this edge does not make request space visible to the IBU combinational
+    // request decision until the following edge.  Redirect is handled
+    // separately below because it explicitly flushes the FIFO.
+    const bool fifoHadRequestSpaceAtEdgeStart = fifo.count() < 4;
 
     if (in.redirect) {
         flush(in.redirectTarget);
@@ -483,7 +488,8 @@ FrontendFetchUnit::step(const Input &in)
     // PFU only permits the initial IBus request after r_reset_end advances
     // 0 -> 1 -> 2. A redirect is the IBU fetch-address-update path and is
     // allowed to request independently of the normal PFU allow-input gate.
-    if ((resetEndReady || in.redirect) && fifo.count() < 4 &&
+    if ((resetEndReady || in.redirect) &&
+        (in.redirect || fifoHadRequestSpaceAtEdgeStart) &&
         ibuCouldRequestAtEdgeStart && ibu.canRequest() && pc < in.textEnd) {
         out.requestValid = true;
         // Spirit exposes the true fetch address on ibus_out_addr.  The

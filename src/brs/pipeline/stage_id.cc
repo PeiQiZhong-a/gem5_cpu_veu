@@ -1009,8 +1009,8 @@ PipelineCore::stageID()
                 const uint32_t sequentialPc =
                     idex_next.pc + idex_next.instr_len;
                 if (target != sequentialPc) {
-                    redirect_pc = true;
-                    redirect_target = target;
+                    jcu_redirect_pending = true;
+                    jcu_redirect_target_pending = target;
                     ++flush_count;
                 }
             }

@@ -218,6 +218,7 @@ PipelineCore::reset()
     mdu_stall = false;
     lsu_stall = false;
     fp_stall = false;
+    predict_failed = false;
     mdu_busy = false;
     mdu_cycles_remaining = 0;
     mdu_result = 0;
@@ -249,6 +250,8 @@ PipelineCore::reset()
 
     redirect_pc = false;
     redirect_target = 0;
+    jcu_redirect_pending = false;
+    jcu_redirect_target_pending = 0;
     flush_idex = false;
         
 
@@ -860,8 +863,14 @@ PipelineCore::evaluateOneCycle()
     instrRetiringThisCycle = memwb_cur.valid;
     last_retire_event = {};
 
-    redirect_pc = false;
-    redirect_target = 0;
+    // JCU redirect is registered in Spirit.  Promote the decision made by ID
+    // on the previous edge before evaluating this edge's pipeline stages.
+    redirect_pc = jcu_redirect_pending;
+    redirect_target = jcu_redirect_pending ?
+        jcu_redirect_target_pending : 0;
+    predict_failed = jcu_redirect_pending;
+    jcu_redirect_pending = false;
+    jcu_redirect_target_pending = 0;
     flush_idex = false;
     veu_stall = false;
     sau_stall = false;
@@ -912,12 +921,24 @@ PipelineCore::evaluateOneCycle()
     stageMEM();
 
     stageEX();
-    if (!freezeFetchDecodeForExecuteStall()) {
-        stageID();
-        stageIF();
-    } else {
+    const bool executeStall = freezeFetchDecodeForExecuteStall();
+    if (executeStall) {
         ++stall_count;
+    } else if (!redirect_pc) {
+        stageID();
+    } else {
+        // The redirected branch itself advances through EX.  Suppress the
+        // younger sequential instruction that was sitting in IF/ID.
+        idex_next = {};
     }
+
+    // Spirit holds the IF/ID architectural state while IE/SC reports a
+    // full-pipeline stall, but its IBU remains live: it can accept a pending
+    // response and launch the next block prefetch.  Always clock the frontend
+    // model and let stageIF() suppress instruction delivery while execute is
+    // stalled.  Skipping stageIF() here delayed every fetch following a
+    // VEU/HC stall and made the cycle trace diverge from RTL.
+    stageIF();
 
 }
 
@@ -929,13 +950,25 @@ PipelineCore::clockOneCycle()
     }
 
     hcCbu.clock(hcIssue, hcResponse);
+
+    // VCU registers csr_valid every edge from the request currently driven by
+    // the CBU, so its control path can accept one request per cycle.  On the
+    // first response of a two-shot VMADD/VMSUB, the CBU advances to its second
+    // request at this edge.  Present that post-edge request to the endpoint so
+    // the second response is visible on the immediately following edge,
+    // while retaining hcRoutedRequests above as the pre-NBA trace value.
+    brs::HcRoutedRequests endpointClockRequests = hcRoutedRequests;
+    if (hcResponse.valid) {
+        endpointClockRequests = hcRouter.routeRequest(
+            hcCbu.evaluate({}).request);
+    }
     if (sauEndpoint) {
         sauEndpoint->clockTick(
-            hcRoutedRequests.sau, sauMemoryResponse);
+            endpointClockRequests.sau, sauMemoryResponse);
     }
     if (veuEndpoint) {
         veuEndpoint->clockTick(
-            hcRoutedRequests.veu, veuMemoryResponse);
+            endpointClockRequests.veu, veuMemoryResponse);
     }
     sauMemoryResponse = {};
     veuMemoryResponse = {};

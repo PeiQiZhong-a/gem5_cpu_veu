@@ -29,6 +29,12 @@ DEST = 0x500
 EXPECTED = 0x700
 SRC3 = 0x900
 
+APP_IMAGE_BASE = 0x29110000
+APP_ENTRY = APP_IMAGE_BASE + 8
+NPU_STATUS = 0x4001E004
+NPU_DONE_VALUE = 1 << 1
+NPU_ERROR_VALUE = 1 << 2
+
 
 @dataclass(frozen=True)
 class MemoryLayout:
@@ -49,6 +55,7 @@ DUT_KUI_LAYOUT = MemoryLayout(
     0x29120420,
     0x29120620,
 )
+SHARED_RTL_LAYOUT = DUT_KUI_LAYOUT
 
 
 @dataclass(frozen=True)
@@ -92,9 +99,7 @@ CASES = (
     ),
     Case("vmsub", "vmsub", 0, "src1+src2+src3", 0x100),
     Case("vmac", "vmac", 1, "src1+src2+src3", 0x100),
-    Case(
-        "vmulh", "vmulh", 22, "src1+src2", 0x100, illegal=True,
-    ),
+    Case("vmulh", "vmulh", 22, "src1+src2", 0x100),
 )
 CASE_BY_NAME = {case.name: case for case in CASES}
 CAPTURED_CASE_BY_OP = {
@@ -133,6 +138,18 @@ def encode_lui(rd: int, imm20: int) -> int:
 
 def encode_lw(rd: int, rs1: int, imm: int) -> int:
     return ((imm & 0xFFF) << 20) | (rs1 << 15) | (0x2 << 12) | (rd << 7) | 0x03
+
+
+def encode_sw(rs2: int, rs1: int, imm: int) -> int:
+    encoded = imm & 0xFFF
+    return (
+        ((encoded >> 5) & 0x7F) << 25
+        | (rs2 << 20)
+        | (rs1 << 15)
+        | (0x2 << 12)
+        | (encoded & 0x1F) << 7
+        | 0x23
+    )
 
 
 def encode_andi(rd: int, rs1: int, imm: int) -> int:
@@ -310,6 +327,26 @@ def write_byte_hex(path: Path, data: bytearray) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
+def write_packed_128_words(path: Path, words: list[int]) -> None:
+    """Write four little-addressed RV32 words per 128-bit readmemh entry."""
+    lines = []
+    for offset in range(0, len(words), 4):
+        group = words[offset:offset + 4]
+        group += [0] * (4 - len(group))
+        lines.append("".join(f"{word:08x}" for word in reversed(group)))
+    path.write_text("\n".join(lines) + "\n", encoding="ascii")
+
+
+def write_packed_128_bytes(path: Path, data: bytearray) -> None:
+    """Write sixteen little-addressed bytes per 128-bit readmemh entry."""
+    lines = []
+    for offset in range(0, len(data), 16):
+        group = bytearray(data[offset:offset + 16])
+        group += bytes(16 - len(group))
+        lines.append("".join(f"{byte:02x}" for byte in reversed(group)))
+    path.write_text("\n".join(lines) + "\n", encoding="ascii")
+
+
 def source_bases(case: Case, layout: MemoryLayout = LOCAL_LAYOUT) -> list[int]:
     if case.source_set == "src1+src2":
         return [layout.src1, layout.src2]
@@ -325,6 +362,7 @@ def source_bases(case: Case, layout: MemoryLayout = LOCAL_LAYOUT) -> list[int]:
 def build_program(
     case: Case, vlen: int, expected: bytearray,
     layout: MemoryLayout = LOCAL_LAYOUT,
+    signal_completion: bool = False,
 ) -> list[int]:
     scalar_enabled = bool(case.config & 0x800)
     source1_register = case.scalar if scalar_enabled else layout.src1
@@ -373,7 +411,22 @@ def build_program(
         encode_addi(11, 11, -1),
         encode_bne(11, 0, -28),
     ]
-    words.append(0x00100073)  # ebreak
+    if signal_completion:
+        # Reuse x11/x12 after the comparison loop.  A mismatch branches over
+        # the PASS store and its ebreak to the ERROR path.  Both RTL and gem5
+        # observe the same controller-status store before ending on ebreak.
+        words += emit_load_imm(11, NPU_STATUS)
+        words += [
+            encode_bne(10, 0, 16),
+            encode_addi(12, 0, NPU_DONE_VALUE),
+            encode_sw(12, 11, 0),
+            0x00100073,  # ebreak after npu_done
+            encode_addi(12, 0, NPU_ERROR_VALUE),
+            encode_sw(12, 11, 0),
+            0x00100073,  # ebreak after npu_error
+        ]
+    else:
+        words.append(0x00100073)  # ebreak
     return words
 
 
@@ -416,10 +469,11 @@ def build_metadata(
 def generate(
     case: Case, vlen: int, outdir: Path,
     layout: MemoryLayout = LOCAL_LAYOUT,
+    shared_rtl: bool = False,
 ) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     byte_count = vlen // 8
-    rtl_vadd = layout == DUT_KUI_LAYOUT
+    rtl_vadd = layout == DUT_KUI_LAYOUT and not shared_rtl
     if rtl_vadd and case.name != "vadd_vector":
         raise ValueError("dut-kui layout currently supports only vadd_vector")
     if rtl_vadd:
@@ -449,12 +503,38 @@ def generate(
         bytes([0xA5]) * byte_count
     memory[offset(layout.expected):offset(layout.expected) + byte_count] = expected
 
-    write_word_hex(
-        outdir / "instr_mem.hex", build_program(case, vlen, expected, layout)
+    program = build_program(
+        case, vlen, expected, layout, signal_completion=shared_rtl,
     )
+    metadata = build_metadata(case, vlen, layout)
+    if shared_rtl:
+        code_len = 8 + len(program) * 4
+        data_len = len(memory)
+        image_words = [code_len, data_len, *program]
+        write_word_hex(outdir / "instr_mem.hex", image_words)
+        write_packed_128_words(outdir / "instruction.hex", image_words)
+        write_packed_128_bytes(outdir / "memory.hex", memory)
+        metadata.update({
+            "image_format": "rtl-gem5-shared-v1",
+            "text_base": APP_IMAGE_BASE,
+            "entry_point": APP_ENTRY,
+            "code_len": code_len,
+            "data_len": data_len,
+            "boot_header_words": 2,
+            "program_words": len(program),
+            "gem5_instruction_format": "one-32-bit-word-per-line",
+            "gem5_data_format": "byte-tokens-little-address-order",
+            "rtl_instruction_format": "one-128-bit-word-per-line",
+            "rtl_data_format": "one-128-bit-word-per-line",
+            "completion_address": NPU_STATUS,
+            "pass_value": NPU_DONE_VALUE,
+            "fail_value": NPU_ERROR_VALUE,
+        })
+    else:
+        write_word_hex(outdir / "instr_mem.hex", program)
     write_byte_hex(outdir / "data_mem.hex", memory)
     (outdir / "metadata.json").write_text(
-        json.dumps(build_metadata(case, vlen, layout), indent=2) + "\n",
+        json.dumps(metadata, indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -597,7 +677,8 @@ def main() -> None:
     parser.add_argument("--rtl-test", help="Exact captured RTL test ID")
     parser.add_argument("--list-rtl-tests", action="store_true")
     parser.add_argument(
-        "--layout", choices=("local", "dut-kui"), default="local",
+        "--layout", choices=("local", "dut-kui", "shared-rtl"),
+        default="local",
         help="Architectural data address layout; default preserves existing tests",
     )
     parser.add_argument("--list-cases", action="store_true")
@@ -628,8 +709,15 @@ def main() -> None:
         return
     if args.case is None or args.vlen is None or args.outdir is None:
         parser.error("--case, --vlen, and --outdir are required unless --list-cases is used")
-    layout = DUT_KUI_LAYOUT if args.layout == "dut-kui" else LOCAL_LAYOUT
-    generate(CASE_BY_NAME[args.case], args.vlen, args.outdir, layout)
+    layout = (
+        DUT_KUI_LAYOUT
+        if args.layout in {"dut-kui", "shared-rtl"}
+        else LOCAL_LAYOUT
+    )
+    generate(
+        CASE_BY_NAME[args.case], args.vlen, args.outdir, layout,
+        shared_rtl=args.layout == "shared-rtl",
+    )
 
 
 if __name__ == "__main__":

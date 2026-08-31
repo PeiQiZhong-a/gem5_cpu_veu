@@ -24,6 +24,9 @@ TEST(DutKuiMemoryModelTest, EvaluateIsStableUntilClockEdge)
     EXPECT_FALSE(model.evaluate().ibus.valid);
 
     model.clockEdge(false);
+    EXPECT_FALSE(model.evaluate().ibus.valid);
+
+    model.clockEdge(false);
     ASSERT_TRUE(model.evaluate().ibus.valid);
     EXPECT_EQ(model.evaluate().ibus.readData[0], 0x12345678u);
 }
@@ -40,9 +43,32 @@ TEST(DutKuiMemoryModelTest, KeepsIbusOnIndependent128BitPath)
     DutKuiMemoryOutputs outputs = model.clock(false);
     EXPECT_FALSE(outputs.ibus.valid);
     outputs = model.clock(false);
+    EXPECT_FALSE(outputs.ibus.valid);
+    outputs = model.clock(false);
     ASSERT_TRUE(outputs.ibus.valid);
     EXPECT_EQ(outputs.ibus.readData[0], 0x100u);
     EXPECT_EQ(outputs.ibus.readData[3], 0x103u);
+}
+
+TEST(DutKuiMemoryModelTest, MapsRtlApplicationInstructionWindow)
+{
+    DutKuiMemoryModel::Config config;
+    config.instBase = 0x29110000u;
+    config.instSize = 0x00010000u;
+    DutKuiMemoryModel model(config);
+
+    model.writeWord(0x29110000u, 0x00001000u);
+    model.writeWord(0x29110004u, 0x00001000u);
+    model.writeWord(0x29110008u, 0x29150137u);
+    ASSERT_TRUE(model.acceptIbus({0x29110008u}));
+
+    EXPECT_FALSE(model.clock(false).ibus.valid);
+    EXPECT_FALSE(model.clock(false).ibus.valid);
+    const DutKuiMemoryOutputs outputs = model.clock(false);
+    ASSERT_TRUE(outputs.ibus.valid);
+    EXPECT_EQ(outputs.ibus.readData[0], 0x00001000u);
+    EXPECT_EQ(outputs.ibus.readData[1], 0x00001000u);
+    EXPECT_EQ(outputs.ibus.readData[2], 0x29150137u);
 }
 
 TEST(DutKuiMemoryModelTest, DbusTraversesRegistered32To256AndRvActivePath)
@@ -66,13 +92,14 @@ TEST(DutKuiMemoryModelTest, DbusTraversesRegistered32To256AndRvActivePath)
 
     EXPECT_FALSE(model.clock(false).dbus.valid);
     EXPECT_FALSE(model.clock(false).dbus.valid);
+    EXPECT_FALSE(model.clock(false).dbus.valid);
     outputs = model.clock(false);
     ASSERT_TRUE(outputs.dbus.valid);
     EXPECT_TRUE(outputs.dbus.isWrite);
     EXPECT_EQ(model.converterState(), SramConverter32To256::State::Idle);
 
     ASSERT_TRUE(model.acceptDbus({address, 0, 0}, false));
-    for (int cycle = 0; cycle < 5; ++cycle) {
+    for (int cycle = 0; cycle < 6; ++cycle) {
         EXPECT_FALSE(model.clock(false).dbus.valid) << "cycle=" << cycle;
     }
     outputs = model.clock(false);

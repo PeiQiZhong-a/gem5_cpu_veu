@@ -322,6 +322,36 @@ TEST(TimingVeuTest, CsrWriteAndReadProducesResponse)
     EXPECT_EQ(veu.evaluate().readData, 0x400u);
 }
 
+TEST(TimingVeuTest, VectorStartReturnsPreWriteCsrValueLikeRtlVcu)
+{
+    TimingVeu veu;
+
+    veu.clock(csrWrite(VeuCsr::ReadAddress1, 0x12345678u));
+    ASSERT_TRUE(veu.evaluate().valid);
+    veu.clock({});
+
+    veu.clock(vectorStart(VeuInstruction::Add, 0x100u, 0x200u));
+    ASSERT_TRUE(veu.evaluate().valid);
+    EXPECT_EQ(veu.evaluate().readData, 0x12345678u);
+}
+
+TEST(TimingVeuTest, AcceptsNextControlRequestWhileResponding)
+{
+    TimingVeu veu;
+
+    veu.clock(csrWrite(VeuCsr::WriteAddress, 0x400u));
+    ASSERT_TRUE(veu.evaluate().valid);
+
+    // The response for the write and registration of the following read
+    // share one edge, matching the VCU csr_valid pipeline throughput.
+    veu.clock(csrRead(VeuCsr::WriteAddress));
+    ASSERT_TRUE(veu.evaluate().valid);
+    EXPECT_EQ(veu.evaluate().readData, 0x400u);
+
+    veu.clock({});
+    EXPECT_FALSE(veu.evaluate().valid);
+}
+
 TEST(TimingVeuTest, ResetMaskIsZeroAndSuppressesUnconfiguredWrite)
 {
     TimingVeu veu;
@@ -540,6 +570,42 @@ TEST(TimingVeuTest, StatusClearsBeforeLockFinishAtRtlBoundary)
     EXPECT_EQ(lockFinishCycle, 15u);
     EXPECT_EQ(veu.statusActiveCycleCount(), statusClearCycle);
     EXPECT_EQ(veu.lockActiveCycleCount(), lockFinishCycle - 1);
+}
+
+TEST(TimingVeuTest, StatusReadOnClearEdgeReturnsPreClearBusyValue)
+{
+    TimingVeu veu;
+    VeuTimingConfig config;
+    config.executeLatency = 1;
+    config.vsuLatency = 1;
+    veu.configure(config);
+    veu.setMemoryRequestCallback(
+        [&](const TimingVeuMemoryRequest &request) {
+            if (request.isWrite)
+                veu.completeMemoryWrite(request.transactionId);
+            else
+                veu.completeMemoryRead(request.transactionId,
+                                       makeByteVector(1));
+            return true;
+        });
+
+    stepUntilResponse(veu, csrWrite(VeuCsr::WriteAddress, 0x300));
+    stepUntilResponse(veu, csrWrite(VeuCsr::VectorLength, 256));
+    stepUntilResponse(veu, csrWrite(VeuCsr::Mask, 0xffffffffu));
+    stepUntilResponse(veu,
+        vectorStart(VeuInstruction::Add, 0x100, 0x200));
+
+    bool observedClearEdge = false;
+    while (veu.operationBusy()) {
+        const bool statusWasBusy = veu.statusIsBusy();
+        veu.clock(csrRead(VeuCsr::Status));
+        if (statusWasBusy && !veu.statusIsBusy()) {
+            observedClearEdge = true;
+            ASSERT_TRUE(veu.evaluate().valid);
+            EXPECT_EQ(veu.evaluate().readData & 1u, 1u);
+        }
+    }
+    EXPECT_TRUE(observedClearEdge);
 }
 
 TEST(TimingVeuTest, MaskedStorePreservesDisabledBytes)
@@ -1248,6 +1314,11 @@ TEST(TimingVeuTest, OperationDescriptionMatchesRtlSourceSelection)
         scalarMac.sourceMask, VeuSource::Source2));
     EXPECT_TRUE(VeuFunctionalExecutor::sourceRequired(
         scalarMac.sourceMask, VeuSource::Source3));
+
+    const auto multiplyHigh =
+        VeuFunctionalExecutor::describe(VeuInstruction::MultiplyHigh, false);
+    EXPECT_TRUE(multiplyHigh.supported);
+    EXPECT_FALSE(multiplyHigh.rtlIllegal);
 
     const auto compress =
         VeuFunctionalExecutor::describe(VeuInstruction::Compress, false);

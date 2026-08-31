@@ -6,9 +6,16 @@ namespace gem5
 void
 PipelineCore::stageIF()
 {
+    // A long-latency execute instruction freezes IF/ID and the architectural
+    // fetch PC, but it does not stop the RTL IBU from accepting responses or
+    // issuing block prefetch requests.  Feed this hold into the frontend
+    // instead of skipping the frontend cycle altogether.
+    const bool pipelineStall =
+        stall_ifid || stall_pc || freezeFetchDecodeForExecuteStall();
+
     if (csr_debug_mode) {
         ifid_next = {};
-        if (!stall_ifid && !stall_pc && debug_instr_valid &&
+        if (!pipelineStall && debug_instr_valid &&
             debug_instr_ready) {
             ifid_next.valid = true;
             ifid_next.pc = csr_dpc;
@@ -34,7 +41,7 @@ PipelineCore::stageIF()
         }
 
         FrontendFetchUnit::Input in;
-        in.stall = stall_ifid || stall_pc;
+        in.stall = pipelineStall;
         in.redirect = redirect_pc;
         in.redirectTarget = redirect_target;
         in.textEnd = fetchLimit;
@@ -48,13 +55,13 @@ PipelineCore::stageIF()
 
         if (redirect_pc) {
             ifid_next = {};
-        } else if (stall_ifid || stall_pc) {
+        } else if (pipelineStall) {
             ifid_next = ifid_cur;
         } else {
             ifid_next = {};
         }
 
-        if (!redirect_pc && !stall_ifid && !stall_pc &&
+        if (!redirect_pc && !pipelineStall &&
             out.instValid && out.pc < fetchLimit) {
             ifid_next.valid = true;
             ifid_next.pc = out.pc;
@@ -79,7 +86,7 @@ PipelineCore::stageIF()
         return;
     }
 
-    if (stall_ifid || stall_pc) {
+    if (pipelineStall) {
         ifid_next = ifid_cur;
         return;
     }

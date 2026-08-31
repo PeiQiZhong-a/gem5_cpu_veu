@@ -217,7 +217,7 @@ class TimingVeu : public VeuEndpoint
 
     uint32_t readCsr(uint16_t addr) const;
     void writeCsr(uint16_t addr, uint32_t value, VeuWriteType writeType);
-    void acceptRequest(const VeuRequest &request);
+    void acceptRequest(const VeuRequest &request, uint32_t sampledReadData);
     void startVectorOperation(const VeuRequest &request);
     VeuInstruction decodeStart(uint32_t veStart) const;
     void advanceOperation();

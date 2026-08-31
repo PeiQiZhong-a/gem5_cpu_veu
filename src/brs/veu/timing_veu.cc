@@ -207,13 +207,13 @@ TimingVeu::decodeStart(uint32_t start) const
 }
 
 void
-TimingVeu::acceptRequest(const VeuRequest &request)
+TimingVeu::acceptRequest(const VeuRequest &request, uint32_t sampledReadData)
 {
     requestReg = request;
     ++acceptedRequests;
     const auto writeType = isVeuWriteType(request.writeType) ?
         static_cast<VeuWriteType>(request.writeType) : VeuWriteType::Write;
-    responseData = request.csrRead ? readCsr(request.csrAddr) : 0;
+    responseData = request.csrRead ? sampledReadData : 0;
     if (request.csrWrite && writeType == VeuWriteType::VectorStart) {
         startVectorOperation(request);
     } else if (request.csrWrite) {
@@ -249,7 +249,6 @@ void
 TimingVeu::startVectorOperation(const VeuRequest &request)
 {
     if (operationBusy()) {
-        responseData = csr.status;
         return;
     }
     const bool threeSource =
@@ -260,7 +259,6 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
         csr.raddr2 = unpackVeuOperand2(request.writeData);
         pendingThreeSourceStart = true;
         pendingThreeSourceVeStart = request.veStart;
-        responseData = csr.status;
         return;
     }
     if (request.csrAddr == static_cast<uint16_t>(VeuCsr::ReadAddress1)) {
@@ -281,7 +279,6 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
     if (csr.vlen == 0) {
         ++zeroLengthNoops;
         trace("zero_length_noop");
-        responseData = csr.status;
         return;
     }
 
@@ -298,7 +295,6 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
         ++illegalOperations;
         trace("illegal_operation", -1, VeuSource::None, 0, 0, nullptr, 0,
               "unsupported start bit");
-        responseData = csr.status;
         return;
     }
     if (operationInfo.rtlIllegal) {
@@ -376,7 +372,6 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
     internalActive = true;
     currentState = State::Running;
     csr.status = (start << 1) | 1u;
-    responseData = csr.status;
     ++startedOperations;
     trace("operation_start", -1, VeuSource::None, 0, 0, nullptr, 0,
           "profile_id=" + activeTiming.profileId +
@@ -899,18 +894,33 @@ TimingVeu::clock(const VeuRequest &request)
     if (internalActive) ++busyCycles;
     if (statusBusy) ++statusActiveCycles;
     if (lockActive) ++lockActiveCycles;
+
+    // VCU.sv registers csr_rdata with a nonblocking assignment.  If a CSR
+    // changes on this edge (notably STATUS clearing when an operation ends),
+    // the response must therefore contain the value from before the edge.
+    const uint32_t sampledReadData =
+        request.csrRead ? readCsr(request.csrAddr) : 0;
     advanceOperation();
 
     switch (controlState) {
       case ControlState::Idle:
-        if (request.hasTransaction()) acceptRequest(request);
+        if (request.hasTransaction())
+            acceptRequest(request, sampledReadData);
         break;
       case ControlState::Respond:
         ++responses;
-        controlState = ControlState::Recovery;
+        // The RTL VCU control port is a one-stage pipeline: while the current
+        // csr_valid response is visible it can register the next request.  A
+        // two-shot VMADD/VMSUB therefore returns valid on consecutive edges.
+        // PipelineCore supplies the post-CBU second request on that handoff;
+        // an empty request retains the normal recovery behavior.
+        if (request.hasTransaction())
+            acceptRequest(request, sampledReadData);
+        else controlState = ControlState::Recovery;
         break;
       case ControlState::Recovery:
-        if (request.hasTransaction()) acceptRequest(request);
+        if (request.hasTransaction())
+            acceptRequest(request, sampledReadData);
         else controlState = ControlState::Idle;
         break;
     }
