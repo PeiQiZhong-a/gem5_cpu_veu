@@ -25,6 +25,7 @@ makeVector(std::initializer_list<uint32_t> lanes)
     std::array<uint8_t, brs::VeuVectorBytes> data = {};
     uint32_t lane = 0;
     for (uint32_t value : lanes) {
+        if (lane == brs::VeuLaneCount) break;
         const uint32_t offset = lane * sizeof(uint32_t);
         data[offset] = static_cast<uint8_t>(value & 0xff);
         data[offset + 1] = static_cast<uint8_t>((value >> 8) & 0xff);
@@ -101,8 +102,8 @@ TEST(PipelineVeuAsyncTest, ReleasesRvAfterCsrHandshakeWhileOperationRuns)
     core.configureTimingVeu(config);
 
     std::map<uint32_t, std::array<uint8_t, brs::VeuVectorBytes>> memory;
-    memory[0x100] = makeVector({1, 2, 3, 4, 5, 6, 7, 8});
-    memory[0x200] = makeVector({10, 20, 30, 40, 50, 60, 70, 80});
+    memory[0x100] = makeVector({1, 2, 3, 4});
+    memory[0x200] = makeVector({10, 20, 30, 40});
     core.setTimingVeuMemoryRequestCallback(
         [&](const brs::TimingVeuMemoryRequest &request) {
             if (request.isWrite) {
@@ -123,6 +124,9 @@ TEST(PipelineVeuAsyncTest, ReleasesRvAfterCsrHandshakeWhileOperationRuns)
     completeCsrRequest(
         core.timingVeu,
         csrWrite(brs::VeuCsr::VectorLength, brs::VeuVectorBits));
+    completeCsrRequest(
+        core.timingVeu,
+        csrWrite(brs::VeuCsr::Mask, brs::VeuFullWriteMask));
 
     core.fetchInstr = [](uint32_t, uint32_t &) { return false; };
     core.idex_cur = makeVectorAddInExecute();
@@ -162,7 +166,7 @@ TEST(PipelineVeuAsyncTest, ReleasesRvAfterCsrHandshakeWhileOperationRuns)
     EXPECT_FALSE(core.timingVeu.operationBusy());
     EXPECT_TRUE(core.done());
     EXPECT_EQ(lane(memory[0x300], 0), 11u);
-    EXPECT_EQ(lane(memory[0x300], 7), 88u);
+    EXPECT_EQ(lane(memory[0x300], 3), 44u);
 }
 
 } // namespace

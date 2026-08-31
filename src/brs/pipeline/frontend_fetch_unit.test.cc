@@ -172,7 +172,7 @@ TEST(FetchBusUnitTest, DiscardsFlushedInFlightResponse)
     EXPECT_EQ(ibu.requestBlockAddr(), 0x40);
 }
 
-TEST(FetchBusUnitTest, TracksExactRequestAndWordAlignedResponse)
+TEST(FetchBusUnitTest, TracksExactRequestAcrossAlignedResponseBase)
 {
     FetchBusUnit ibu;
     ibu.reset(6);
@@ -183,7 +183,7 @@ TEST(FetchBusUnitTest, TracksExactRequestAndWordAlignedResponse)
 
     FetchBlock block;
     block.fetchAddr = 6;
-    block.blockAddr = 4;
+    block.blockAddr = 0;
     EXPECT_TRUE(ibu.acceptResponse(block));
     EXPECT_EQ(ibu.requestFetchAddr(), 16);
 }

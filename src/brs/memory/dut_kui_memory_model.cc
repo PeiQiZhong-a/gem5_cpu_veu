@@ -174,12 +174,17 @@ DutKuiMemoryModel::advance(
 
     if (!pendingVeuRequests.empty()) {
         const DutKuiVeuRequest &request = pendingVeuRequests.front();
+        const uint8_t halfOffset =
+            (request.address & Sram128Bytes) ? Sram128Bytes : 0;
         Sram256Request &veu = crossbarInputs.masters[
             static_cast<uint8_t>(DutKuiDataMaster::Veu)];
         veu.valid = true;
         veu.address = request.address;
-        veu.writeStrobe = request.isWrite ? request.writeStrobe : 0;
-        veu.writeData = request.data;
+        veu.writeStrobe = request.isWrite ?
+            request.writeStrobe << halfOffset : 0;
+        for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
+            veu.writeData[halfOffset + byte] = request.data[byte];
+        }
     }
     crossbarInputs.crossbarStart[
         static_cast<uint8_t>(DutKuiDataMaster::Veu)] =
@@ -224,9 +229,13 @@ DutKuiMemoryModel::advance(
         response.valid = true;
         response.transactionId = completed.transactionId;
         response.isWrite = completed.isWrite;
-        response.readData =
-            crossbarAfter.masters[
-                static_cast<uint8_t>(DutKuiDataMaster::Veu)].readData;
+        const uint8_t halfOffset =
+            (completed.address & Sram128Bytes) ? Sram128Bytes : 0;
+        const auto &line = crossbarAfter.masters[
+            static_cast<uint8_t>(DutKuiDataMaster::Veu)].readData;
+        for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
+            response.readData[byte] = line[halfOffset + byte];
+        }
         if (completed.isWrite) {
             outputs.veuWrite = response;
         } else {

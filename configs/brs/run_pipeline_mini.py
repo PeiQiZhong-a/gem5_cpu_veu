@@ -93,8 +93,10 @@ parser.add_argument("--veu-execute-latency", type=int, default=3)
 parser.add_argument("--veu-execute-ii", type=int, default=1)
 parser.add_argument("--veu-vsu-latency", type=int, default=1)
 parser.add_argument("--veu-timing-profile", default="")
+parser.add_argument("--veu-terminal-behavior", default="")
 parser.add_argument("--veu-cycle-trace", default="")
-parser.add_argument("--veu-startup-cycles", type=int, default=0)
+parser.add_argument("--veu-startup-cycles", type=int, default=4)
+parser.add_argument("--veu-lock-start-delay-cycles", type=int, default=1)
 parser.add_argument("--veu-finish-cycles", type=int, default=0)
 parser.add_argument("--mem-size", default="64MiB")
 parser.add_argument(
@@ -102,10 +104,14 @@ parser.add_argument(
     choices=[
         "ddr3", "simple", "split", "spirit-like",
         "rtl-dut-kui-tb", "rtl-npu-lpnpu-mikui",
+        "rtl-npu-lpnpu-mikui-decompress-dma",
     ],
     default="rtl-dut-kui-tb",
     help=("RTL choices: rtl-dut-kui-tb keeps the legacy 256-bit platform; "
-          "rtl-npu-lpnpu-mikui reproduces the two-bank 128-bit dut_mikui."),
+          "rtl-npu-lpnpu-mikui reproduces the two-bank 128-bit dut_mikui; "
+          "rtl-npu-lpnpu-mikui-decompress-dma selects the three-bank "
+          "dut_mikui_dma topology and adds the independent Mikui "
+          "VCS-selected decompression AHB DMA."),
 )
 parser.add_argument(
     "--mem-latency",
@@ -131,6 +137,12 @@ parser.add_argument(
         "DMEM text image: rtl-dut-kui-tb uses one 32-bit $readmemh word "
         "per token; spirit-like uses one byte per token."
     ),
+)
+parser.add_argument(
+    "--dma-input-image",
+    default="",
+    help=("Raw compressed image loaded at 0x60000000 for the Mikui "
+          "decompression-DMA mode."),
 )
 parser.add_argument(
     "--rtl-data-base",
@@ -203,7 +215,10 @@ parser.add_argument("--instr-fifo-depth", type=int, default=12)
 args = parser.parse_args()
 
 dut_kui_tb_mode = args.mem_system == "rtl-dut-kui-tb"
-mikui_tb_mode = args.mem_system == "rtl-npu-lpnpu-mikui"
+mikui_dma_tb_mode = (
+    args.mem_system == "rtl-npu-lpnpu-mikui-decompress-dma")
+mikui_tb_mode = (
+    args.mem_system == "rtl-npu-lpnpu-mikui" or mikui_dma_tb_mode)
 rtl_tb_mode = dut_kui_tb_mode or mikui_tb_mode
 
 max_cycles = args.max_cycles
@@ -282,8 +297,10 @@ if args.veu_execute_ii < 1:
 if args.veu_vsu_latency < 1:
     parser.error("--veu-vsu-latency must be at least one")
 
-if args.veu_startup_cycles < 0 or args.veu_finish_cycles < 0:
-    parser.error("--veu-startup-cycles and --veu-finish-cycles must be non-negative")
+if (args.veu_startup_cycles < 0 or
+        args.veu_lock_start_delay_cycles < 0 or
+        args.veu_finish_cycles < 0):
+    parser.error("VEU startup, lock-start-delay, and finish cycles must be non-negative")
 
 
 system = System()
@@ -299,12 +316,24 @@ if rtl_tb_mode:
     if mikui_tb_mode:
         rtl_inst_size = 0x00004000
         rtl_data_base = 0x20010000
-        rtl_data_size = 0x00010000
-        system.mem_ranges = [
-            AddrRange(start=rtl_inst_base, size=rtl_inst_size),
-            AddrRange(start=0x20010000, size=0x00010000),
-            AddrRange(start=0x20020000, size=0x00010000),
-        ]
+        if mikui_dma_tb_mode:
+            rtl_data_size = 0x00018000
+            system.mem_ranges = [
+                AddrRange(start=rtl_inst_base, size=rtl_inst_size),
+                AddrRange(start=0x20010000, size=0x00008000),
+                AddrRange(start=0x20018000, size=0x00008000),
+                AddrRange(start=0x20020000, size=0x00008000),
+                AddrRange(start=0x40019C00, size=0x00000100),
+                AddrRange(start=0x60000000, size=0x00001000),
+                AddrRange(start=0x60001000, size=0x00001000),
+            ]
+        else:
+            rtl_data_size = 0x00010000
+            system.mem_ranges = [
+                AddrRange(start=rtl_inst_base, size=rtl_inst_size),
+                AddrRange(start=0x20010000, size=0x00010000),
+                AddrRange(start=0x20020000, size=0x00010000),
+            ]
     else:
         rtl_inst_size = 0x00040000
         rtl_data_base = args.rtl_data_base
@@ -372,8 +401,10 @@ system.pipeline = PipelineMiniCPU(
     veu_execute_ii=args.veu_execute_ii,
     veu_vsu_latency=args.veu_vsu_latency,
     veu_timing_profile=args.veu_timing_profile,
+    veu_terminal_behavior=args.veu_terminal_behavior,
     veu_cycle_trace=args.veu_cycle_trace,
     veu_startup_cycles=args.veu_startup_cycles,
+    veu_lock_start_delay_cycles=args.veu_lock_start_delay_cycles,
     veu_finish_cycles=args.veu_finish_cycles,
     program_file=pipeline_program_file,
     elf_file=pipeline_elf_file,
@@ -388,7 +419,10 @@ system.pipeline = PipelineMiniCPU(
     frontend_burst_bytes=args.frontend_burst_bytes,
     instr_fifo_depth=args.instr_fifo_depth,
     tb_memory_enabled=rtl_tb_mode,
-    tb_memory_kind="npu-lpnpu-mikui" if mikui_tb_mode else "dut-kui",
+    tb_memory_kind=(
+        "npu-lpnpu-mikui-dma" if mikui_dma_tb_mode else
+        ("npu-lpnpu-mikui" if mikui_tb_mode else "dut-kui")),
+    dma_pio_enabled=mikui_dma_tb_mode,
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
     tb_inst_base=0x00000000,
@@ -484,6 +518,31 @@ elif rtl_tb_mode:
         system.dmem_stub0.port = system.membus.mem_side_ports
         system.dmem_stub1 = SimpleMemory(range=system.mem_ranges[2])
         system.dmem_stub1.port = system.membus.mem_side_ports
+        if mikui_dma_tb_mode:
+            system.dmem_stub2 = SimpleMemory(range=system.mem_ranges[3])
+            system.dmem_stub2.port = system.membus.mem_side_ports
+            system.mikui_dma = MikuiDecompressDma(
+                pio_addr=0x40019C00,
+                pio_size=0x100,
+                pio_latency=args.mem_latency,
+                max_input_bytes=0x1000,
+                max_output_bytes=0x1000,
+            )
+            system.mikui_dma.pio = system.membus.mem_side_ports
+            system.mikui_dma.dma = system.membus.cpu_side_ports
+            system.mikui_dma.irq = system.pipeline.dma_irq
+
+            system.dma_source_sram = SimpleMemory(
+                range=system.mem_ranges[5],
+                latency=args.mem_latency,
+                image_file=args.dma_input_image,
+            )
+            system.dma_source_sram.port = system.membus.mem_side_ports
+            system.dma_destination_sram = SimpleMemory(
+                range=system.mem_ranges[6],
+                latency=args.mem_latency,
+            )
+            system.dma_destination_sram.port = system.membus.mem_side_ports
     else:
         system.dmem_stub = SimpleMemory(range=system.mem_ranges[1])
         system.dmem_stub.port = system.membus.mem_side_ports
@@ -556,8 +615,12 @@ if args.veu_model == "timing":
     print("TimingVEU execute II: {} cycles".format(args.veu_execute_ii))
     print("TimingVEU VSU latency: {} cycles".format(args.veu_vsu_latency))
     print("TimingVEU profile: {}".format(args.veu_timing_profile or "<default>"))
+    print("TimingVEU terminal behavior: {}".format(
+        args.veu_terminal_behavior or "<disabled>"))
     print("TimingVEU cycle trace: {}".format(args.veu_cycle_trace or "<disabled>"))
     print("TimingVEU startup cycles: {}".format(args.veu_startup_cycles))
+    print("TimingVEU lock start delay: {}".format(
+        args.veu_lock_start_delay_cycles))
     print("TimingVEU finish cycles: {}".format(args.veu_finish_cycles))
 print("Memory system: {}".format(args.mem_system))
 if args.mem_system == "simple":
@@ -590,10 +653,19 @@ elif dut_kui_tb_mode:
     print("Shared arbitration: VEU lock blocks DBus; IBus remains independent")
 elif mikui_tb_mode:
     print("RTL IMEM range: 0x00000000..0x00003fff")
-    print("RTL SRAM bank 0: 0x20010000..0x2001ffff")
-    print("RTL SRAM bank 1: 0x20020000..0x2002ffff")
+    if mikui_dma_tb_mode:
+        print("RTL stack SRAM: 0x20010000..0x20017fff")
+        print("RTL ping SRAM:  0x20018000..0x2001ffff")
+        print("RTL pong SRAM:  0x20020000..0x20027fff")
+        print("RTL crossbar: crossbar_mi_full, B/C/D split = 4/8/12")
+    else:
+        print("RTL SRAM bank 0: 0x20010000..0x2001ffff")
+        print("RTL SRAM bank 1: 0x20020000..0x2002ffff")
     print("RTL datapath: 32-to-128 DBus, native 128-bit SAU/VEU masters")
     print("RTL interrupts: external/software/timer tied to zero")
+    if mikui_dma_tb_mode:
+        print("RTL DMA registers: 0x40019c00..0x40019cff")
+        print("RTL DMA: independent Rice/zigzag/zero-skip decompressor, 32-bit AHB master, cause-6 IRQ")
 print("Internal I-cache: {}".format("enabled" if args.icache_enabled else "disabled"))
 
 exit_event = m5.simulate()

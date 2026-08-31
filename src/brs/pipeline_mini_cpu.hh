@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/loader/object_file.hh"
+#include "dev/intpin.hh"
 #include "mem/packet.hh"
 #include "mem/port.hh"
 #include "mem/request.hh"
@@ -84,6 +85,10 @@ class PipelineMiniCPU : public ClockedObject
     Addr tbInstSize;
     Addr tbDataBase;
     Addr tbDataStorageSize;
+    bool dmaPioEnabled;
+    Addr dmaPioBase;
+    Addr dmaPioSize;
+    bool dmaIrqInput = false;
     brs::DutKuiMemoryModel dutKuiMemory;
     brs::NpuLpnpuMikuiMemoryModel npuLpnpuMikuiMemory;
     std::unique_ptr<brs::SauNEndpoint> sauNSau;
@@ -101,6 +106,7 @@ class PipelineMiniCPU : public ClockedObject
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
     CpuRequestPort veuPort;
+    IntSinkPin<PipelineMiniCPU> dmaIrqPin;
     PacketPtr pendingInstFetch = nullptr;
     bool instFetchRetry = false;
     Addr pendingInstAddr = 0;
@@ -176,6 +182,7 @@ class PipelineMiniCPU : public ClockedObject
     void processDutKuiMemoryCycle(const brs::SauMemoryOutput &sau);
     bool dutKuiMemoryEnabled() const;
     bool npuLpnpuMikuiMemoryEnabled() const;
+    bool dmaPioMapped(Addr address) const;
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);
@@ -189,6 +196,9 @@ class PipelineMiniCPU : public ClockedObject
 
     Port &getPort(const std::string &if_name,
                   PortID idx = InvalidPortID) override;
+
+    void raiseInterruptPin(int id);
+    void lowerInterruptPin(int id);
 
     void startup() override;
 };

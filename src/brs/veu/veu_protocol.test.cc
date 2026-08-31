@@ -10,18 +10,19 @@ namespace brs
 namespace
 {
 
-TEST(VeuProtocolTest, MatchesAerithDataPathGeometry)
+TEST(VeuProtocolTest, MatchesMikuiDataPathGeometry)
 {
-    EXPECT_EQ(VeuVectorBits, 256);
-    EXPECT_EQ(VeuVectorBytes, 32);
+    EXPECT_EQ(VeuVectorBits, 128);
+    EXPECT_EQ(VeuVectorBytes, 16);
     EXPECT_EQ(VeuLaneBits, 32);
-    EXPECT_EQ(VeuLaneCount, 8);
+    EXPECT_EQ(VeuLaneCount, 4);
+    EXPECT_EQ(VeuFullWriteMask, 0xffffu);
     EXPECT_EQ(VeuComputeDelayCycles, 3);
     EXPECT_EQ(VeuTcmDelayCycles, 3);
     EXPECT_EQ(VeuLoadReturnLatencyCycles, 4);
 }
 
-TEST(VeuProtocolTest, RecognizesAerithCsrWindow)
+TEST(VeuProtocolTest, RecognizesMikuiCsrWindow)
 {
     EXPECT_TRUE(isVeuCsr(0x100));
     EXPECT_TRUE(isVeuCsr(0x107));
@@ -40,12 +41,12 @@ TEST(VeuProtocolTest, PacksOperandsLikeSpiritCbu)
     EXPECT_EQ(unpackVeuOperand2(packed), op2);
 }
 
-TEST(VeuProtocolTest, AlignsVectorLengthLikeAerithVcu)
+TEST(VeuProtocolTest, AlignsVectorLengthLikeMikuiVcu)
 {
     EXPECT_EQ(alignVeuLengthBits(0), 0);
-    EXPECT_EQ(alignVeuLengthBits(1), 256);
-    EXPECT_EQ(alignVeuLengthBits(256), 256);
-    EXPECT_EQ(alignVeuLengthBits(257), 512);
+    EXPECT_EQ(alignVeuLengthBits(1), 128);
+    EXPECT_EQ(alignVeuLengthBits(128), 128);
+    EXPECT_EQ(alignVeuLengthBits(129), 256);
     EXPECT_EQ(effectiveVeuLengthAtStart(0), 0);
 }
 

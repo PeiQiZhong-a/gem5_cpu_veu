@@ -54,6 +54,17 @@ makeDutKuiMemoryConfig(const PipelineMiniCPUParams &params)
     return config;
 }
 
+brs::NpuLpnpuMikuiMemoryModel::Config
+makeNpuLpnpuMikuiMemoryConfig(const PipelineMiniCPUParams &params)
+{
+    brs::NpuLpnpuMikuiMemoryModel::Config config;
+    config.instBase = static_cast<uint32_t>(params.tb_inst_base);
+    config.instSize = static_cast<uint32_t>(params.tb_inst_size);
+    config.dmaTopology =
+        params.tb_memory_kind == "npu-lpnpu-mikui-dma";
+    return config;
+}
+
 Addr
 dutKuiDataStorageSize(const PipelineMiniCPUParams &params)
 {
@@ -117,16 +128,23 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       tbInstBase(p.tb_inst_base),
       tbInstSize(p.tb_inst_size),
       tbDataBase(p.tb_data_base),
-      tbDataStorageSize(p.tb_memory_kind == "npu-lpnpu-mikui" ?
-          std::min<Addr>(p.tb_data_size, 0x00010000) :
-          dutKuiDataStorageSize(p)),
+      tbDataStorageSize(
+          p.tb_memory_kind == "npu-lpnpu-mikui" ?
+              std::min<Addr>(p.tb_data_size, 0x00010000) :
+          p.tb_memory_kind == "npu-lpnpu-mikui-dma" ?
+              std::min<Addr>(p.tb_data_size, 0x00018000) :
+              dutKuiDataStorageSize(p)),
+      dmaPioEnabled(p.dma_pio_enabled),
+      dmaPioBase(p.dma_pio_base),
+      dmaPioSize(p.dma_pio_size),
       dutKuiMemory(makeDutKuiMemoryConfig(p)),
-      npuLpnpuMikuiMemory(),
+      npuLpnpuMikuiMemory(makeNpuLpnpuMikuiMemoryConfig(p)),
       cycleTraceFile(p.cycle_trace_file),
       cycleTraceCompact(p.cycle_trace_compact),
       instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
       dataPort(name() + ".data_port", this, CpuRequestPort::PortKind::Data),
       veuPort(name() + ".veu_port", this, CpuRequestPort::PortKind::Veu),
+      dmaIrqPin(name() + ".dma_irq", 0, this),
       icacheEnabled(p.icache_enabled),
       icacheSize(p.icache_size),
       icacheLineSize(p.icache_line_size),
@@ -150,9 +168,14 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     core.configureFakeVeu(
         p.fake_veu_latency, p.fake_veu_response_data);
     fatal_if(tbMemoryEnabled && tbMemoryKind != "dut-kui" &&
-             tbMemoryKind != "npu-lpnpu-mikui",
+             tbMemoryKind != "npu-lpnpu-mikui" &&
+             tbMemoryKind != "npu-lpnpu-mikui-dma",
              "Unsupported RTL memory model '%s'",
              tbMemoryKind.c_str());
+    fatal_if(dmaPioEnabled && !npuLpnpuMikuiMemoryEnabled(),
+             "External Mikui DMA requires npu-lpnpu-mikui memory mode");
+    fatal_if(dmaPioEnabled && dmaPioSize < 0x10,
+             "External Mikui DMA PIO window is too small");
     if (npuLpnpuMikuiMemoryEnabled()) {
         core.setInterruptInputs(0, false, false);
     } else {
@@ -170,8 +193,10 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     veuConfig.executeII = p.veu_execute_ii;
     veuConfig.vsuLatency = p.veu_vsu_latency;
     veuConfig.startupCycles = p.veu_startup_cycles;
+    veuConfig.lockStartDelayCycles = p.veu_lock_start_delay_cycles;
     veuConfig.finishCycles = p.veu_finish_cycles;
     veuConfig.timingProfilePath = p.veu_timing_profile;
+    veuConfig.terminalBehaviorPath = p.veu_terminal_behavior;
     veuConfig.cycleTracePath = p.veu_cycle_trace;
     try {
         core.configureTimingVeu(veuConfig);
@@ -246,7 +271,24 @@ PipelineMiniCPU::getPort(const std::string &if_name, PortID idx)
     if (if_name == "veu_port") {
         return veuPort;
     }
+    if (if_name == "dma_irq") {
+        return dmaIrqPin;
+    }
     return ClockedObject::getPort(if_name, idx);
+}
+
+void
+PipelineMiniCPU::raiseInterruptPin(int id)
+{
+    panic_if(id != 0, "Unexpected PipelineMiniCPU interrupt pin %d", id);
+    dmaIrqInput = true;
+}
+
+void
+PipelineMiniCPU::lowerInterruptPin(int id)
+{
+    panic_if(id != 0, "Unexpected PipelineMiniCPU interrupt pin %d", id);
+    dmaIrqInput = false;
 }
 
 bool
@@ -258,7 +300,16 @@ PipelineMiniCPU::dutKuiMemoryEnabled() const
 bool
 PipelineMiniCPU::npuLpnpuMikuiMemoryEnabled() const
 {
-    return tbMemoryEnabled && tbMemoryKind == "npu-lpnpu-mikui";
+    return tbMemoryEnabled &&
+        (tbMemoryKind == "npu-lpnpu-mikui" ||
+         tbMemoryKind == "npu-lpnpu-mikui-dma");
+}
+
+bool
+PipelineMiniCPU::dmaPioMapped(Addr address) const
+{
+    return dmaPioEnabled && address >= dmaPioBase &&
+        address - dmaPioBase < dmaPioSize;
 }
 
 Addr
@@ -502,12 +553,11 @@ bool
 PipelineMiniCPU::requestDataTiming(uint32_t addr, unsigned size,
                                    bool isWrite, uint32_t writeData)
 {
-    if ((tbMemoryEnabled && tbDataOutstanding) ||
-        (!tbMemoryEnabled && pendingDataReq != nullptr)) {
+    if (tbDataOutstanding || pendingDataReq != nullptr) {
         return false;
     }
 
-    if (dutKuiMemoryEnabled()) {
+    if (dutKuiMemoryEnabled() && !dmaPioMapped(addr)) {
         panic_if(size != 1 && size != 2 && size != 4,
                  "Unsupported dut_kui data access size: %u", size);
         const unsigned byteInWord = addr & 0x3;
@@ -1063,7 +1113,7 @@ PipelineMiniCPU::processDutKuiMemoryCycle(
     // crossbarDone is ownership control only and must not synthesize IRQ3.
     // Explicitly configured IRQs remain available for standalone CPU tests.
     if (mikui) {
-        core.setInterruptInputs(0, false, false);
+        core.setInterruptInputs(0, false, false, dmaIrqInput);
     } else {
         core.setInterruptInputs(
             configuredExternalIrq,
@@ -1164,6 +1214,7 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
     const bool veuAccepted = mikui ?
         npuLpnpuMikuiMemory.veuAcceptedThisTick() :
         dutKuiMemory.veuAcceptedThisTick();
+    const bool dmaEnabled = dmaPioEnabled;
     const unsigned stallMask = core.spiritExecuteStalled() ? 0x7u :
         ((core.stall_pc || core.stall_ifid) ? 0x3u : 0u);
 
@@ -1208,6 +1259,9 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
         if (sau.crossbarDone) {
             cycleTrace << " sau_xbar_done=1";
         }
+        if (dmaEnabled && dmaIrqInput) {
+            cycleTrace << " dma_irq=1";
+        }
         if (outputs.masterDropped[
                 static_cast<uint8_t>(brs::DutKuiDataMaster::Sau)]) {
             cycleTrace << " sau_sram_drop=1";
@@ -1232,8 +1286,9 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
     cycleTrace << "edge=" << elapsedClockEdges
         << " reset=0"
         << " phase=evaluate"
-        << " platform=" << (mikui ?
-            "rtl-npu-lpnpu-mikui" : "rtl-dut-kui-tb")
+        << " platform=" << (dmaEnabled ?
+            "rtl-npu-lpnpu-mikui-decompress-dma" :
+            (mikui ? "rtl-npu-lpnpu-mikui" : "rtl-dut-kui-tb"))
         << " cpu_cycle=" << core.getCycle()
         << " cpu_pc=0x" << std::hex << core.getPC()
         << " converter_state_pre=" << std::dec
@@ -1286,6 +1341,8 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
         << outputs.masterDropped[
             static_cast<uint8_t>(brs::DutKuiDataMaster::Veu)]
         << " xbar_same_bank_collision=" << outputs.sameBankCollision
+        << " dma_enabled=" << dmaEnabled
+        << " dma_irq=" << dmaIrqInput
         << " xbar_bank_req=0x" << std::hex
         << (static_cast<unsigned>(outputs.bankRequest[0]) |
             (static_cast<unsigned>(outputs.bankRequest[1]) << 1) |
@@ -1331,8 +1388,10 @@ PipelineMiniCPU::startup()
                      cycleTraceFile);
             cycleTrace << "# brs-cycle-trace-v2 source=gem5 "
                        << "sampling=evaluate-before-clock "
-                       << "platform=" << (mikui ?
-                           "rtl-npu-lpnpu-mikui" : "rtl-dut-kui-tb")
+                       << "platform=" << (dmaPioEnabled ?
+                           "rtl-npu-lpnpu-mikui-decompress-dma" :
+                           (mikui ? "rtl-npu-lpnpu-mikui" :
+                            "rtl-dut-kui-tb"))
                        << " reset_edges=" << resetCyclesRemaining
                        << " trace_mode="
                        << (cycleTraceCompact ? "compact" : "full") << '\n';
@@ -1345,7 +1404,7 @@ PipelineMiniCPU::startup()
         if (!tbDmemImageFile.empty()) {
             preloadTbRawImage(
                 tbDmemImageFile, tbDataBase, tbDataStorageSize);
-            if (mikui) {
+            if (tbMemoryKind == "npu-lpnpu-mikui") {
                 preloadTbRawImage(
                     tbDmemImageFile,
                     brs::NpuLpnpuMikuiCrossbar::Bank1Base,
@@ -1523,9 +1582,20 @@ PipelineMiniCPU::processTick()
     pipeStats.veu_profile_hits = core.timingVeu.profileHitCount();
     pipeStats.veu_profile_misses = core.timingVeu.profileMissCount();
     pipeStats.veu_profile_fallbacks = core.timingVeu.profileFallbackCount();
+    pipeStats.veu_terminal_behavior_uses =
+        core.timingVeu.terminalBehaviorUseCount();
+    pipeStats.veu_timing_rtl_sim_uses =
+        core.timingVeu.rtlSimTimingUseCount();
+    pipeStats.veu_timing_legacy_uses =
+        core.timingVeu.legacyTimingUseCount();
+    pipeStats.veu_timing_default_uses =
+        core.timingVeu.defaultTimingUseCount();
+    pipeStats.veu_control_timing_rtl_sim_uses =
+        core.timingVeu.rtlSimControlTimingUseCount();
+    pipeStats.veu_control_timing_default_uses =
+        core.timingVeu.defaultControlTimingUseCount();
     pipeStats.veu_zero_length_noops = core.timingVeu.zeroLengthNoopCount();
     pipeStats.veu_illegal_operations = core.timingVeu.illegalOperationCount();
-
     std::cout
         << "[PipelineMiniCPU] cycle=" << core.getCycle()
         << " pc=0x" << std::hex << core.getPC() << std::dec

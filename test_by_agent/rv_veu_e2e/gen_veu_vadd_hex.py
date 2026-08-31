@@ -80,7 +80,7 @@ def main():
         encode_addi(1, 0, 0x100),       # x1 = VEU raddr1
         encode_addi(2, 0, 0x200),       # x2 = VEU raddr2
         encode_addi(3, 0, 0x300),       # x3 = VEU waddr
-        encode_addi(5, 0, 0x100),       # x5 = VEUVLEN, 256 bits
+        encode_addi(5, 0, 0x080),       # x5 = VEUVLEN, 128 bits
         encode_addi(6, 0, -1),          # x6 = VEUMASK, all bytes enabled
         encode_vsetcsr(0, VEUCFG),
         encode_vsetcsr(3, VEUWADDR),
@@ -93,12 +93,12 @@ def main():
         encode_andi(10, 10, 1),         # keep busy bit
         encode_bne(10, 0, -8),          # busy -> poll_loop
         encode_lw(8, 0, 0x300),         # read lane 0, expected 11
-        encode_lw(9, 0, 0x31C),         # read lane 7, expected 88
+        encode_lw(9, 0, 0x30C),         # read lane 3, expected 44
         0x00100073,                     # ebreak
     ]
     data = bytearray(0x320)
-    put_u32_lanes(data, 0x100, [1, 2, 3, 4, 5, 6, 7, 8])
-    put_u32_lanes(data, 0x200, [10, 20, 30, 40, 50, 60, 70, 80])
+    put_u32_lanes(data, 0x100, [1, 2, 3, 4])
+    put_u32_lanes(data, 0x200, [10, 20, 30, 40])
 
     write_word_hex(INSTR_HEX, polling_program)
     write_byte_hex(DATA_HEX, data)

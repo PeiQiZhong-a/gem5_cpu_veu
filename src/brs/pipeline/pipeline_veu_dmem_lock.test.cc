@@ -16,6 +16,7 @@ makeVector(std::initializer_list<uint32_t> lanes)
     std::array<uint8_t, brs::VeuVectorBytes> data = {};
     uint32_t laneIndex = 0;
     for (uint32_t value : lanes) {
+        if (laneIndex == brs::VeuLaneCount) break;
         const uint32_t offset = laneIndex * sizeof(uint32_t);
         data[offset] = static_cast<uint8_t>(value & 0xff);
         data[offset + 1] = static_cast<uint8_t>((value >> 8) & 0xff);
@@ -82,9 +83,9 @@ TEST(PipelineVeuDmemLockTest, DefersRvLoadUntilVeuStoreCompletes)
     core.configureTimingVeu(config);
 
     std::map<uint32_t, std::array<uint8_t, brs::VeuVectorBytes>> memory;
-    memory[0x100] = makeVector({1, 2, 3, 4, 5, 6, 7, 8});
-    memory[0x200] = makeVector({10, 20, 30, 40, 50, 60, 70, 80});
-    memory[0x300] = makeVector({0, 0, 0, 0, 0, 0, 0, 0});
+    memory[0x100] = makeVector({1, 2, 3, 4});
+    memory[0x200] = makeVector({10, 20, 30, 40});
+    memory[0x300] = makeVector({0, 0, 0, 0});
 
     core.setTimingVeuMemoryRequestCallback(
         [&](const brs::TimingVeuMemoryRequest &request) {
@@ -106,6 +107,9 @@ TEST(PipelineVeuDmemLockTest, DefersRvLoadUntilVeuStoreCompletes)
     completeCsrRequest(
         core.timingVeu,
         csrWrite(brs::VeuCsr::VectorLength, brs::VeuVectorBits));
+    completeCsrRequest(
+        core.timingVeu,
+        csrWrite(brs::VeuCsr::Mask, brs::VeuFullWriteMask));
     completeCsrRequest(core.timingVeu, vaddStart(0x100, 0x200));
     ASSERT_TRUE(core.timingVeuOwnsSharedDmem());
 

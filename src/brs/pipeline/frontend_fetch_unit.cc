@@ -304,7 +304,12 @@ FetchBusUnit::markRequestIssued()
 bool
 FetchBusUnit::acceptResponse(const FetchBlock &block)
 {
-    if (!inFlight || block.blockAddr != inFlightBlockAddr) {
+    // The exact fetch address identifies the request.  blockAddr describes
+    // the returned 128-bit SRAM line and is 16-byte aligned by Mikui, while
+    // older Spirit adapters may report a word-aligned base.  Matching the
+    // line base would strand redirects such as 0x34 when the memory returns
+    // the containing line at 0x30.
+    if (!inFlight || block.fetchAddr != inFlightFetchAddr) {
         return false;
     }
 

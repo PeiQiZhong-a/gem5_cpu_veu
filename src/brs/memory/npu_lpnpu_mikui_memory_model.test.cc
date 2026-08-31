@@ -76,18 +76,16 @@ TEST(NpuLpnpuMikuiMemoryModelTest, SauUsesNative128BitBankPort)
     EXPECT_TRUE(outputs.sau.valid);
 }
 
-TEST(NpuLpnpuMikuiMemoryModelTest, SplitsCompatibilityVeuChunkIntoTwoBeats)
+TEST(NpuLpnpuMikuiMemoryModelTest, UsesNative128BitVeuBeat)
 {
     NpuLpnpuMikuiMemoryModel model;
     DutKuiVeuRequest request;
     request.transactionId = 9;
     request.address = 0x20010020;
     request.isWrite = true;
-    request.writeStrobe = 0xffffffffu;
+    request.writeStrobe = VeuFullWriteMask;
     request.data[0] = 0x12;
     request.data[15] = 0x34;
-    request.data[16] = 0x56;
-    request.data[31] = 0x78;
     ASSERT_TRUE(model.acceptVeu(request));
 
     DutKuiMemoryOutputs outputs;
@@ -99,8 +97,6 @@ TEST(NpuLpnpuMikuiMemoryModelTest, SplitsCompatibilityVeuChunkIntoTwoBeats)
     EXPECT_EQ(outputs.veuWrite.transactionId, 9u);
     EXPECT_EQ(model.readByte(0x20010020), 0x12);
     EXPECT_EQ(model.readByte(0x2001002f), 0x34);
-    EXPECT_EQ(model.readByte(0x20010030), 0x56);
-    EXPECT_EQ(model.readByte(0x2001003f), 0x78);
     EXPECT_EQ(model.veuOutstandingCount(), 0u);
 }
 
@@ -112,6 +108,20 @@ TEST(NpuLpnpuMikuiMemoryModelTest, KeepsBothPhysicalBanksDistinct)
     EXPECT_EQ(model.readByte(0x20010000), 0x11);
     EXPECT_EQ(model.readByte(0x20020000), 0x22);
     EXPECT_EQ(model.readByte(0x20000000), 0);
+}
+
+TEST(NpuLpnpuMikuiMemoryModelTest, DmaTopologyUsesThreePhysicalBanks)
+{
+    NpuLpnpuMikuiMemoryModel::Config config;
+    config.dmaTopology = true;
+    NpuLpnpuMikuiMemoryModel model(config);
+    model.writeByte(0x20010000, 0x11);
+    model.writeByte(0x20018000, 0x22);
+    model.writeByte(0x20020000, 0x33);
+    EXPECT_EQ(model.readByte(0x20010000), 0x11);
+    EXPECT_EQ(model.readByte(0x20018000), 0x22);
+    EXPECT_EQ(model.readByte(0x20020000), 0x33);
+    EXPECT_EQ(model.readByte(0x20028000), 0);
 }
 
 } // namespace

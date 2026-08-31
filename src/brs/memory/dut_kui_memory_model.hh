@@ -77,10 +77,9 @@ struct DutKuiMemoryOutputs
 
 // Cycle model of the memory-facing portion of dut_kui. Instruction fetch is
 // an independent 128-bit path. RV data accesses pass through the RTL's
-// 32-to-256 converter, while TimingVEU accesses the 256-bit SRAM path directly.
-// The canonical SAU endpoint is 128-bit; this legacy wrapper adapts each SAU
-// beat to the addressed half of its internal 256-bit crossbar without changing
-// the CPU/SAU contract.
+// 32-to-256 converter. The canonical Mikui VEU and SAU endpoints are 128-bit;
+// this legacy wrapper adapts each accelerator beat to the addressed half of
+// its internal 256-bit crossbar without changing the CPU/accelerator contract.
 class DutKuiMemoryModel
 {
   public:

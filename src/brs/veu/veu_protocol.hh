@@ -12,8 +12,8 @@ namespace brs
 {
 
 // Authoritative sources:
-//   Spirit  ef9bd7c: common/Instructions.scala, decode/Decoder.scala
-//   Aerith 1db0a84: common/VEUConfigs.scala, vector/VCU.scala
+//   Mikui hardware/src/veu/{VEU,VE_CORE,VCU,VLU,VFU}.sv
+//   The VCU consumes one 128-bit SRAM beat and advances addresses by 0x10.
 
 enum class VeuCsr : uint16_t
 {
@@ -61,10 +61,12 @@ enum class VeuInstruction : uint8_t
     MultiplyHigh
 };
 
-constexpr uint32_t VeuVectorBits = 256;
+constexpr uint32_t VeuVectorBits = 128;
 constexpr uint32_t VeuVectorBytes = VeuVectorBits / 8;
 constexpr uint32_t VeuLaneBits = 32;
 constexpr uint32_t VeuLaneCount = VeuVectorBits / VeuLaneBits;
+constexpr uint32_t VeuFullWriteMask =
+    (uint32_t{1} << VeuVectorBytes) - 1;
 constexpr uint32_t VeuComputeDelayCycles = 3;
 constexpr uint32_t VeuTcmDelayCycles = 3;
 constexpr uint32_t VeuLoadReturnLatencyCycles = VeuTcmDelayCycles + 1;
@@ -79,8 +81,8 @@ constexpr uint32_t VeuThreeSourceInstructionMask = 0x0600707f;
 using VeuRequest = HcRequest;
 using VeuResponse = HcResponse;
 
-// VEU-to-TCM signals exposed by the RTL VEU wrapper. The frozen Aerith
-// testbench uses one 128-bit beat (four 32-bit words) per request.
+// VEU-to-TCM signals exposed by the Mikui RTL VEU wrapper. Each request is
+// exactly one 128-bit beat (four 32-bit words).
 struct VeuMemoryRequest
 {
     bool valid = false;
@@ -276,10 +278,10 @@ isTwoShotVeuInstruction(VeuInstruction instruction)
            instruction == VeuInstruction::MultiplySubtract;
 }
 
-static_assert(VeuVectorBytes == 32, "Aerith 256-bit branch uses 32-byte beats");
-static_assert(VeuLaneCount == 8, "Aerith 256-bit branch uses eight 32-bit lanes");
-static_assert(alignVeuLengthBits(257) == 512,
-              "Aerith VCU rounds VEUVLEN to 256-bit boundaries");
+static_assert(VeuVectorBytes == 16, "Mikui VEU uses 16-byte SRAM beats");
+static_assert(VeuLaneCount == 4, "Mikui VEU exposes four 32-bit lanes");
+static_assert(alignVeuLengthBits(129) == 256,
+              "Mikui VCU rounds VEUVLEN to 128-bit boundaries");
 static_assert(decodeVeuInstruction(0x0000200b) ==
               VeuInstruction::CsrWrite,
               "Spirit VSETCSR encoding changed");

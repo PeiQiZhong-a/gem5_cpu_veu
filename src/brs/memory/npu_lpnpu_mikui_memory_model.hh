@@ -7,6 +7,7 @@
 
 #include "brs/memory/dut_kui_memory_model.hh"
 #include "brs/memory/npu_lpnpu_mikui_crossbar.hh"
+#include "brs/memory/npu_lpnpu_mikui_dma_crossbar.hh"
 #include "brs/memory/sram_converter_32to128.hh"
 
 namespace gem5
@@ -25,6 +26,7 @@ class NpuLpnpuMikuiMemoryModel
         uint32_t instBase = 0x00000000;
         uint32_t instSize = 0x00004000;
         uint32_t maxVeuOutstanding = 4;
+        bool dmaTopology = false;
     };
 
     NpuLpnpuMikuiMemoryModel();
@@ -71,23 +73,11 @@ class NpuLpnpuMikuiMemoryModel
     }
 
   private:
-    struct IssuedVeuHalf
-    {
-        DutKuiVeuRequest request;
-        uint8_t half = 0;
-    };
-
-    struct VeuCompletion
-    {
-        DutKuiVeuRequest request;
-        uint8_t completedHalves = 0;
-        VeuVector readData{};
-    };
-
     Config config;
     std::unordered_map<uint32_t, uint8_t> instructionMemory;
     SramConverter32To128 dbusConverter;
     NpuLpnpuMikuiCrossbar crossbar;
+    NpuLpnpuMikuiDmaCrossbar dmaCrossbar;
     DutKuiMemoryOutputs visibleOutputs;
 
     bool ibusOutstanding = false;
@@ -101,9 +91,7 @@ class NpuLpnpuMikuiMemoryModel
     DutKuiVeuRequest acceptedVeu;
 
     std::deque<DutKuiVeuRequest> pendingVeuRequests;
-    uint8_t pendingVeuHalf = 0;
-    std::deque<IssuedVeuHalf> issuedVeuHalves;
-    std::unordered_map<uint64_t, VeuCompletion> veuCompletions;
+    std::deque<DutKuiVeuRequest> issuedVeuRequests;
     bool previousVeuLockActive = false;
 
     bool instructionMapped(uint32_t address) const;

@@ -86,6 +86,12 @@ struct PipelineStats : public statistics::Group
     statistics::Scalar veu_profile_hits;
     statistics::Scalar veu_profile_misses;
     statistics::Scalar veu_profile_fallbacks;
+    statistics::Scalar veu_terminal_behavior_uses;
+    statistics::Scalar veu_timing_rtl_sim_uses;
+    statistics::Scalar veu_timing_legacy_uses;
+    statistics::Scalar veu_timing_default_uses;
+    statistics::Scalar veu_control_timing_rtl_sim_uses;
+    statistics::Scalar veu_control_timing_default_uses;
     statistics::Scalar veu_zero_length_noops;
     statistics::Scalar veu_illegal_operations;
 
@@ -176,9 +182,9 @@ struct PipelineStats : public statistics::Group
           ADD_STAT(veu_load_wait_cycles, "TimingVEU cycles waiting for load responses"),
           ADD_STAT(veu_execute_cycles, "TimingVEU execute cycles"),
           ADD_STAT(veu_store_wait_cycles, "TimingVEU cycles waiting for store responses"),
-          ADD_STAT(veu_chunks, "TimingVEU 256-bit chunks completed"),
-          ADD_STAT(veu_memory_reads, "TimingVEU 256-bit memory reads issued"),
-          ADD_STAT(veu_memory_writes, "TimingVEU 256-bit memory writes issued"),
+          ADD_STAT(veu_chunks, "TimingVEU 128-bit chunks completed"),
+          ADD_STAT(veu_memory_reads, "TimingVEU 128-bit memory reads issued"),
+          ADD_STAT(veu_memory_writes, "TimingVEU 128-bit memory writes issued"),
           ADD_STAT(veu_status_active_cycles, "TimingVEU status busy cycles"),
           ADD_STAT(veu_lock_active_cycles, "TimingVEU shared SRAM lock cycles"),
           ADD_STAT(veu_current_outstanding_reads, "Current TimingVEU outstanding reads"),
@@ -202,6 +208,18 @@ struct PipelineStats : public statistics::Group
           ADD_STAT(veu_profile_hits, "TimingVEU timing profile hits"),
           ADD_STAT(veu_profile_misses, "TimingVEU timing profile misses"),
           ADD_STAT(veu_profile_fallbacks, "TimingVEU timing profile fallbacks"),
+          ADD_STAT(veu_terminal_behavior_uses,
+                   "TimingVEU exact RTL terminal behaviors selected"),
+          ADD_STAT(veu_timing_rtl_sim_uses,
+                   "TimingVEU operations using RTL simulation timing"),
+          ADD_STAT(veu_timing_legacy_uses,
+                   "TimingVEU operations using legacy profile timing"),
+          ADD_STAT(veu_timing_default_uses,
+                   "TimingVEU operations using default timing"),
+          ADD_STAT(veu_control_timing_rtl_sim_uses,
+                   "TimingVEU operations using RTL simulation control timing"),
+          ADD_STAT(veu_control_timing_default_uses,
+                   "TimingVEU operations using default control timing"),
           ADD_STAT(veu_zero_length_noops, "TimingVEU VLEN=0 no-ops"),
           ADD_STAT(veu_illegal_operations, "TimingVEU illegal operations")
     {

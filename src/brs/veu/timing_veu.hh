@@ -9,10 +9,12 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "base/types.hh"
 #include "brs/veu/veu_endpoint.hh"
 #include "brs/veu/veu_functional.hh"
+#include "brs/veu/veu_terminal_behavior.hh"
 #include "brs/veu/veu_timing_profile.hh"
 
 namespace gem5
@@ -27,9 +29,13 @@ struct VeuTimingConfig
     uint32_t executeII = 1;
     uint32_t vsuLatency = 1;
     uint32_t maxOutstandingReads = 4;
-    uint32_t startupCycles = 0;
+    // These are explicit, uncalibrated fallbacks. Per-operation Mikui RTL
+    // captures should override them through the v4 timing profile.
+    uint32_t startupCycles = 4;
+    uint32_t lockStartDelayCycles = 1;
     uint32_t finishCycles = 0;
     std::string timingProfilePath;
+    std::string terminalBehaviorPath;
     std::string cycleTracePath;
 };
 
@@ -41,7 +47,7 @@ struct TimingVeuMemoryRequest
     VeuSource source = VeuSource::None;
     Addr address = 0;
     bool isWrite = false;
-    uint32_t writeStrobe = 0xffffffffu;
+    uint32_t writeStrobe = VeuFullWriteMask;
     VeuVector data = {};
 };
 
@@ -108,6 +114,56 @@ class TimingVeu : public VeuEndpoint
     uint64_t profileHitCount() const { return profileHits; }
     uint64_t profileMissCount() const { return profileMisses; }
     uint64_t profileFallbackCount() const { return profileFallbacks; }
+    uint64_t terminalBehaviorUseCount() const { return terminalBehaviorUses; }
+    uint64_t rtlSimTimingUseCount() const { return rtlSimTimingUses; }
+    uint64_t legacyTimingUseCount() const { return legacyTimingUses; }
+    uint64_t defaultTimingUseCount() const { return defaultTimingUses; }
+    uint64_t rtlSimControlTimingUseCount() const
+    {
+        return rtlSimControlTimingUses;
+    }
+    uint64_t defaultControlTimingUseCount() const
+    {
+        return defaultControlTimingUses;
+    }
+    const std::string &activeTimingProfileId() const
+    {
+        return activeTiming.profileId;
+    }
+    const std::string &activeTimingSource() const
+    {
+        return activeTiming.timingSource;
+    }
+    const std::string &activeTimingEvidenceId() const
+    {
+        return activeTiming.evidenceId;
+    }
+    const std::string &activeControlTimingSource() const
+    {
+        return activeTiming.controlTimingSource;
+    }
+    const std::string &activeControlTimingEvidenceId() const
+    {
+        return activeTiming.controlEvidenceId;
+    }
+    uint32_t activeExecuteLatency() const { return activeTiming.latency; }
+    uint32_t activeExecuteII() const
+    {
+        return activeTiming.initiationInterval;
+    }
+    uint32_t activeVsuLatency() const { return activeTiming.vsuLatency; }
+    uint32_t activeLockStartDelay() const
+    {
+        return activeTiming.lockStartDelay;
+    }
+    uint32_t activeFinishDrainCycles() const
+    {
+        return activeTiming.finishDrainCycles;
+    }
+    uint32_t activeOperationCycles() const
+    {
+        return activeTiming.operationCycles;
+    }
     uint64_t zeroLengthNoopCount() const { return zeroLengthNoops; }
     uint64_t illegalOperationCount() const { return illegalOperations; }
 
@@ -117,6 +173,7 @@ class TimingVeu : public VeuEndpoint
     uint32_t csrReadAddress3() const { return csr.raddr3; }
     uint32_t csrWriteAddress() const { return csr.waddr; }
     uint32_t csrVectorLength() const { return csr.vlen; }
+    uint32_t csrMask() const { return csr.mask; }
 
   private:
     struct CsrState
@@ -128,7 +185,7 @@ class TimingVeu : public VeuEndpoint
         uint32_t waddr = 0;
         uint32_t config = 0;
         uint32_t vlen = 0;
-        uint32_t mask = 0xffffffffu;
+        uint32_t mask = 0;
     };
 
     enum class ControlState : uint8_t { Idle, Respond, Recovery };
@@ -142,6 +199,8 @@ class TimingVeu : public VeuEndpoint
     struct ResultToken
     {
         uint32_t chunk = 0;
+        Addr writeAddress = 0;
+        bool advancesCsr = true;
         VeuFunctionalResult result;
         uint64_t readyCycle = 0;
     };
@@ -159,7 +218,7 @@ class TimingVeu : public VeuEndpoint
         VeuVector data = {};
     };
 
-    static constexpr uint32_t FullWriteMask = 0xffffffffu;
+    static constexpr uint32_t FullWriteMask = VeuFullWriteMask;
 
     uint32_t readCsr(uint16_t addr) const;
     void writeCsr(uint16_t addr, uint32_t value, VeuWriteType writeType);
@@ -170,6 +229,7 @@ class TimingVeu : public VeuEndpoint
     void processResponses();
     void advancePipelines();
     void acceptVfuInput();
+    void advanceVisibleOutputCsrs(ResultToken &token);
     void issueOneMemoryRequest();
     bool issueRequest(const TimingVeuMemoryRequest &request);
     std::optional<TimingVeuMemoryRequest> makeReadRequest();
@@ -182,6 +242,9 @@ class TimingVeu : public VeuEndpoint
     std::string sourceSetName() const;
     std::string maskClassName() const;
     bool readCanIssue() const;
+    uint32_t readChunkLimit(VeuSource source) const;
+    uint32_t executeChunkLimit() const;
+    bool terminalIllegalComplete() const;
     void trace(const char *event, int32_t chunk = -1,
                VeuSource source = VeuSource::None,
                uint64_t transactionId = 0, Addr address = 0,
@@ -190,7 +253,9 @@ class TimingVeu : public VeuEndpoint
 
     VeuTimingConfig timing;
     VeuTimingProfile timingProfile;
+    VeuTerminalBehavior terminalBehavior;
     VeuTimingSelection activeTiming;
+    std::optional<VeuTerminalSelection> activeTerminal;
     MemoryRequestFn memoryRequest;
     State currentState = State::Idle;
     ControlState controlState = ControlState::Idle;
@@ -208,13 +273,23 @@ class TimingVeu : public VeuEndpoint
     uint64_t nextOperationId = 1;
     uint64_t nextTransactionId = 1;
     uint64_t operationStartCycle = 0;
+    uint64_t lockStartCycle = 0;
+    uint64_t statusClearTargetCycle = 0;
+    uint64_t operationFinishTargetCycle = 0;
     uint64_t nextVfuAcceptCycle = 0;
     uint64_t drainReadyCycle = 0;
+    uint32_t requestedVlen = 0;
+    uint32_t operationRequestedVlen = 0;
+    uint32_t operationEffectiveVlen = 0;
+    uint32_t operationConfig = 0;
+    uint32_t operationMask = 0;
+    uint32_t operationScalar = 0;
     VeuInstruction operationInstruction = VeuInstruction::Unknown;
     VeuOperationInfo operationInfo;
     uint32_t operationChunkCount = 0;
     uint32_t nextExecuteChunk = 0;
     uint32_t completedChunkCount = 0;
+    std::vector<uint64_t> vfuAcceptCycles;
     uint8_t readRoundRobin = 0;
     std::array<uint32_t, 3> nextReadChunk = {};
     std::array<uint32_t, 3> outstandingBySource = {};
@@ -259,6 +334,12 @@ class TimingVeu : public VeuEndpoint
     uint64_t profileHits = 0;
     uint64_t profileMisses = 0;
     uint64_t profileFallbacks = 0;
+    uint64_t terminalBehaviorUses = 0;
+    uint64_t rtlSimTimingUses = 0;
+    uint64_t legacyTimingUses = 0;
+    uint64_t defaultTimingUses = 0;
+    uint64_t rtlSimControlTimingUses = 0;
+    uint64_t defaultControlTimingUses = 0;
     uint64_t zeroLengthNoops = 0;
     uint64_t illegalOperations = 0;
 };

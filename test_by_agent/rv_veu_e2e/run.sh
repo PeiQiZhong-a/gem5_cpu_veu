@@ -7,6 +7,7 @@ GEM5="./build/RISCV/gem5.opt"
 CONFIG="configs/brs/run_pipeline_mini.py"
 ROOT="test_by_agent/rv_veu_e2e"
 PROFILE="configs/brs/veu_timing_profile.csv"
+TERMINAL_BEHAVIOR="configs/brs/veu_terminal_behavior.csv"
 GENERATOR="$ROOT/gen_veu_e2e_hex.py"
 VERIFIER="$ROOT/verify_veu_e2e.py"
 OUTROOT="$ROOT/m5out_veu_matrix"
@@ -19,6 +20,10 @@ if [[ ! -x "$GEM5" ]]; then
 fi
 if [[ ! -f "$PROFILE" ]]; then
     echo "missing timing profile: $PROFILE" >&2
+    exit 2
+fi
+if [[ ! -f "$TERMINAL_BEHAVIOR" ]]; then
+    echo "missing terminal behavior: $TERMINAL_BEHAVIOR" >&2
     exit 2
 fi
 
@@ -39,7 +44,7 @@ append_failure() {
         "$case_name" "$op_name" "$vlen" "$detail" >> "$SUMMARY"
 }
 
-for vlen in 256 2048; do
+for vlen in 128 1024; do
     for case_name in "${CASES[@]}"; do
         case_dir="$OUTROOT/${case_name}_${vlen}"
         run_log="$case_dir/run.log"
@@ -58,6 +63,7 @@ for vlen in 256 2048; do
             --mem-system spirit-like \
             --veu-model timing \
             --veu-timing-profile "$PROFILE" \
+            --veu-terminal-behavior "$TERMINAL_BEHAVIOR" \
             --veu-cycle-trace "$case_dir/veu_cycle_trace.csv" \
             --program-file "$case_dir/instr_mem.hex" \
             --dmem-hex "$case_dir/data_mem.hex" \

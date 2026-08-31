@@ -46,11 +46,12 @@ PipelineCore::configureTrapVector(uint32_t trapVector)
 
 void
 PipelineCore::setInterruptInputs(
-    uint32_t external, bool software, bool timer)
+    uint32_t external, bool software, bool timer, bool dma)
 {
     irq_external_input = external;
     irq_software_input = software;
     irq_timer_input = timer;
+    irq_dma_input = dma;
 }
 
 void
@@ -171,6 +172,8 @@ PipelineCore::reset()
     csr_mscratch = 0;
     csr_mtvec = trap_vector_reset;
     csr_mepc = 0;
+    csr_mcause_irq = false;
+    csr_mcause_code = 0;
     csr_mie = 0;
     csr_mcountinhibit_cycle = true;
     csr_mcountinhibit_instr = true;
@@ -197,6 +200,7 @@ PipelineCore::reset()
     irq_external_sampled = 0;
     irq_software_sampled = false;
     irq_timer_sampled = false;
+    irq_dma_sampled = false;
     debug_halt_sampled = false;
     debug_halt_on_reset_latched = false;
     debug_resume_sampled = false;
@@ -461,13 +465,15 @@ PipelineCore::readCsr(uint16_t addr, uint32_t rawOperand) const
       case 0x341:
         return csr_mepc;
       case 0x342:
-        // CSRU.sv does not retain mcause.  Outside the entry cycle it reads
-        // as an interrupt-tagged zero; preserve that generated-RTL behavior.
-        return 0x80000000u |
-               (interruptActive() ? interruptCode() : 0u);
+        return (static_cast<uint32_t>(csr_mcause_irq) << 31) |
+               csr_mcause_code;
       case 0x343:
-      case 0x344:
         return 0;
+      case 0x344:
+        return (externalPendingEligible() != 0 ? (1u << 11) : 0u) |
+               (static_cast<uint32_t>(irq_timer_sampled) << 7) |
+               (static_cast<uint32_t>(irq_dma_sampled) << 6) |
+               (static_cast<uint32_t>(irq_software_sampled) << 3);
       case 0xB00:
       case 0xC00:
         return static_cast<uint32_t>(csr_mcycle);
@@ -580,7 +586,7 @@ PipelineCore::writeCsr(
         csr_mstatus_tw = (value >> 21) & 1;
         break;
       case 0x304:
-        csr_mie = (csr_mie & 0xfffff777u) | (value & 0x888u);
+        csr_mie = (csr_mie & 0xfffff737u) | (value & 0x8c8u);
         break;
       case 0x305:
         csr_mtvec = (value & 0xfffffffdu) | (csr_mtvec & 0x2u);
@@ -598,6 +604,10 @@ PipelineCore::writeCsr(
         break;
       case 0x341:
         csr_mepc = value & 0xfffffffeu;
+        break;
+      case 0x342:
+        csr_mcause_irq = (value >> 31) & 1u;
+        csr_mcause_code = value & 0xfu;
         break;
       case 0xB00:
         csr_mcycle = (csr_mcycle & 0xffffffff00000000ull) | value;
@@ -762,7 +772,8 @@ PipelineCore::interruptActive() const
         (csr_mie & (1u << 11));
     const bool software = irq_software_sampled && (csr_mie & (1u << 3));
     const bool timer = irq_timer_sampled && (csr_mie & (1u << 7));
-    return (external || software || timer) &&
+    const bool dma = irq_dma_sampled && (csr_mie & (1u << 6));
+    return (external || software || timer || dma) &&
            (csr_mstatus_mie || !csr_machine_mode) && !csr_dcsr_step;
 }
 
@@ -776,13 +787,18 @@ PipelineCore::interruptCode() const
     if (irq_software_sampled && (csr_mie & (1u << 3))) {
         return 3;
     }
-    return irq_timer_sampled && (csr_mie & (1u << 7)) ? 7 : 0;
+    if (irq_timer_sampled && (csr_mie & (1u << 7))) {
+        return 7;
+    }
+    return irq_dma_sampled && (csr_mie & (1u << 6)) ? 6 : 0;
 }
 
 void
 PipelineCore::enterTrap(uint32_t mepc, uint8_t cause, bool interrupt)
 {
     csr_mepc = mepc & 0xfffffffeu;
+    csr_mcause_irq = interrupt;
+    csr_mcause_code = cause & 0xfu;
     csr_mstatus_mpp = csr_machine_mode;
     csr_mstatus_mpie = csr_mstatus_mie;
     csr_mstatus_mie = false;
@@ -952,6 +968,7 @@ PipelineCore::clockOneCycle()
     irq_external_sampled = irq_external_input;
     irq_software_sampled = irq_software_input;
     irq_timer_sampled = irq_timer_input;
+    irq_dma_sampled = irq_dma_input;
     debug_halt_sampled = debug_halt_input;
     debug_resume_sampled = debug_resume_input;
     debug_halt_on_reset_latched =
