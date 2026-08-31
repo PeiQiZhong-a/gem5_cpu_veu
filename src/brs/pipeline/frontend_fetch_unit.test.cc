@@ -172,7 +172,7 @@ TEST(FetchBusUnitTest, DiscardsFlushedInFlightResponse)
     EXPECT_EQ(ibu.requestBlockAddr(), 0x40);
 }
 
-TEST(FetchBusUnitTest, TracksExactRequestAndWordAlignedResponse)
+TEST(FetchBusUnitTest, TracksExactRequestAcrossAlignedResponseBase)
 {
     FetchBusUnit ibu;
     ibu.reset(6);
@@ -183,7 +183,7 @@ TEST(FetchBusUnitTest, TracksExactRequestAndWordAlignedResponse)
 
     FetchBlock block;
     block.fetchAddr = 6;
-    block.blockAddr = 4;
+    block.blockAddr = 0;
     EXPECT_TRUE(ibu.acceptResponse(block));
     EXPECT_EQ(ibu.requestFetchAddr(), 16);
 }
@@ -301,6 +301,61 @@ TEST(FrontendFetchUnitTest, BypassesFirstValidWordForMisalignedFetch)
     ASSERT_TRUE(out.instValid);
     EXPECT_EQ(out.pc, 12);
     EXPECT_EQ(out.instr, 0x00400213);
+}
+
+TEST(FrontendFetchUnitTest, DoesNotReplayCrossWordInstructionBeforeNextFetch)
+{
+    FrontendFetchUnit frontend;
+    frontend.reset(0x19aa);
+    advanceResetEnd(frontend, 0x19c0);
+
+    FrontendFetchUnit::Input input;
+    input.textEnd = 0x19c0;
+    auto out = frontend.step(input);
+    ASSERT_TRUE(out.requestValid);
+    EXPECT_EQ(out.requestFetchAddr, 0x19aa);
+    frontend.markRequestIssued();
+
+    // This is the archive's 16-byte line at 0x19a0.  The lbu at 0x19aa
+    // occupies the high half of 0x19a8 and the low half of 0x19ac;
+    // the following bnez at 0x19ae crosses into the next line.
+    FetchBlock first;
+    first.fetchAddr = 0x19aa;
+    first.blockAddr = 0x19a8;
+    first.words = {0x41aa0733, 0x8b569bba, 0xc5038dde, 0x1ee30004};
+
+    out = frontend.step(responseInput(0x19c0, first));
+    EXPECT_FALSE(out.instValid);
+
+    input = {};
+    input.textEnd = 0x19c0;
+    out = frontend.step(input);
+    EXPECT_FALSE(out.instValid);
+    ASSERT_TRUE(out.requestValid);
+    EXPECT_EQ(out.requestFetchAddr, 0x19b0);
+    frontend.markRequestIssued();
+
+    // The aligner has the first half of the lbu but no FIFO word for the
+    // moment.  It must not replay that value as a second instruction.
+    out = frontend.step(input);
+    ASSERT_TRUE(out.instValid);
+    EXPECT_EQ(out.pc, 0x19aa);
+    EXPECT_EQ(out.instr, 0x0004c503);
+
+    FetchBlock second;
+    second.fetchAddr = 0x19b0;
+    second.blockAddr = 0x19b0;
+    second.words = {0x866ece05, 0x013de463, 0xfff98613, 0x86ce45c2};
+
+    out = frontend.step(responseInput(0x19c0, second));
+    EXPECT_FALSE(out.instValid);
+
+    input = {};
+    input.textEnd = 0x19c0;
+    out = frontend.step(input);
+    ASSERT_TRUE(out.instValid);
+    EXPECT_EQ(out.pc, 0x19ae);
+    EXPECT_EQ(out.instr, 0xce051ee3);
 }
 
 TEST(FrontendFetchUnitTest, AcceptsResponseWhileStalled)

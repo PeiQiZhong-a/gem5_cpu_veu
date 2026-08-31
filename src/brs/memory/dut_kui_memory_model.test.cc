@@ -81,24 +81,24 @@ TEST(DutKuiMemoryModelTest, DbusTraversesRegistered32To256AndRvActivePath)
     EXPECT_EQ(outputs.dbus.readData, 0xaabbccddu);
 }
 
-TEST(DutKuiMemoryModelTest, VeuUsesNative256BitMasterPath)
+TEST(DutKuiMemoryModelTest, AdaptsMikuiVeuBeatTo256BitMasterPath)
 {
     DutKuiMemoryModel model;
     DutKuiVeuRequest request;
     request.transactionId = 7;
-    request.address = 0x29120020;
+    request.address = 0x29120010;
     request.isWrite = true;
-    request.writeStrobe = (uint32_t{1} << 0) | (uint32_t{1} << 31);
+    request.writeStrobe = (uint32_t{1} << 0) | (uint32_t{1} << 15);
     request.data[0] = 0x12;
-    request.data[31] = 0xfe;
+    request.data[15] = 0xfe;
     ASSERT_TRUE(model.acceptVeu(request));
 
     EXPECT_FALSE(model.clock(true).veuWrite.valid);
     EXPECT_EQ(model.crossbarState(), DutKuiDataCrossbar::State::Active);
     EXPECT_FALSE(model.clock(true).veuWrite.valid);
-    EXPECT_EQ(model.readByte(0x29120020), 0x12);
-    EXPECT_EQ(model.readByte(0x2912003f), 0xfe);
-    EXPECT_EQ(model.readByte(0x29120021), 0);
+    EXPECT_EQ(model.readByte(0x29120010), 0x12);
+    EXPECT_EQ(model.readByte(0x2912001f), 0xfe);
+    EXPECT_EQ(model.readByte(0x29120011), 0);
     EXPECT_FALSE(model.clock(true).veuWrite.valid);
     const auto outputs = model.clock(true);
     ASSERT_TRUE(outputs.veuWrite.valid);

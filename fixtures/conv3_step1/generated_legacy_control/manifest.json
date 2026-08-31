@@ -1,0 +1,215 @@
+{
+  "archive": {
+    "control_flow_observations": {
+      "dynamic_sau_count_basis": "archive source/static program analysis; no retire trace was supplied",
+      "retire_trace_available": false,
+      "static_compressed_ebreak_pcs": [
+        3122
+      ],
+      "static_uncompressed_ebreak_pcs": []
+    },
+    "filename": "kuiloong-conv2d-testcase2.tar.gz",
+    "instruction_hex": {
+      "byte_order": "little-endian word bytes",
+      "bytes": 589824,
+      "member": "instruction.hex",
+      "sha256": "7208598f61edba17594ef9ac9f8402a113f021293266748e99f2945e573bdce2",
+      "token_count": 65536,
+      "token_width_bits": 32
+    },
+    "memory_hex": {
+      "byte_order": "little-endian word bytes",
+      "bytes": 589824,
+      "member": "memory.hex",
+      "sha256": "3095ac54ad22931d3a8a37513a9a4eaa9b8c23d57c0831ad919f6008b5b32811",
+      "token_count": 65536,
+      "token_width_bits": 32
+    },
+    "path": "/home/xch/workspace/kuiloong-conv2d-testcase2.tar.gz",
+    "sau_dynamic_count_from_archive_program_analysis": {
+      "msetins1": 1,
+      "msetins2": 1,
+      "msetins3": 32,
+      "msetins4": 32
+    },
+    "sau_static_sites": [
+      {
+        "pc": 2506,
+        "rs1": 23,
+        "rs2": 10,
+        "slot": 1,
+        "word": 11243627
+      },
+      {
+        "pc": 2568,
+        "rs1": 11,
+        "rs2": 12,
+        "slot": 2,
+        "word": 113610859
+      },
+      {
+        "pc": 2880,
+        "rs1": 26,
+        "rs2": 21,
+        "slot": 3,
+        "word": 224202859
+      },
+      {
+        "pc": 2886,
+        "rs1": 23,
+        "rs2": 21,
+        "slot": 4,
+        "word": 324767851
+      },
+      {
+        "pc": 2916,
+        "rs1": 7,
+        "rs2": 5,
+        "slot": 3,
+        "word": 206803051
+      },
+      {
+        "pc": 2938,
+        "rs1": 5,
+        "rs2": 7,
+        "slot": 4,
+        "word": 309497963
+      }
+    ],
+    "sha256": "de3f180428712d8d8e05efc8c483c808a8a9b3740c7e5a05df5d998fe1c7472e",
+    "source_members": {
+      "conv2d_no_tile.hpp": {
+        "bytes": 7230,
+        "sha256": "a2f9817a4caa2a9cb64aa84b2952b98ac17e0c928dd220eb48c861252ea48ff9"
+      },
+      "main.cpp": {
+        "bytes": 820,
+        "sha256": "f54279564a66408494cbe5e752df8b1875dba5694a789cf1303cd4333a465e5f"
+      }
+    }
+  },
+  "commands": {
+    "llvm_mc": [
+      "/usr/bin/llvm-mc",
+      "--triple=riscv32-unknown-elf",
+      "--filetype=obj",
+      "-I",
+      "fixtures/conv3_step1",
+      "generated_legacy_control.S",
+      "-o",
+      "<temporary>/generated_legacy_control.o"
+    ],
+    "llvm_objcopy": [
+      "/usr/bin/llvm-objcopy",
+      "-O",
+      "binary",
+      "--only-section=.text",
+      "<temporary>/generated_legacy_control.o",
+      "<temporary>/generated_legacy_control.bin"
+    ],
+    "word_token_conversion": "read each 4-byte binary word as little-endian and emit one lowercase 8-hex-digit token; zero-pad to 65536 words"
+  },
+  "conv": {
+    "C": 16,
+    "H": 16,
+    "N": 1,
+    "OC": 16,
+    "W": 32,
+    "bias_base": 689121536,
+    "bias_bytes": 32,
+    "cutbit": 12,
+    "input_base": 689111040,
+    "input_bytes": 8192,
+    "input_initialization": "signed INT8 input[i] = i / 16, stored bytewise",
+    "kernel": 3,
+    "output_base": 689121568,
+    "output_bytes": 8192,
+    "padded_scratch_base": 689135616,
+    "padded_scratch_bytes": 13824,
+    "padding": 1,
+    "stride": 1,
+    "weight_base": 689119232,
+    "weight_bias_provenance": "bytes from comparison memory image at configured addresses",
+    "weight_bytes": 2304
+  },
+  "fixture": {
+    "mode": "legacy_control",
+    "name": "generated_legacy_control",
+    "purpose": "same-shape legacy control with repeated tile starts",
+    "sau_instruction_counts": {
+      "msetins1": 1,
+      "msetins2": 1,
+      "msetins3": 32,
+      "msetins4": 32
+    },
+    "software_padding": true
+  },
+  "generator": "generate_fixtures.py",
+  "image": {
+    "data_base": 689045504,
+    "format": "one 8-hex-digit 32-bit readmemh token per line",
+    "instruction_base": 0,
+    "instruction_bytes": 262144,
+    "instruction_words": 65536,
+    "real_data_bytes": 196608,
+    "word_to_cpu_bytes": "token value encoded little-endian"
+  },
+  "outputs": {
+    "instruction_hex": {
+      "bytes": 589824,
+      "path": "generated_legacy_control/instruction.hex",
+      "sau_instruction_counts_observed": {
+        "msetins1": 1,
+        "msetins2": 1,
+        "msetins3": 32,
+        "msetins4": 32
+      },
+      "sha256": "2dcf34ff2037ea74ac00fae10464525be68637985097877075ce97ce3c609856",
+      "token_count": 65536
+    },
+    "memory_hex": {
+      "bytes": 589824,
+      "identical_to_archive_member": true,
+      "path": "generated_legacy_control/memory.hex",
+      "sha256": "3095ac54ad22931d3a8a37513a9a4eaa9b8c23d57c0831ad919f6008b5b32811"
+    }
+  },
+  "program_layout": {
+    "config_region": [
+      16384,
+      20480
+    ],
+    "input_init_region": [
+      44,
+      64
+    ],
+    "padding_region": [
+      512,
+      16384
+    ],
+    "shared_tail_pc": 20480,
+    "startup_region": [
+      0,
+      44
+    ],
+    "termination": "ebreak at shared_tail_pc"
+  },
+  "provenance": "assembly-generated comparison fixture",
+  "schema": "gem5-conv3-step1-fixture-v1",
+  "sources": {
+    "common": {
+      "path": "conv3_fixture_common.S",
+      "sha256": "1b733b066d6586d88de8f994e063b4acfe9b916e56e0cfe05686ed0f96c21e52"
+    },
+    "entry": {
+      "path": "generated_legacy_control.S",
+      "sha256": "5a8f3a97592ef06c79d56a243596ba67d1a994991feda9706eed27e7343b306a"
+    }
+  },
+  "toolchain": {
+    "llvm_mc": "/usr/lib/llvm-18/bin/llvm-mc",
+    "llvm_mc_version": "Ubuntu LLVM version 18.1.3",
+    "llvm_objcopy": "/usr/lib/llvm-18/bin/llvm-objcopy",
+    "llvm_objcopy_version": "llvm-objcopy, compatible with GNU objcopy"
+  }
+}

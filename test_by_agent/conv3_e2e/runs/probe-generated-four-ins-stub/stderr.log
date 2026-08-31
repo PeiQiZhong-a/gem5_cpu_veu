@@ -1,0 +1,4 @@
+warn: No dot file generated. Please install pydot to generate the dot file and pdf.
+src/brs/pipeline_mini_cpu.cc:871: info: preloadTbReadmemh32Image: wrote 262144 bytes at 0 from /home/xch/workspace/soc_gem5/gem5_cpu_veu/fixtures/conv3_step1/generated_four_ins_control_matched/instruction.hex
+src/brs/pipeline_mini_cpu.cc:800: info: preloadDataFunctional: ignored 65536 zero-fill bytes beyond the real SRAM banks
+src/brs/pipeline_mini_cpu.cc:822: info: preloadDataFunctional: wrote 196608 bytes to DMEM at 0x29120000 from /home/xch/workspace/soc_gem5/gem5_cpu_veu/fixtures/conv3_step1/generated_four_ins_control_matched/memory.hex

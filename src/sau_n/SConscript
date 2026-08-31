@@ -1,0 +1,83 @@
+Import("*")
+
+# Step 1 standalone import allowlist for
+# gem5::sau_n::StreamingConvPipelineModel. The source provenance is recorded in
+# docs/SAU_N_SOURCE_MANIFEST.sha256; this target-side file intentionally omits
+# RTL, Python timing wrappers, historical models, and unrelated tests.
+
+Source("im2col_types.cc")
+Source("im2col_address.cc")
+Source("banked_scratchpad.cc")
+Source("sau_types.cc")
+Source("sau_generators.cc")
+Source("sau_model.cc")
+Source("streaming_pipeline_contract.cc")
+Source("pipelined_im2col_model.cc")
+Source("streaming_conv_pipeline_model.cc")
+
+GTest(
+    "im2col_types.test",
+    "im2col_types.test.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "im2col_address.test",
+    "im2col_address.test.cc",
+    "im2col_address.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "banked_scratchpad.test",
+    "banked_scratchpad.test.cc",
+    "banked_scratchpad.cc",
+    "im2col_address.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "sau_types.test",
+    "sau_types.test.cc",
+    "sau_types.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "sau_generators.test",
+    "sau_generators.test.cc",
+    "sau_generators.cc",
+)
+GTest(
+    "sau_model.test",
+    "sau_model.test.cc",
+    "sau_model.cc",
+    "sau_types.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "streaming_pipeline_contract.test",
+    "streaming_pipeline_contract.test.cc",
+    "streaming_pipeline_contract.cc",
+    "sau_types.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "pipelined_im2col_model.test",
+    "pipelined_im2col_model.test.cc",
+    "pipelined_im2col_model.cc",
+    "streaming_pipeline_contract.cc",
+    "banked_scratchpad.cc",
+    "im2col_address.cc",
+    "sau_types.cc",
+    "im2col_types.cc",
+)
+GTest(
+    "streaming_conv_pipeline_model.test",
+    "streaming_conv_pipeline_model.test.cc",
+    "streaming_conv_pipeline_model.cc",
+    "pipelined_im2col_model.cc",
+    "streaming_pipeline_contract.cc",
+    "sau_model.cc",
+    "sau_generators.cc",
+    "banked_scratchpad.cc",
+    "im2col_address.cc",
+    "sau_types.cc",
+    "im2col_types.cc",
+)

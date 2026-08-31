@@ -1,5 +1,7 @@
 #include "brs/pipeline/sau_decode.hh"
 
+#include <array>
+
 #include <gtest/gtest.h>
 
 namespace gem5
@@ -41,6 +43,45 @@ TEST(SpiritSauDecodeTest, DecodesAllTwelveInstructions)
             decoded.writeType,
             form == 0 ? SauWriteType::Set : SauWriteType::Clear);
         EXPECT_EQ(decoded.veStart, 0);
+    }
+}
+
+TEST(SpiritSauDecodeTest, DecodesSetWordsPresentInArchivedConvProgram)
+{
+    struct ArchiveInstruction
+    {
+        uint32_t pc;
+        uint32_t word;
+        SauInstruction operation;
+        uint8_t slot;
+        uint8_t rs1;
+        uint8_t rs2;
+    };
+    // SHA-256 and archive provenance are recorded alongside the generated
+    // comparison fixtures. The two Set3/Set4 pairs are the main/tail loop
+    // sites in the compressed-RV32 instruction stream.
+    constexpr std::array<ArchiveInstruction, 6> instructions{{
+        {0x09ca, 0x00ab906b, SauInstruction::Set1, 1, 23, 10},
+        {0x0a08, 0x06c5906b, SauInstruction::Set2, 2, 11, 12},
+        {0x0b40, 0x0d5d106b, SauInstruction::Set3, 3, 26, 21},
+        {0x0b46, 0x135b906b, SauInstruction::Set4, 4, 23, 21},
+        {0x0b64, 0x0c53906b, SauInstruction::Set3, 3, 7, 5},
+        {0x0b7a, 0x1272906b, SauInstruction::Set4, 4, 5, 7},
+    }};
+
+    for (const auto &expected : instructions) {
+        const SauDecodeInfo decoded =
+            decodeSpiritSauInstruction(expected.word);
+        SCOPED_TRACE(expected.pc);
+        ASSERT_TRUE(decoded.valid);
+        EXPECT_EQ(decoded.operation, expected.operation);
+        EXPECT_EQ(decoded.slot, expected.slot);
+        EXPECT_EQ(decoded.rd, 0);
+        EXPECT_EQ(decoded.rs1, expected.rs1);
+        EXPECT_EQ(decoded.rs2, expected.rs2);
+        EXPECT_TRUE(decoded.csrWrite);
+        EXPECT_FALSE(decoded.csrRead);
+        EXPECT_EQ(decoded.csrAddr, SauCsrBase + (expected.slot - 1) * 2);
     }
 }
 

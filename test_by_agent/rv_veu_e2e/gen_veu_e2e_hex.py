@@ -45,6 +45,13 @@ DUT_KUI_LAYOUT = MemoryLayout(
     0x29120420,
     0x29120620,
 )
+MIKUI_LAYOUT = MemoryLayout(
+    0x20010000,
+    0x20010020,
+    0x20010120,
+    0x20010420,
+    0x20010620,
+)
 
 
 @dataclass(frozen=True)
@@ -56,10 +63,11 @@ class Case:
     config: int
     scalar: int = 0
     reduction: str = ""
+    illegal: bool = False
+    three_source: bool = False
 
 
-# These are the 16 rows in configs/brs/veu_timing_profile.csv.  VADD has a
-# vector and scalar row, so it appears as two independent program variants.
+# Normal (non-illegal) Mikui VEU operations covered by the E2E matrix.
 CASES = (
     Case("vadd_vector", "vadd", 0, "src1+src2", 0),
     Case("vadd_scalar", "vadd", 0, "src2", 0x800, 0x13),
@@ -71,12 +79,27 @@ CASES = (
     Case("vand", "vand", 6, "src1+src2", 0),
     Case("vor", "vor", 7, "src1+src2", 0),
     Case("vxor", "vxor", 8, "src1+src2", 0),
+    Case("vslideup_scalar", "vslideup", 9, "src2", 0x800, 4),
+    Case("vslidedown_scalar", "vslidedown", 10, "src2", 0x800, 4),
     Case("vmv", "vmv", 11, "src1", 0),
+    Case("vmv_scalar", "vmv", 11, "none", 0x800, 0x13131313),
     Case("vssrl_scalar", "vssrl", 12, "src2", 0x800, 3),
     Case("vssra_scalar", "vssra", 13, "src2", 0x900, 3),
     Case("vnclip_scalar", "vnclip", 14, "src2", 0x800, 0x00280005),
     Case("vredsum", "vredsum", 16, "src1", 0, reduction="sum"),
     Case("vmul", "vmul", 20, "src1+src2", 0),
+    Case("illegal_vcompress", "vcompress", 17, "none", 0, illegal=True),
+    Case("illegal_vwredsum", "vwredsum", 15, "none", 0, illegal=True),
+    Case("illegal_vmulhsu", "vmulhsu", 21, "none", 0, illegal=True),
+    Case("illegal_vmulh", "vmulh", 22, "none", 0, illegal=True),
+    Case(
+        "illegal_vmsub", "vmsub", 0, "none", 0,
+        illegal=True, three_source=True,
+    ),
+    Case(
+        "illegal_vmac", "vmac", 1, "none", 0,
+        illegal=True, three_source=True,
+    ),
 )
 CASE_BY_NAME = {case.name: case for case in CASES}
 
@@ -131,6 +154,15 @@ def encode_vector(function7: int, rd: int, rs1: int, rs2: int) -> int:
     return (function7 << 25) | (rs2 << 20) | (rs1 << 15) | (rd << 7) | 0x6B
 
 
+def encode_three_source(
+    rs3: int, function3: int, rd: int, rs1: int, rs2: int,
+) -> int:
+    return (
+        (rs3 << 27) | (1 << 25) | (rs2 << 20) | (rs1 << 15) |
+        (function3 << 12) | (rd << 7) | 0x2B
+    )
+
+
 def emit_load_imm(rd: int, value: int) -> list[int]:
     """Return LUI/ADDI code that writes the exact RV32 value to rd."""
     value &= 0xFFFFFFFF
@@ -148,6 +180,16 @@ def signed_byte(value: int) -> int:
     return value if value < 0x80 else value - 0x100
 
 
+def saturate_byte(value: int, signed_mode: bool) -> int:
+    if signed_mode:
+        return min(max(value, -128), 127) & 0xFF
+    return min(max(value, 0), 255)
+
+
+def scalar_byte(value: int, index: int) -> int:
+    return (value >> ((index % 4) * 8)) & 0xFF
+
+
 def make_sources(byte_count: int, rtl_vadd: bool = False) -> tuple[bytearray, bytearray]:
     if rtl_vadd:
         return bytearray([0xFD]) * byte_count, bytearray([0x01]) * byte_count
@@ -158,14 +200,24 @@ def make_sources(byte_count: int, rtl_vadd: bool = False) -> tuple[bytearray, by
 
 
 def expected_result(case: Case, source1: bytearray, source2: bytearray) -> bytearray:
+    if case.illegal:
+        return bytearray(len(source1))
+    if case.name == "vslideup_scalar":
+        return bytearray(case.scalar) + source2[:-case.scalar]
+    if case.name == "vslidedown_scalar":
+        return source2[case.scalar:] + bytearray(case.scalar)
     result = bytearray(len(source1))
     for index, (a, b) in enumerate(zip(source1, source2)):
-        if case.name == "vadd_vector":
-            value = a + b
-        elif case.name == "vadd_scalar":
-            value = case.scalar + b
-        elif case.name == "vsub":
-            value = a - b
+        signed_mode = bool(((case.config >> 7) & 0x3) & 0x2)
+        lhs = scalar_byte(case.scalar, index) if case.config & 0x800 else a
+        if case.op == "vadd":
+            lhs_value = signed_byte(lhs) if signed_mode else lhs
+            rhs_value = signed_byte(b) if signed_mode else b
+            value = saturate_byte(lhs_value + rhs_value, signed_mode)
+        elif case.op == "vsub":
+            lhs_value = signed_byte(lhs) if signed_mode else lhs
+            rhs_value = signed_byte(b) if signed_mode else b
+            value = saturate_byte(lhs_value - rhs_value, signed_mode)
         elif case.name == "vmin":
             value = a if signed_byte(a) < signed_byte(b) else b
         elif case.name == "vmax":
@@ -177,9 +229,9 @@ def expected_result(case: Case, source1: bytearray, source2: bytearray) -> bytea
         elif case.name == "vxor":
             value = a ^ b
         elif case.name == "vmul":
-            value = a * b
-        elif case.name == "vmv":
-            value = a
+            value = saturate_byte(a * b, False)
+        elif case.op == "vmv":
+            value = lhs
         elif case.name == "vssrl_scalar":
             value = b >> case.scalar
         elif case.name == "vssra_scalar":
@@ -212,6 +264,15 @@ def write_byte_hex(path: Path, data: bytearray) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
+def write_readmemh32_hex(path: Path, data: bytearray) -> None:
+    padded = data + bytearray((-len(data)) % 4)
+    words = [
+        int.from_bytes(padded[offset:offset + 4], byteorder="little")
+        for offset in range(0, len(padded), 4)
+    ]
+    write_word_hex(path, words)
+
+
 def source_bases(case: Case, layout: MemoryLayout = LOCAL_LAYOUT) -> list[int]:
     if case.source_set == "src1+src2":
         return [layout.src1, layout.src2]
@@ -219,11 +280,14 @@ def source_bases(case: Case, layout: MemoryLayout = LOCAL_LAYOUT) -> list[int]:
         return [layout.src1]
     if case.source_set == "src2":
         return [layout.src2]
+    if case.source_set == "none":
+        return []
     raise ValueError(f"unsupported source set: {case.source_set}")
 
 
 def build_program(
     case: Case, vlen: int, expected: bytearray,
+    mask: int = 0xFFFF,
     layout: MemoryLayout = LOCAL_LAYOUT,
 ) -> list[int]:
     scalar_enabled = bool(case.config & 0x800)
@@ -236,13 +300,17 @@ def build_program(
     words += emit_load_imm(3, layout.dest)
     words += emit_load_imm(4, case.config)
     words += emit_load_imm(5, vlen)
-    words += emit_load_imm(6, 0xFFFFFFFF)
+    words += emit_load_imm(6, mask)
     words += [
         encode_vsetcsr(4, VEUCFG),
         encode_vsetcsr(3, VEUWADDR),
         encode_vsetcsr(5, VEUVLEN),
         encode_vsetcsr(6, VEUMASK),
-        encode_vector(case.function7, 7, 1, 2),
+        (
+            encode_three_source(3, case.function7, 7, 1, 2)
+            if case.three_source else
+            encode_vector(case.function7, 7, 1, 2)
+        ),
         encode_vgetcsr(11, VEUSTATUS),
         encode_andi(11, 11, 1),
         encode_bne(11, 0, -8),
@@ -254,7 +322,7 @@ def build_program(
     ]
     words += emit_load_imm(11, len(expected) // 4)
 
-    # ProgramImage currently holds 64 instructions.  A loop keeps the 2048-bit
+    # ProgramImage currently holds 64 instructions. A loop keeps the 1024-bit
     # case compact while still checking every destination word against an
     # independently generated DMEM golden image.
     words += [
@@ -272,14 +340,18 @@ def build_program(
 
 
 def build_metadata(
-    case: Case, vlen: int, layout: MemoryLayout = LOCAL_LAYOUT,
+    case: Case, vlen: int, mask: int = 0xFFFF,
+    layout: MemoryLayout = LOCAL_LAYOUT,
 ) -> dict[str, object]:
-    chunks = vlen // 256
+    chunks = vlen // 128
     bases = source_bases(case, layout)
-    reads = [base + chunk * 32 for base in bases for chunk in range(chunks)]
-    writes = [layout.dest] if case.reduction else [
-        layout.dest + chunk * 32 for chunk in range(chunks)
-    ]
+    reads = [base + chunk * 16 for base in bases for chunk in range(chunks)]
+    if mask == 0 or case.illegal:
+        writes = []
+    elif case.reduction:
+        writes = [layout.dest] * min(chunks, 3)
+    else:
+        writes = [layout.dest + chunk * 16 for chunk in range(chunks)]
     return {
         "case": case.name,
         "op": case.op,
@@ -292,30 +364,42 @@ def build_metadata(
         "expected_base": layout.expected,
         "data_base": layout.data_base,
         "config": case.config,
+        "scalar_en": int(bool(case.config & 0x800)),
+        "source_set": case.source_set,
+        "mask": mask,
+        "mask_class": (
+            "zero" if mask == 0 else ("full" if mask == 0xFFFF else "partial")
+        ),
+        "illegal": case.illegal,
         "max_cycles": 10000,
     }
 
 
 def generate(
     case: Case, vlen: int, outdir: Path,
+    mask: int = 0xFFFF,
     layout: MemoryLayout = LOCAL_LAYOUT,
 ) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     byte_count = vlen // 8
-    rtl_vadd = layout == DUT_KUI_LAYOUT
-    if rtl_vadd and case.name != "vadd_vector":
-        raise ValueError("dut-kui layout currently supports only vadd_vector")
+    rtl_layout = layout in (DUT_KUI_LAYOUT, MIKUI_LAYOUT)
+    rtl_vadd = rtl_layout and case.name == "vadd_vector"
     if rtl_vadd:
         case = replace(case, config=0x700)
     source1, source2 = make_sources(byte_count, rtl_vadd=rtl_vadd)
     functional_result = expected_result(case, source1, source2)
     expected = bytearray([0xA5]) * byte_count
     if case.reduction:
-        # Reduction policy is final_only: the last token writes one 32-byte
-        # result chunk at DEST. Later destination chunks retain old memory.
-        expected[:32] = functional_result[:32]
+        # Mikui writes the last up-to-three running reduction results to the
+        # same address; the final write leaves this golden value at DEST.
+        write_result = bytearray([0xA5]) * byte_count
+        write_result[:16] = functional_result[:16]
     else:
-        expected = functional_result
+        write_result = functional_result
+    if not case.illegal:
+        for index, value in enumerate(write_result):
+            if mask & (1 << (index % 16)):
+                expected[index] = value
 
     def offset(address: int) -> int:
         return address - layout.data_base
@@ -328,11 +412,15 @@ def generate(
     memory[offset(layout.expected):offset(layout.expected) + byte_count] = expected
 
     write_word_hex(
-        outdir / "instr_mem.hex", build_program(case, vlen, expected, layout)
+        outdir / "instr_mem.hex",
+        build_program(case, vlen, expected, mask, layout),
     )
-    write_byte_hex(outdir / "data_mem.hex", memory)
+    if rtl_layout:
+        write_readmemh32_hex(outdir / "data_mem.hex", memory)
+    else:
+        write_byte_hex(outdir / "data_mem.hex", memory)
     (outdir / "metadata.json").write_text(
-        json.dumps(build_metadata(case, vlen, layout), indent=2) + "\n",
+        json.dumps(build_metadata(case, vlen, mask, layout), indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -340,10 +428,13 @@ def generate(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case", choices=sorted(CASE_BY_NAME))
-    parser.add_argument("--vlen", type=int, choices=(256, 2048))
+    parser.add_argument("--vlen", type=int, choices=(128, 256, 512, 1024))
+    parser.add_argument(
+        "--mask", choices=("full", "partial", "zero"), default="full",
+    )
     parser.add_argument("--outdir", type=Path)
     parser.add_argument(
-        "--layout", choices=("local", "dut-kui"), default="local",
+        "--layout", choices=("local", "dut-kui", "mikui"), default="local",
         help="Architectural data address layout; default preserves existing tests",
     )
     parser.add_argument("--list-cases", action="store_true")
@@ -355,8 +446,13 @@ def main() -> None:
         return
     if args.case is None or args.vlen is None or args.outdir is None:
         parser.error("--case, --vlen, and --outdir are required unless --list-cases is used")
-    layout = DUT_KUI_LAYOUT if args.layout == "dut-kui" else LOCAL_LAYOUT
-    generate(CASE_BY_NAME[args.case], args.vlen, args.outdir, layout)
+    layout = {
+        "local": LOCAL_LAYOUT,
+        "dut-kui": DUT_KUI_LAYOUT,
+        "mikui": MIKUI_LAYOUT,
+    }[args.layout]
+    mask = {"full": 0xFFFF, "partial": 0x5555, "zero": 0}[args.mask]
+    generate(CASE_BY_NAME[args.case], args.vlen, args.outdir, mask, layout)
 
 
 if __name__ == "__main__":

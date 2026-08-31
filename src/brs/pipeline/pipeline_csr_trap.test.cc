@@ -97,6 +97,25 @@ TEST(PipelineCsrTrapTest, TimerInterruptIsRegisteredAndResolvedInId)
     EXPECT_EQ(core.idex_cur.pc, 0x40u);
 }
 
+TEST(PipelineCsrTrapTest, DmaInterruptUsesMieBitSixAndCauseSix)
+{
+    PipelineCore core;
+    core.reset(0, 0x200);
+    disableFetch(core);
+    core.writeCsr(0x304, 1u << 6, CsrWriteType::WRITE);
+    core.writeCsr(0x300, 1u << 3, CsrWriteType::WRITE);
+    core.setInterruptInputs(0, false, false, true);
+
+    core.stepOneCycle();
+    EXPECT_EQ(core.getCSR(0x344) & (1u << 6), 1u << 6);
+    core.ifid_cur = {true, 0x40, 0x00000013, 4};
+    core.stepOneCycle();
+
+    EXPECT_EQ(core.getCSR(0x341), 0x44u);
+    EXPECT_EQ(core.getPC(), 0x100u);
+    EXPECT_EQ(core.getCSR(0x342), 0x80000006u);
+}
+
 TEST(PipelineCsrTrapTest, DataResponseAndTimerInterruptCompleteSameEdge)
 {
     PipelineCore core;

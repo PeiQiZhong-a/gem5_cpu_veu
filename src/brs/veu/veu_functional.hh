@@ -28,6 +28,7 @@ struct VeuOperationInfo
     const char *name = "illegal";
     uint8_t sourceMask = 0;
     bool reduction = false;
+    bool rtlIllegal = false;
     bool supported = false;
 };
 
@@ -36,7 +37,7 @@ struct VeuFunctionalInput
     VeuInstruction instruction = VeuInstruction::Unknown;
     uint32_t config = 0;
     uint32_t scalar = 0;
-    uint32_t writeMask = 0xffffffffu;
+    uint32_t writeMask = VeuFullWriteMask;
     uint32_t chunkIndex = 0;
     uint32_t chunkCount = 1;
     VeuVector source1 = {};
@@ -47,8 +48,12 @@ struct VeuFunctionalInput
 struct VeuFunctionalResult
 {
     VeuVector data = {};
-    uint32_t writeStrobe = 0xffffffffu;
+    uint32_t writeStrobe = VeuFullWriteMask;
     bool writeResult = true;
+    uint32_t outputChunk = 0;
+    bool hasExtraResult = false;
+    VeuVector extraData = {};
+    uint32_t extraChunk = 0;
 };
 
 class VeuFunctionalExecutor
@@ -63,9 +68,11 @@ class VeuFunctionalExecutor
     static bool sourceRequired(uint8_t mask, VeuSource source);
 
   private:
-    int64_t reductionAccumulator = 0;
+    uint32_t reductionAccumulator = 0;
     uint32_t reductionValue = 0;
     bool haveReductionValue = false;
+    VeuVector slidePrevious = {};
+    bool haveSlidePrevious = false;
 };
 
 } // namespace brs

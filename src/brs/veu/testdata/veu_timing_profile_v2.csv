@@ -1,0 +1,2 @@
+profile_id,op,mode,scalar_en,mask_class,source_set,chunk_class,vfu_latency,vfu_ii,write_policy,fifo_depth,max_outstanding_reads,vsu_latency,timing_source,evidence_id
+legacy_v2_vadd,vadd,2,0,full,src1+src2,1,2,1,per_chunk,4,4,1,rtl_sim,legacy_v2_evidence

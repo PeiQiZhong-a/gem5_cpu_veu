@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/loader/object_file.hh"
+#include "dev/intpin.hh"
 #include "mem/packet.hh"
 #include "mem/port.hh"
 #include "mem/request.hh"
@@ -23,6 +24,7 @@
 #include "brs/pipeline_stats.hh"
 #include "brs/memory/dut_kui_memory_model.hh"
 #include "brs/memory/npu_lpnpu_mikui_memory_model.hh"
+#include "brs/sau/sau_n_endpoint.hh"
 
 namespace gem5
 {
@@ -83,16 +85,28 @@ class PipelineMiniCPU : public ClockedObject
     Addr tbInstSize;
     Addr tbDataBase;
     Addr tbDataStorageSize;
+    bool dmaPioEnabled;
+    Addr dmaPioBase;
+    Addr dmaPioSize;
+    bool dmaIrqInput = false;
     brs::DutKuiMemoryModel dutKuiMemory;
     brs::NpuLpnpuMikuiMemoryModel npuLpnpuMikuiMemory;
+    std::unique_ptr<brs::SauNEndpoint> sauNSau;
+    uint64_t observedSauOperationStarts = 0;
+    uint64_t observedSauOperationCompletes = 0;
+    uint64_t sauRoiStartRetiredInst = 0;
+    uint64_t sauRoiEndRetiredInst = 0;
     bool tbInstOutstanding = false;
     bool tbDataOutstanding = false;
     std::string cycleTraceFile;
+    bool cycleTraceCompact;
     std::ofstream cycleTrace;
+    uint64_t sauNOutputTraceOperations = 0;
 
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
     CpuRequestPort veuPort;
+    IntSinkPin<PipelineMiniCPU> dmaIrqPin;
     PacketPtr pendingInstFetch = nullptr;
     bool instFetchRetry = false;
     Addr pendingInstAddr = 0;
@@ -104,6 +118,11 @@ class PipelineMiniCPU : public ClockedObject
     unsigned pendingDataSize = 0;
     bool pendingDataIsWrite = false;
     uint32_t pendingDataWriteValue = 0;
+    bool pendingDataUnaligned = false;
+    unsigned pendingDataBeatCount = 1;
+    unsigned pendingDataBeatIndex = 0;
+    uint32_t pendingDataCurrentBeatAddress = 0;
+    uint32_t pendingDataReadValue = 0;
 
     PacketPtr pendingVeuReq = nullptr;
     bool veuReqRetry = false;
@@ -159,9 +178,11 @@ class PipelineMiniCPU : public ClockedObject
     void writeDutKuiCycleTrace(
         const brs::SauMemoryOutput &sau,
         const brs::DutKuiMemoryOutputs &outputs);
+    void writeSauNOutputTrace();
     void processDutKuiMemoryCycle(const brs::SauMemoryOutput &sau);
     bool dutKuiMemoryEnabled() const;
     bool npuLpnpuMikuiMemoryEnabled() const;
+    bool dmaPioMapped(Addr address) const;
     Addr icacheLineBase(Addr addr) const;
     bool icacheLookup(Addr addr, uint32_t &inst);
     bool icacheLookupBlock(Addr fetchAddr, FetchBlock &block);
@@ -175,6 +196,9 @@ class PipelineMiniCPU : public ClockedObject
 
     Port &getPort(const std::string &if_name,
                   PortID idx = InvalidPortID) override;
+
+    void raiseInterruptPin(int id);
+    void lowerInterruptPin(int id);
 
     void startup() override;
 };

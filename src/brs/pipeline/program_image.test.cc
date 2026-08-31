@@ -37,6 +37,41 @@ TEST(DataImageTest, LoadsReadmemhWordsAsLittleEndianBytes)
     std::remove(path.c_str());
 }
 
+TEST(DataImageTest, SupportsTheLastWordOfA65536WordReadmemhImage)
+{
+    const std::string path = ::testing::TempDir() +
+        "brs_data_image_readmemh_capacity.hex";
+    {
+        std::ofstream output(path);
+        ASSERT_TRUE(output.is_open());
+        output << "@0000ffff\n89abcdef\n";
+    }
+
+    DataImage image;
+    ASSERT_TRUE(image.loadReadmemh32File(path));
+    ASSERT_EQ(image.data.size(), 65536u * sizeof(uint32_t));
+    const size_t last = image.data.size() - sizeof(uint32_t);
+    EXPECT_EQ(image.data[last + 0], 0xef);
+    EXPECT_EQ(image.data[last + 1], 0xcd);
+    EXPECT_EQ(image.data[last + 2], 0xab);
+    EXPECT_EQ(image.data[last + 3], 0x89);
+
+    EXPECT_FALSE(image.trimZeroFilledTail(0x30000));
+
+    std::remove(path.c_str());
+}
+
+TEST(DataImageTest, TrimsOnlyZeroFillBeyondTheThreeRealSramBanks)
+{
+    DataImage image;
+    image.data.resize(0x40000, 0);
+    image.data[0x2ffff] = 0x5a;
+
+    ASSERT_TRUE(image.trimZeroFilledTail(0x30000));
+    ASSERT_EQ(image.data.size(), 0x30000u);
+    EXPECT_EQ(image.data.back(), 0x5a);
+}
+
 TEST(DataImageTest, KeepsLegacyByteTokenFormatSeparate)
 {
     const std::string path = ::testing::TempDir() +

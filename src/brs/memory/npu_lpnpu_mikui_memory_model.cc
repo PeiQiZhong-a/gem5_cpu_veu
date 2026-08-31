@@ -10,7 +10,7 @@ NpuLpnpuMikuiMemoryModel::NpuLpnpuMikuiMemoryModel()
 {}
 
 NpuLpnpuMikuiMemoryModel::NpuLpnpuMikuiMemoryModel(Config config)
-  : config(config)
+  : config(config), dmaCrossbar(NpuLpnpuMikuiDmaCrossbar::Config{})
 {
     reset();
 }
@@ -28,12 +28,11 @@ NpuLpnpuMikuiMemoryModel::reset()
     acceptedDbus = {};
     acceptedVeu = {};
     pendingVeuRequests.clear();
-    pendingVeuHalf = 0;
-    issuedVeuHalves.clear();
-    veuCompletions.clear();
+    issuedVeuRequests.clear();
     previousVeuLockActive = false;
     dbusConverter.reset();
     crossbar.reset();
+    dmaCrossbar.reset();
     visibleOutputs = {};
 }
 
@@ -93,13 +92,12 @@ NpuLpnpuMikuiMemoryModel::currentVeuBeat() const
         return beat;
     }
     const DutKuiVeuRequest &request = pendingVeuRequests.front();
-    const uint8_t byteBase = pendingVeuHalf * Sram128Bytes;
     beat.valid = true;
-    beat.address = request.address + byteBase;
+    beat.address = request.address;
     beat.writeStrobe = request.isWrite ?
-        static_cast<uint16_t>(request.writeStrobe >> byteBase) : 0;
+        static_cast<uint16_t>(request.writeStrobe) : 0;
     for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
-        beat.writeData[byte] = request.data[byteBase + byte];
+        beat.writeData[byte] = request.data[byte];
     }
     return beat;
 }
@@ -126,15 +124,16 @@ NpuLpnpuMikuiMemoryModel::advance(
 
     if (veuAcceptedThisCycle) {
         pendingVeuRequests.push_back(acceptedVeu);
-        veuCompletions.emplace(
-            acceptedVeu.transactionId,
-            VeuCompletion{acceptedVeu, 0, {}});
     }
 
     const SramConverter32To128Output converterBefore =
         dbusConverter.evaluate();
-    const NpuLpnpuMikuiCrossbarOutputs crossbarBefore =
-        crossbar.evaluate();
+    Sram128Response dbusResponseBefore;
+    if (config.dmaTopology) {
+        dbusResponseBefore = dmaCrossbar.evaluate().dbus;
+    } else {
+        dbusResponseBefore = crossbar.evaluate().dbus;
+    }
 
     Sram32Request dbusInput;
     if (dbusAcceptedThisCycle && dbusConverter.canAccept()) {
@@ -145,7 +144,7 @@ NpuLpnpuMikuiMemoryModel::advance(
         dbusAcceptedThisCycle = false;
         acceptedDbus = {};
     }
-    dbusConverter.clock(dbusInput, crossbarBefore.dbus);
+    dbusConverter.clock(dbusInput, dbusResponseBefore);
 
     NpuLpnpuMikuiCrossbarInputs crossbarInputs;
     crossbarInputs.dbus = converterBefore.sram;
@@ -162,58 +161,55 @@ NpuLpnpuMikuiMemoryModel::advance(
     crossbarInputs.crossbarDone[veuMaster] =
         !veuLockActive && previousVeuLockActive;
 
-    crossbar.clock(crossbarInputs);
-    const NpuLpnpuMikuiCrossbarOutputs crossbarAfter =
-        crossbar.evaluate();
-
-    outputs.sau = crossbarAfter.masters[sauMaster];
-    outputs.masterAccepted = crossbarAfter.acceptedMaster;
-    outputs.masterDropped = crossbarAfter.droppedMaster;
-    outputs.bankRequest[0] = crossbarAfter.bankRequest[0];
-    outputs.bankRequest[1] = crossbarAfter.bankRequest[1];
-    outputs.sameBankCollision = crossbarAfter.sameBankCollision;
-
-    if (crossbarAfter.masters[veuMaster].valid &&
-        !issuedVeuHalves.empty()) {
-        const IssuedVeuHalf issued = issuedVeuHalves.front();
-        issuedVeuHalves.pop_front();
-        auto found = veuCompletions.find(issued.request.transactionId);
-        if (found != veuCompletions.end()) {
-            VeuCompletion &completion = found->second;
-            const uint8_t byteBase = issued.half * Sram128Bytes;
-            if (!completion.request.isWrite) {
-                for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
-                    completion.readData[byteBase + byte] =
-                        crossbarAfter.masters[veuMaster].readData[byte];
-                }
-            }
-            ++completion.completedHalves;
-            if (completion.completedHalves == 2) {
-                DutKuiVeuResponse response;
-                response.valid = true;
-                response.transactionId = completion.request.transactionId;
-                response.isWrite = completion.request.isWrite;
-                response.readData = completion.readData;
-                if (response.isWrite) {
-                    outputs.veuWrite = response;
-                } else {
-                    outputs.veuRead = response;
-                }
-                veuCompletions.erase(found);
-                if (veuOutstanding > 0) {
-                    --veuOutstanding;
-                }
-            }
+    Sram128Response veuResponse;
+    bool veuAccepted = false;
+    if (config.dmaTopology) {
+        dmaCrossbar.clock(crossbarInputs);
+        const auto crossbarAfter = dmaCrossbar.evaluate();
+        outputs.sau = crossbarAfter.masters[sauMaster];
+        outputs.masterAccepted = crossbarAfter.acceptedMaster;
+        outputs.masterDropped = crossbarAfter.droppedMaster;
+        for (uint8_t bank = 0; bank < 3; ++bank) {
+            outputs.bankRequest[bank] = crossbarAfter.bankRequest[bank];
         }
+        outputs.sameBankCollision = crossbarAfter.sameBankCollision;
+        veuResponse = crossbarAfter.masters[veuMaster];
+        veuAccepted = crossbarAfter.acceptedMaster[veuMaster];
+    } else {
+        crossbar.clock(crossbarInputs);
+        const auto crossbarAfter = crossbar.evaluate();
+        outputs.sau = crossbarAfter.masters[sauMaster];
+        outputs.masterAccepted = crossbarAfter.acceptedMaster;
+        outputs.masterDropped = crossbarAfter.droppedMaster;
+        outputs.bankRequest[0] = crossbarAfter.bankRequest[0];
+        outputs.bankRequest[1] = crossbarAfter.bankRequest[1];
+        outputs.sameBankCollision = crossbarAfter.sameBankCollision;
+        veuResponse = crossbarAfter.masters[veuMaster];
+        veuAccepted = crossbarAfter.acceptedMaster[veuMaster];
     }
 
-    if (crossbarAfter.acceptedMaster[veuMaster] &&
-        !pendingVeuRequests.empty()) {
-        issuedVeuHalves.push_back(
-            {pendingVeuRequests.front(), pendingVeuHalf});
-        if (++pendingVeuHalf == 2) {
-            pendingVeuHalf = 0;
-            pendingVeuRequests.pop_front();
+    if (veuAccepted && !pendingVeuRequests.empty()) {
+        issuedVeuRequests.push_back(pendingVeuRequests.front());
+        pendingVeuRequests.pop_front();
+    }
+
+    if (veuResponse.valid && !issuedVeuRequests.empty()) {
+        const DutKuiVeuRequest issued = issuedVeuRequests.front();
+        issuedVeuRequests.pop_front();
+        DutKuiVeuResponse response;
+        response.valid = true;
+        response.transactionId = issued.transactionId;
+        response.isWrite = issued.isWrite;
+        if (!issued.isWrite) {
+            response.readData = veuResponse.readData;
+        }
+        if (response.isWrite) {
+            outputs.veuWrite = response;
+        } else {
+            outputs.veuRead = response;
+        }
+        if (veuOutstanding > 0) {
+            --veuOutstanding;
         }
     }
 
@@ -254,6 +250,8 @@ NpuLpnpuMikuiMemoryModel::writeByte(uint32_t address, uint8_t value)
 {
     if (instructionMapped(address)) {
         instructionMemory[address] = value;
+    } else if (config.dmaTopology) {
+        dmaCrossbar.writeByte(address, value);
     } else {
         crossbar.writeByte(address, value);
     }
@@ -265,6 +263,9 @@ NpuLpnpuMikuiMemoryModel::readByte(uint32_t address) const
     if (instructionMapped(address)) {
         const auto found = instructionMemory.find(address);
         return found == instructionMemory.end() ? 0 : found->second;
+    }
+    if (config.dmaTopology) {
+        return dmaCrossbar.readByte(address);
     }
     return crossbar.readByte(address);
 }

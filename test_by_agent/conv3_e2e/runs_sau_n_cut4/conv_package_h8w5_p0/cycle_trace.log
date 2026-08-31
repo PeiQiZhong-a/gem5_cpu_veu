@@ -1,0 +1,1034 @@
+# brs-cycle-trace-v2 source=gem5 sampling=evaluate-before-clock platform=rtl-dut-kui-tb reset_edges=10 trace_mode=compact
+edge=1 reset=1 cpu_cycle=0
+edge=2 reset=1 cpu_cycle=0
+edge=3 reset=1 cpu_cycle=0
+edge=4 reset=1 cpu_cycle=0
+edge=5 reset=1 cpu_cycle=0
+edge=6 reset=1 cpu_cycle=0
+edge=7 reset=1 cpu_cycle=0
+edge=8 reset=1 cpu_cycle=0
+edge=9 reset=1 cpu_cycle=0
+edge=10 reset=1 cpu_cycle=0
+edge=11 reset=0 cpu_cycle=0 cpu_pc=0x0
+edge=12 reset=0 cpu_cycle=1 cpu_pc=0x0
+edge=13 reset=0 cpu_cycle=2 cpu_pc=0x0
+edge=14 reset=0 cpu_cycle=3 cpu_pc=0x0
+edge=15 reset=0 cpu_cycle=4 cpu_pc=0x0
+edge=16 reset=0 cpu_cycle=5 cpu_pc=0x4
+edge=17 reset=0 cpu_cycle=6 cpu_pc=0x8
+edge=18 reset=0 cpu_cycle=7 cpu_pc=0xc
+edge=19 reset=0 cpu_cycle=8 cpu_pc=0xe
+edge=20 reset=0 cpu_cycle=9 cpu_pc=0x17d0
+edge=21 reset=0 cpu_cycle=10 cpu_pc=0x17d0 retire=1 retire_pc=0x0 retire_instr=0x20400137 wb_we=1 wb_fp=0 wb_rd=2 wb_data=0x20400000
+edge=22 reset=0 cpu_cycle=11 cpu_pc=0x17d0 retire=1 retire_pc=0x4 retire_instr=0xfff10113 wb_we=1 wb_fp=0 wb_rd=2 wb_data=0x203fffff
+edge=23 reset=0 cpu_cycle=12 cpu_pc=0x17d0 retire=1 retire_pc=0x8 retire_instr=0x7c8010ef wb_we=1 wb_fp=0 wb_rd=1 wb_data=0xc
+edge=24 reset=0 cpu_cycle=13 cpu_pc=0x17d2
+edge=25 reset=0 cpu_cycle=14 cpu_pc=0x17d6
+edge=26 reset=0 cpu_cycle=15 cpu_pc=0x17d8
+edge=27 reset=0 cpu_cycle=16 cpu_pc=0x17dc
+edge=28 reset=0 cpu_cycle=17 cpu_pc=0x17dc
+edge=29 reset=0 cpu_cycle=18 cpu_pc=0x17dc retire=1 retire_pc=0x17d0 retire_instr=0xec010113 wb_we=1 wb_fp=0 wb_rd=2 wb_data=0x203ffebf
+edge=30 reset=0 cpu_cycle=19 cpu_pc=0x17dc
+edge=31 reset=0 cpu_cycle=20 cpu_pc=0x17dc
+edge=32 reset=0 cpu_cycle=21 cpu_pc=0x17dc
+edge=33 reset=0 cpu_cycle=22 cpu_pc=0x17dc
+edge=34 reset=0 cpu_cycle=23 cpu_pc=0x17dc
+edge=35 reset=0 cpu_cycle=24 cpu_pc=0x17dc
+edge=36 reset=0 cpu_cycle=25 cpu_pc=0x17dc
+edge=37 reset=0 cpu_cycle=26 cpu_pc=0x17dc
+edge=38 reset=0 cpu_cycle=27 cpu_pc=0x17dc
+edge=39 reset=0 cpu_cycle=28 cpu_pc=0x17dc
+edge=40 reset=0 cpu_cycle=29 cpu_pc=0x17dc
+edge=41 reset=0 cpu_cycle=30 cpu_pc=0x17dc
+edge=42 reset=0 cpu_cycle=31 cpu_pc=0x1b70
+edge=43 reset=0 cpu_cycle=32 cpu_pc=0x1b70
+edge=44 reset=0 cpu_cycle=33 cpu_pc=0x1b70 retire=1 retire_pc=0x17d2 retire_instr=0x12112e23 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=45 reset=0 cpu_cycle=34 cpu_pc=0x1b70 retire=1 retire_pc=0x17d6 retire_instr=0x39a000ef wb_we=1 wb_fp=0 wb_rd=1 wb_data=0x17d8
+edge=46 reset=0 cpu_cycle=35 cpu_pc=0x1b72
+edge=47 reset=0 cpu_cycle=36 cpu_pc=0x1b74
+edge=48 reset=0 cpu_cycle=37 cpu_pc=0x1b76
+edge=49 reset=0 cpu_cycle=38 cpu_pc=0x1b78
+edge=50 reset=0 cpu_cycle=39 cpu_pc=0x1b78
+edge=51 reset=0 cpu_cycle=40 cpu_pc=0x1b78 retire=1 retire_pc=0x1b70 retire_instr=0xff010113 wb_we=1 wb_fp=0 wb_rd=2 wb_data=0x203ffeaf
+edge=52 reset=0 cpu_cycle=41 cpu_pc=0x1b78
+edge=53 reset=0 cpu_cycle=42 cpu_pc=0x1b78
+edge=54 reset=0 cpu_cycle=43 cpu_pc=0x1b78
+edge=55 reset=0 cpu_cycle=44 cpu_pc=0x1b78
+edge=56 reset=0 cpu_cycle=45 cpu_pc=0x1b78
+edge=57 reset=0 cpu_cycle=46 cpu_pc=0x1b78
+edge=58 reset=0 cpu_cycle=47 cpu_pc=0x1b78
+edge=59 reset=0 cpu_cycle=48 cpu_pc=0x1b78
+edge=60 reset=0 cpu_cycle=49 cpu_pc=0x1b78
+edge=61 reset=0 cpu_cycle=50 cpu_pc=0x1b78
+edge=62 reset=0 cpu_cycle=51 cpu_pc=0x1b78
+edge=63 reset=0 cpu_cycle=52 cpu_pc=0x1b78
+edge=64 reset=0 cpu_cycle=53 cpu_pc=0x1860
+edge=65 reset=0 cpu_cycle=54 cpu_pc=0x1860
+edge=66 reset=0 cpu_cycle=55 cpu_pc=0x1860 retire=1 retire_pc=0x1b72 retire_instr=0x112623 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=67 reset=0 cpu_cycle=56 cpu_pc=0x1860 retire=1 retire_pc=0x1b74 retire_instr=0xcedff0ef wb_we=1 wb_fp=0 wb_rd=1 wb_data=0x1b76
+edge=68 reset=0 cpu_cycle=57 cpu_pc=0x1864
+edge=69 reset=0 cpu_cycle=58 cpu_pc=0x1868
+edge=70 reset=0 cpu_cycle=59 cpu_pc=0x186a
+edge=71 reset=0 cpu_cycle=60 cpu_pc=0x186e
+edge=72 reset=0 cpu_cycle=61 cpu_pc=0x186e
+edge=73 reset=0 cpu_cycle=62 cpu_pc=0x186e retire=1 retire_pc=0x1860 retire_instr=0x20001537 wb_we=1 wb_fp=0 wb_rd=10 wb_data=0x20001000
+edge=74 reset=0 cpu_cycle=63 cpu_pc=0x186e
+edge=75 reset=0 cpu_cycle=64 cpu_pc=0x186e
+edge=76 reset=0 cpu_cycle=65 cpu_pc=0x186e
+edge=77 reset=0 cpu_cycle=66 cpu_pc=0x186e
+edge=78 reset=0 cpu_cycle=67 cpu_pc=0x186e
+edge=79 reset=0 cpu_cycle=68 cpu_pc=0x1872
+edge=80 reset=0 cpu_cycle=69 cpu_pc=0x1876
+edge=81 reset=0 cpu_cycle=70 cpu_pc=0x187a retire=1 retire_pc=0x1864 retire_instr=0x71852783 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x0
+edge=82 reset=0 cpu_cycle=71 cpu_pc=0x187e retire=1 retire_pc=0x1868 retire_instr=0xc079c63 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=83 reset=0 cpu_cycle=72 cpu_pc=0x1882 retire=1 retire_pc=0x186a retire_instr=0x200407b7 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x20040000
+edge=84 reset=0 cpu_cycle=73 cpu_pc=0x1886 retire=1 retire_pc=0x186e retire_instr=0x78693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x20040000
+edge=85 reset=0 cpu_cycle=74 cpu_pc=0x1886 retire=1 retire_pc=0x1872 retire_instr=0x20001737 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x20001000
+edge=86 reset=0 cpu_cycle=75 cpu_pc=0x1886 retire=1 retire_pc=0x1876 retire_instr=0x203c0637 wb_we=1 wb_fp=0 wb_rd=12 wb_data=0x203c0000
+edge=87 reset=0 cpu_cycle=76 cpu_pc=0x1886
+edge=88 reset=0 cpu_cycle=77 cpu_pc=0x1886
+edge=89 reset=0 cpu_cycle=78 cpu_pc=0x1886
+edge=90 reset=0 cpu_cycle=79 cpu_pc=0x1886
+edge=91 reset=0 cpu_cycle=80 cpu_pc=0x1886
+edge=92 reset=0 cpu_cycle=81 cpu_pc=0x188a
+edge=93 reset=0 cpu_cycle=82 cpu_pc=0x188e
+edge=94 reset=0 cpu_cycle=83 cpu_pc=0x1892 retire=1 retire_pc=0x187a retire_instr=0x70d72a23 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=95 reset=0 cpu_cycle=84 cpu_pc=0x1896 retire=1 retire_pc=0x187e retire_instr=0x60613 wb_we=1 wb_fp=0 wb_rd=12 wb_data=0x203c0000
+edge=96 reset=0 cpu_cycle=85 cpu_pc=0x1896 retire=1 retire_pc=0x1882 retire_instr=0x200015b7 wb_we=1 wb_fp=0 wb_rd=11 wb_data=0x20001000
+edge=97 reset=0 cpu_cycle=86 cpu_pc=0x1896 retire=1 retire_pc=0x1886 retire_instr=0x20400737 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x20400000
+edge=98 reset=0 cpu_cycle=87 cpu_pc=0x1896
+edge=99 reset=0 cpu_cycle=88 cpu_pc=0x1896
+edge=100 reset=0 cpu_cycle=89 cpu_pc=0x1896
+edge=101 reset=0 cpu_cycle=90 cpu_pc=0x1896
+edge=102 reset=0 cpu_cycle=91 cpu_pc=0x1896
+edge=103 reset=0 cpu_cycle=92 cpu_pc=0x189a
+edge=104 reset=0 cpu_cycle=93 cpu_pc=0x189e
+edge=105 reset=0 cpu_cycle=94 cpu_pc=0x18a2 retire=1 retire_pc=0x188a retire_instr=0x70c5a823 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=106 reset=0 cpu_cycle=95 cpu_pc=0x18a6 retire=1 retire_pc=0x188e retire_instr=0xfff70713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x203fffff
+edge=107 reset=0 cpu_cycle=96 cpu_pc=0x18aa retire=1 retire_pc=0x1892 retire_instr=0x20000813 wb_we=1 wb_fp=0 wb_rd=16 wb_data=0x200
+edge=108 reset=0 cpu_cycle=97 cpu_pc=0x18ae retire=1 retire_pc=0x1896 retire_instr=0x78793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x20040000
+edge=109 reset=0 cpu_cycle=98 cpu_pc=0x18ae retire=1 retire_pc=0x189a retire_instr=0xe87a63 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=110 reset=0 cpu_cycle=99 cpu_pc=0x18ae retire=1 retire_pc=0x189e retire_instr=0xe0070713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x203ffdff
+edge=111 reset=0 cpu_cycle=100 cpu_pc=0x18ae retire=1 retire_pc=0x18a2 retire_instr=0xe6f663 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=112 reset=0 cpu_cycle=101 cpu_pc=0x18ae retire=1 retire_pc=0x18a6 retire_instr=0xc77463 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=113 reset=0 cpu_cycle=102 cpu_pc=0x18ae
+edge=114 reset=0 cpu_cycle=103 cpu_pc=0x18ae
+edge=115 reset=0 cpu_cycle=104 cpu_pc=0x18ae
+edge=116 reset=0 cpu_cycle=105 cpu_pc=0x18b2
+edge=117 reset=0 cpu_cycle=106 cpu_pc=0x18b4
+edge=118 reset=0 cpu_cycle=107 cpu_pc=0x18b8
+edge=119 reset=0 cpu_cycle=108 cpu_pc=0x18bc
+edge=120 reset=0 cpu_cycle=109 cpu_pc=0x18c0
+edge=121 reset=0 cpu_cycle=110 cpu_pc=0x18c0 retire=1 retire_pc=0x18ae retire_instr=0xf6f713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x0
+edge=122 reset=0 cpu_cycle=111 cpu_pc=0x18c0 retire=1 retire_pc=0x18b2 retire_instr=0x8071763 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=123 reset=0 cpu_cycle=112 cpu_pc=0x18c0
+edge=124 reset=0 cpu_cycle=113 cpu_pc=0x18c0
+edge=125 reset=0 cpu_cycle=114 cpu_pc=0x18c0
+edge=126 reset=0 cpu_cycle=115 cpu_pc=0x18c0
+edge=127 reset=0 cpu_cycle=116 cpu_pc=0x18c0
+edge=128 reset=0 cpu_cycle=117 cpu_pc=0x18c2
+edge=129 reset=0 cpu_cycle=118 cpu_pc=0x18c4
+edge=130 reset=0 cpu_cycle=119 cpu_pc=0x18c6 retire=1 retire_pc=0x18b4 retire_instr=0x7105a703 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x203c0000
+edge=131 reset=0 cpu_cycle=120 cpu_pc=0x18ca retire=1 retire_pc=0x18b8 retire_instr=0x1068613 wb_we=1 wb_fp=0 wb_rd=12 wb_data=0x20040010
+edge=132 reset=0 cpu_cycle=121 cpu_pc=0x18ce retire=1 retire_pc=0x18bc retire_instr=0x8e67263 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=133 reset=0 cpu_cycle=122 cpu_pc=0x18d2 retire=1 retire_pc=0x18c0 retire_instr=0x40d70733 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x380000
+edge=134 reset=0 cpu_cycle=123 cpu_pc=0x18d6 retire=1 retire_pc=0x18c2 retire_instr=0x475713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x38000
+edge=135 reset=0 cpu_cycle=124 cpu_pc=0x18d6 retire=1 retire_pc=0x18c4 retire_instr=0xfff70713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x37fff
+edge=136 reset=0 cpu_cycle=125 cpu_pc=0x18d6 retire=1 retire_pc=0x18c6 retire_instr=0x875693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x37f
+edge=137 reset=0 cpu_cycle=126 cpu_pc=0x18d6
+edge=138 reset=0 cpu_cycle=127 cpu_pc=0x18d6
+edge=139 reset=0 cpu_cycle=128 cpu_pc=0x18d6
+edge=140 reset=0 cpu_cycle=129 cpu_pc=0x18d6
+edge=141 reset=0 cpu_cycle=130 cpu_pc=0x18d6
+edge=142 reset=0 cpu_cycle=131 cpu_pc=0x18d8
+edge=143 reset=0 cpu_cycle=132 cpu_pc=0x18d8
+edge=144 reset=0 cpu_cycle=133 cpu_pc=0x18d8 retire=1 retire_pc=0x18ca retire_instr=0xe78223 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=145 reset=0 cpu_cycle=134 cpu_pc=0x18d8
+edge=146 reset=0 cpu_cycle=135 cpu_pc=0x18d8
+edge=147 reset=0 cpu_cycle=136 cpu_pc=0x18d8
+edge=148 reset=0 cpu_cycle=137 cpu_pc=0x18d8
+edge=149 reset=0 cpu_cycle=138 cpu_pc=0x18d8
+edge=150 reset=0 cpu_cycle=139 cpu_pc=0x18dc
+edge=151 reset=0 cpu_cycle=140 cpu_pc=0x18e0
+edge=152 reset=0 cpu_cycle=141 cpu_pc=0x18e4 retire=1 retire_pc=0x18ce retire_instr=0xd782a3 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=153 reset=0 cpu_cycle=142 cpu_pc=0x18e4 retire=1 retire_pc=0x18d2 retire_instr=0x1075693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x3
+edge=154 reset=0 cpu_cycle=143 cpu_pc=0x18e4 retire=1 retire_pc=0x18d6 retire_instr=0x1875713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x0
+edge=155 reset=0 cpu_cycle=144 cpu_pc=0x18e4
+edge=156 reset=0 cpu_cycle=145 cpu_pc=0x18e4
+edge=157 reset=0 cpu_cycle=146 cpu_pc=0x18e4
+edge=158 reset=0 cpu_cycle=147 cpu_pc=0x18e4
+edge=159 reset=0 cpu_cycle=148 cpu_pc=0x18e4
+edge=160 reset=0 cpu_cycle=149 cpu_pc=0x18e8
+edge=161 reset=0 cpu_cycle=150 cpu_pc=0x18ec
+edge=162 reset=0 cpu_cycle=151 cpu_pc=0x18f0 retire=1 retire_pc=0x18d8 retire_instr=0xe783a3 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=163 reset=0 cpu_cycle=152 cpu_pc=0x18f0 retire=1 retire_pc=0x18dc retire_instr=0x20001737 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x20001000
+edge=164 reset=0 cpu_cycle=153 cpu_pc=0x18f0 retire=1 retire_pc=0x18e0 retire_instr=0x72070713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x20001720
+edge=165 reset=0 cpu_cycle=154 cpu_pc=0x18f0
+edge=166 reset=0 cpu_cycle=155 cpu_pc=0x18f0
+edge=167 reset=0 cpu_cycle=156 cpu_pc=0x18f0
+edge=168 reset=0 cpu_cycle=157 cpu_pc=0x18f0
+edge=169 reset=0 cpu_cycle=158 cpu_pc=0x18f0
+edge=170 reset=0 cpu_cycle=159 cpu_pc=0x18f4
+edge=171 reset=0 cpu_cycle=160 cpu_pc=0x18f8
+edge=172 reset=0 cpu_cycle=161 cpu_pc=0x18f8 retire=1 retire_pc=0x18e4 retire_instr=0xd78323 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=173 reset=0 cpu_cycle=162 cpu_pc=0x18f8 retire=1 retire_pc=0x18e8 retire_instr=0x875693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x200017
+edge=174 reset=0 cpu_cycle=163 cpu_pc=0x18f8
+edge=175 reset=0 cpu_cycle=164 cpu_pc=0x18f8
+edge=176 reset=0 cpu_cycle=165 cpu_pc=0x18f8
+edge=177 reset=0 cpu_cycle=166 cpu_pc=0x18f8
+edge=178 reset=0 cpu_cycle=167 cpu_pc=0x18f8
+edge=179 reset=0 cpu_cycle=168 cpu_pc=0x18fc
+edge=180 reset=0 cpu_cycle=169 cpu_pc=0x1900
+edge=181 reset=0 cpu_cycle=170 cpu_pc=0x1900 retire=1 retire_pc=0x18ec retire_instr=0xd780a3 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=182 reset=0 cpu_cycle=171 cpu_pc=0x1900 retire=1 retire_pc=0x18f0 retire_instr=0x1075693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x2000
+edge=183 reset=0 cpu_cycle=172 cpu_pc=0x1900
+edge=184 reset=0 cpu_cycle=173 cpu_pc=0x1900
+edge=185 reset=0 cpu_cycle=174 cpu_pc=0x1900
+edge=186 reset=0 cpu_cycle=175 cpu_pc=0x1900
+edge=187 reset=0 cpu_cycle=176 cpu_pc=0x1900
+edge=188 reset=0 cpu_cycle=177 cpu_pc=0x1902
+edge=189 reset=0 cpu_cycle=178 cpu_pc=0x1906
+edge=190 reset=0 cpu_cycle=179 cpu_pc=0x1906 retire=1 retire_pc=0x18f4 retire_instr=0xd78123 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=191 reset=0 cpu_cycle=180 cpu_pc=0x1906 retire=1 retire_pc=0x18f8 retire_instr=0x1875693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x20
+edge=192 reset=0 cpu_cycle=181 cpu_pc=0x1906
+edge=193 reset=0 cpu_cycle=182 cpu_pc=0x1906
+edge=194 reset=0 cpu_cycle=183 cpu_pc=0x1906
+edge=195 reset=0 cpu_cycle=184 cpu_pc=0x1906
+edge=196 reset=0 cpu_cycle=185 cpu_pc=0x1906
+edge=197 reset=0 cpu_cycle=186 cpu_pc=0x190a
+edge=198 reset=0 cpu_cycle=187 cpu_pc=0x190e
+edge=199 reset=0 cpu_cycle=188 cpu_pc=0x190e retire=1 retire_pc=0x18fc retire_instr=0xd781a3 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=200 reset=0 cpu_cycle=189 cpu_pc=0x190e retire=1 retire_pc=0x1900 retire_instr=0xfef00693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0xffffffef
+edge=201 reset=0 cpu_cycle=190 cpu_pc=0x190e
+edge=202 reset=0 cpu_cycle=191 cpu_pc=0x190e
+edge=203 reset=0 cpu_cycle=192 cpu_pc=0x190e
+edge=204 reset=0 cpu_cycle=193 cpu_pc=0x190e
+edge=205 reset=0 cpu_cycle=194 cpu_pc=0x190e
+edge=206 reset=0 cpu_cycle=195 cpu_pc=0x1912
+edge=207 reset=0 cpu_cycle=196 cpu_pc=0x1916
+edge=208 reset=0 cpu_cycle=197 cpu_pc=0x1916 retire=1 retire_pc=0x1902 retire_instr=0xd78423 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=209 reset=0 cpu_cycle=198 cpu_pc=0x1916 retire=1 retire_pc=0x1906 retire_instr=0xfbe00693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0xffffffbe
+edge=210 reset=0 cpu_cycle=199 cpu_pc=0x1916
+edge=211 reset=0 cpu_cycle=200 cpu_pc=0x1916
+edge=212 reset=0 cpu_cycle=201 cpu_pc=0x1916
+edge=213 reset=0 cpu_cycle=202 cpu_pc=0x1916
+edge=214 reset=0 cpu_cycle=203 cpu_pc=0x1916
+edge=215 reset=0 cpu_cycle=204 cpu_pc=0x191a
+edge=216 reset=0 cpu_cycle=205 cpu_pc=0x191e
+edge=217 reset=0 cpu_cycle=206 cpu_pc=0x191e retire=1 retire_pc=0x190a retire_instr=0xd784a3 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=218 reset=0 cpu_cycle=207 cpu_pc=0x191e retire=1 retire_pc=0x190e retire_instr=0xfad00693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0xffffffad
+edge=219 reset=0 cpu_cycle=208 cpu_pc=0x191e
+edge=220 reset=0 cpu_cycle=209 cpu_pc=0x191e
+edge=221 reset=0 cpu_cycle=210 cpu_pc=0x191e
+edge=222 reset=0 cpu_cycle=211 cpu_pc=0x191e
+edge=223 reset=0 cpu_cycle=212 cpu_pc=0x191e
+edge=224 reset=0 cpu_cycle=213 cpu_pc=0x1922
+edge=225 reset=0 cpu_cycle=214 cpu_pc=0x1924
+edge=226 reset=0 cpu_cycle=215 cpu_pc=0x1924 retire=1 retire_pc=0x1912 retire_instr=0xd78523 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=227 reset=0 cpu_cycle=216 cpu_pc=0x1924 retire=1 retire_pc=0x1916 retire_instr=0xfde00693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0xffffffde
+edge=228 reset=0 cpu_cycle=217 cpu_pc=0x1924
+edge=229 reset=0 cpu_cycle=218 cpu_pc=0x1924
+edge=230 reset=0 cpu_cycle=219 cpu_pc=0x1924
+edge=231 reset=0 cpu_cycle=220 cpu_pc=0x1924
+edge=232 reset=0 cpu_cycle=221 cpu_pc=0x1924
+edge=233 reset=0 cpu_cycle=222 cpu_pc=0x1928
+edge=234 reset=0 cpu_cycle=223 cpu_pc=0x1928
+edge=235 reset=0 cpu_cycle=224 cpu_pc=0x1928 retire=1 retire_pc=0x191a retire_instr=0xe78023 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=236 reset=0 cpu_cycle=225 cpu_pc=0x1928
+edge=237 reset=0 cpu_cycle=226 cpu_pc=0x1928
+edge=238 reset=0 cpu_cycle=227 cpu_pc=0x1928
+edge=239 reset=0 cpu_cycle=228 cpu_pc=0x1928
+edge=240 reset=0 cpu_cycle=229 cpu_pc=0x1928
+edge=241 reset=0 cpu_cycle=230 cpu_pc=0x192c
+edge=242 reset=0 cpu_cycle=231 cpu_pc=0x192c
+edge=243 reset=0 cpu_cycle=232 cpu_pc=0x192c retire=1 retire_pc=0x191e retire_instr=0xd785a3 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=244 reset=0 cpu_cycle=233 cpu_pc=0x192c
+edge=245 reset=0 cpu_cycle=234 cpu_pc=0x192c
+edge=246 reset=0 cpu_cycle=235 cpu_pc=0x192c
+edge=247 reset=0 cpu_cycle=236 cpu_pc=0x192c
+edge=248 reset=0 cpu_cycle=237 cpu_pc=0x192c
+edge=249 reset=0 cpu_cycle=238 cpu_pc=0x192e
+edge=250 reset=0 cpu_cycle=239 cpu_pc=0x1932
+edge=251 reset=0 cpu_cycle=240 cpu_pc=0x1936 retire=1 retire_pc=0x1922 retire_instr=0xf72023 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=252 reset=0 cpu_cycle=241 cpu_pc=0x1936 retire=1 retire_pc=0x1924 retire_instr=0xdeadc7b7 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0xdeadc000
+edge=253 reset=0 cpu_cycle=242 cpu_pc=0x1936 retire=1 retire_pc=0x1928 retire_instr=0xeef78793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0xdeadbeef
+edge=254 reset=0 cpu_cycle=243 cpu_pc=0x1936
+edge=255 reset=0 cpu_cycle=244 cpu_pc=0x1936
+edge=256 reset=0 cpu_cycle=245 cpu_pc=0x1936
+edge=257 reset=0 cpu_cycle=246 cpu_pc=0x1936
+edge=258 reset=0 cpu_cycle=247 cpu_pc=0x1936
+edge=259 reset=0 cpu_cycle=248 cpu_pc=0x1938
+edge=260 reset=0 cpu_cycle=249 cpu_pc=0x193c
+edge=261 reset=0 cpu_cycle=250 cpu_pc=0x193c retire=1 retire_pc=0x192c retire_instr=0xf72423 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=262 reset=0 cpu_cycle=251 cpu_pc=0x193c retire=1 retire_pc=0x192e retire_instr=0x200017b7 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x20001000
+edge=263 reset=0 cpu_cycle=252 cpu_pc=0x193c
+edge=264 reset=0 cpu_cycle=253 cpu_pc=0x193c
+edge=265 reset=0 cpu_cycle=254 cpu_pc=0x193c
+edge=266 reset=0 cpu_cycle=255 cpu_pc=0x193c
+edge=267 reset=0 cpu_cycle=256 cpu_pc=0x193c
+edge=268 reset=0 cpu_cycle=257 cpu_pc=0x1940
+edge=269 reset=0 cpu_cycle=258 cpu_pc=0x1942
+edge=270 reset=0 cpu_cycle=259 cpu_pc=0x1942 retire=1 retire_pc=0x1932 retire_instr=0x70e7ae23 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=271 reset=0 cpu_cycle=260 cpu_pc=0x1942 retire=1 retire_pc=0x1936 retire_instr=0x100793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x1
+edge=272 reset=0 cpu_cycle=261 cpu_pc=0x1942
+edge=273 reset=0 cpu_cycle=262 cpu_pc=0x1942
+edge=274 reset=0 cpu_cycle=263 cpu_pc=0x1942
+edge=275 reset=0 cpu_cycle=264 cpu_pc=0x1942
+edge=276 reset=0 cpu_cycle=265 cpu_pc=0x1942
+edge=277 reset=0 cpu_cycle=266 cpu_pc=0x1946
+edge=278 reset=0 cpu_cycle=267 cpu_pc=0x1946
+edge=279 reset=0 cpu_cycle=268 cpu_pc=0x1946 retire=1 retire_pc=0x1938 retire_instr=0x72223 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=280 reset=0 cpu_cycle=269 cpu_pc=0x1946
+edge=281 reset=0 cpu_cycle=270 cpu_pc=0x1946
+edge=282 reset=0 cpu_cycle=271 cpu_pc=0x1946
+edge=283 reset=0 cpu_cycle=272 cpu_pc=0x1946
+edge=284 reset=0 cpu_cycle=273 cpu_pc=0x1946
+edge=285 reset=0 cpu_cycle=274 cpu_pc=0x1b76
+edge=286 reset=0 cpu_cycle=275 cpu_pc=0x1b76
+edge=287 reset=0 cpu_cycle=276 cpu_pc=0x1b76 retire=1 retire_pc=0x193c retire_instr=0x70f52c23 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=288 reset=0 cpu_cycle=277 cpu_pc=0x1b78 retire=1 retire_pc=0x1940 retire_instr=0x8067 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=289 reset=0 cpu_cycle=278 cpu_pc=0x1b7a
+edge=290 reset=0 cpu_cycle=279 cpu_pc=0x1b7c
+edge=291 reset=0 cpu_cycle=280 cpu_pc=0x1b7c
+edge=292 reset=0 cpu_cycle=281 cpu_pc=0x1b7c
+edge=293 reset=0 cpu_cycle=282 cpu_pc=0x1b7c
+edge=294 reset=0 cpu_cycle=283 cpu_pc=0x1b7c
+edge=295 reset=0 cpu_cycle=284 cpu_pc=0x1b7c
+edge=296 reset=0 cpu_cycle=285 cpu_pc=0x1b7c
+edge=297 reset=0 cpu_cycle=286 cpu_pc=0x1b7c
+edge=298 reset=0 cpu_cycle=287 cpu_pc=0x1b7c
+edge=299 reset=0 cpu_cycle=288 cpu_pc=0x1b7c
+edge=300 reset=0 cpu_cycle=289 cpu_pc=0x1b7c
+edge=301 reset=0 cpu_cycle=290 cpu_pc=0x1b7c
+edge=302 reset=0 cpu_cycle=291 cpu_pc=0x1b7c
+edge=303 reset=0 cpu_cycle=292 cpu_pc=0x1b7c
+edge=304 reset=0 cpu_cycle=293 cpu_pc=0x1b7c
+edge=305 reset=0 cpu_cycle=294 cpu_pc=0x1b7e
+edge=306 reset=0 cpu_cycle=295 cpu_pc=0x1b80
+edge=307 reset=0 cpu_cycle=296 cpu_pc=0x17d8 retire=1 retire_pc=0x1b76 retire_instr=0xc12083 wb_we=1 wb_fp=0 wb_rd=1 wb_data=0x17d8
+edge=308 reset=0 cpu_cycle=297 cpu_pc=0x17d8 retire=1 retire_pc=0x1b78 retire_instr=0x513 wb_we=1 wb_fp=0 wb_rd=10 wb_data=0x0
+edge=309 reset=0 cpu_cycle=298 cpu_pc=0x17d8 retire=1 retire_pc=0x1b7a retire_instr=0x1010113 wb_we=1 wb_fp=0 wb_rd=2 wb_data=0x203ffebf
+edge=310 reset=0 cpu_cycle=299 cpu_pc=0x17dc retire=1 retire_pc=0x1b7c retire_instr=0x8067 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=311 reset=0 cpu_cycle=300 cpu_pc=0x17de
+edge=312 reset=0 cpu_cycle=301 cpu_pc=0x17e0
+edge=313 reset=0 cpu_cycle=302 cpu_pc=0x17e0
+edge=314 reset=0 cpu_cycle=303 cpu_pc=0x17e4
+edge=315 reset=0 cpu_cycle=304 cpu_pc=0x17e6 retire=1 retire_pc=0x17d8 retire_instr=0x20001637 wb_we=1 wb_fp=0 wb_rd=12 wb_data=0x20001000
+edge=316 reset=0 cpu_cycle=305 cpu_pc=0x17ea retire=1 retire_pc=0x17dc retire_instr=0x1000893 wb_we=1 wb_fp=0 wb_rd=17 wb_data=0x10
+edge=317 reset=0 cpu_cycle=306 cpu_pc=0x17ec retire=1 retire_pc=0x17de retire_instr=0x100813 wb_we=1 wb_fp=0 wb_rd=16 wb_data=0x1
+edge=318 reset=0 cpu_cycle=307 cpu_pc=0x17ee
+edge=319 reset=0 cpu_cycle=308 cpu_pc=0x17f0 retire=1 retire_pc=0x17e0 retire_instr=0xb7060513 wb_we=1 wb_fp=0 wb_rd=10 wb_data=0x20000b70
+edge=320 reset=0 cpu_cycle=309 cpu_pc=0x17f0 retire=1 retire_pc=0x17e4 retire_instr=0x400793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x4
+edge=321 reset=0 cpu_cycle=310 cpu_pc=0x17f0 retire=1 retire_pc=0x17e6 retire_instr=0x200015b7 wb_we=1 wb_fp=0 wb_rd=11 wb_data=0x20001000
+edge=322 reset=0 cpu_cycle=311 cpu_pc=0x17f0
+edge=323 reset=0 cpu_cycle=312 cpu_pc=0x17f0
+edge=324 reset=0 cpu_cycle=313 cpu_pc=0x17f0
+edge=325 reset=0 cpu_cycle=314 cpu_pc=0x17f0
+edge=326 reset=0 cpu_cycle=315 cpu_pc=0x17f0
+edge=327 reset=0 cpu_cycle=316 cpu_pc=0x17f0
+edge=328 reset=0 cpu_cycle=317 cpu_pc=0x17f0
+edge=329 reset=0 cpu_cycle=318 cpu_pc=0x17f0
+edge=330 reset=0 cpu_cycle=319 cpu_pc=0x17f0
+edge=331 reset=0 cpu_cycle=320 cpu_pc=0x17f0
+edge=332 reset=0 cpu_cycle=321 cpu_pc=0x17f0
+edge=333 reset=0 cpu_cycle=322 cpu_pc=0x17f0
+edge=334 reset=0 cpu_cycle=323 cpu_pc=0x17f2
+edge=335 reset=0 cpu_cycle=324 cpu_pc=0x17f2
+edge=336 reset=0 cpu_cycle=325 cpu_pc=0x17f2 retire=1 retire_pc=0x17ea retire_instr=0xf12623 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=337 reset=0 cpu_cycle=326 cpu_pc=0x17f2
+edge=338 reset=0 cpu_cycle=327 cpu_pc=0x17f2
+edge=339 reset=0 cpu_cycle=328 cpu_pc=0x17f2
+edge=340 reset=0 cpu_cycle=329 cpu_pc=0x17f2
+edge=341 reset=0 cpu_cycle=330 cpu_pc=0x17f2
+edge=342 reset=0 cpu_cycle=331 cpu_pc=0x17f2
+edge=343 reset=0 cpu_cycle=332 cpu_pc=0x17f2
+edge=344 reset=0 cpu_cycle=333 cpu_pc=0x17f2
+edge=345 reset=0 cpu_cycle=334 cpu_pc=0x17f2
+edge=346 reset=0 cpu_cycle=335 cpu_pc=0x17f2
+edge=347 reset=0 cpu_cycle=336 cpu_pc=0x17f2
+edge=348 reset=0 cpu_cycle=337 cpu_pc=0x17f2
+edge=349 reset=0 cpu_cycle=338 cpu_pc=0x17f4
+edge=350 reset=0 cpu_cycle=339 cpu_pc=0x17f4
+edge=351 reset=0 cpu_cycle=340 cpu_pc=0x17f4 retire=1 retire_pc=0x17ec retire_instr=0x1012423 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=352 reset=0 cpu_cycle=341 cpu_pc=0x17f4
+edge=353 reset=0 cpu_cycle=342 cpu_pc=0x17f4
+edge=354 reset=0 cpu_cycle=343 cpu_pc=0x17f4
+edge=355 reset=0 cpu_cycle=344 cpu_pc=0x17f4
+edge=356 reset=0 cpu_cycle=345 cpu_pc=0x17f4
+edge=357 reset=0 cpu_cycle=346 cpu_pc=0x17f4
+edge=358 reset=0 cpu_cycle=347 cpu_pc=0x17f4
+edge=359 reset=0 cpu_cycle=348 cpu_pc=0x17f4
+edge=360 reset=0 cpu_cycle=349 cpu_pc=0x17f4
+edge=361 reset=0 cpu_cycle=350 cpu_pc=0x17f4
+edge=362 reset=0 cpu_cycle=351 cpu_pc=0x17f4
+edge=363 reset=0 cpu_cycle=352 cpu_pc=0x17f4
+edge=364 reset=0 cpu_cycle=353 cpu_pc=0x17f6
+edge=365 reset=0 cpu_cycle=354 cpu_pc=0x17f6
+edge=366 reset=0 cpu_cycle=355 cpu_pc=0x17f6 retire=1 retire_pc=0x17ee retire_instr=0x12223 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=367 reset=0 cpu_cycle=356 cpu_pc=0x17f6
+edge=368 reset=0 cpu_cycle=357 cpu_pc=0x17f6
+edge=369 reset=0 cpu_cycle=358 cpu_pc=0x17f6
+edge=370 reset=0 cpu_cycle=359 cpu_pc=0x17f6
+edge=371 reset=0 cpu_cycle=360 cpu_pc=0x17f6
+edge=372 reset=0 cpu_cycle=361 cpu_pc=0x17f6
+edge=373 reset=0 cpu_cycle=362 cpu_pc=0x17f6
+edge=374 reset=0 cpu_cycle=363 cpu_pc=0x17f6
+edge=375 reset=0 cpu_cycle=364 cpu_pc=0x17f6
+edge=376 reset=0 cpu_cycle=365 cpu_pc=0x17f6
+edge=377 reset=0 cpu_cycle=366 cpu_pc=0x17f6
+edge=378 reset=0 cpu_cycle=367 cpu_pc=0x17f6
+edge=379 reset=0 cpu_cycle=368 cpu_pc=0x17fa
+edge=380 reset=0 cpu_cycle=369 cpu_pc=0x17fe
+edge=381 reset=0 cpu_cycle=370 cpu_pc=0x1802 retire=1 retire_pc=0x17f0 retire_instr=0x1112023 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=382 reset=0 cpu_cycle=371 cpu_pc=0x1806 retire=1 retire_pc=0x17f2 retire_instr=0x500793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x5
+edge=383 reset=0 cpu_cycle=372 cpu_pc=0x1808 retire=1 retire_pc=0x17f4 retire_instr=0x800713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x8
+edge=384 reset=0 cpu_cycle=373 cpu_pc=0x180a retire=1 retire_pc=0x17f6 retire_instr=0x11106b3 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x203ffecf
+edge=385 reset=0 cpu_cycle=374 cpu_pc=0x176c retire=1 retire_pc=0x17fa retire_instr=0xb7060613 wb_we=1 wb_fp=0 wb_rd=12 wb_data=0x20000b70
+edge=386 reset=0 cpu_cycle=375 cpu_pc=0x176c retire=1 retire_pc=0x17fe retire_instr=0xe1058593 wb_we=1 wb_fp=0 wb_rd=11 wb_data=0x20000e10
+edge=387 reset=0 cpu_cycle=376 cpu_pc=0x176c retire=1 retire_pc=0x1802 retire_instr=0x2050513 wb_we=1 wb_fp=0 wb_rd=10 wb_data=0x20000b90
+edge=388 reset=0 cpu_cycle=377 cpu_pc=0x1770 retire=1 retire_pc=0x1806 retire_instr=0xf67ff0ef wb_we=1 wb_fp=0 wb_rd=1 wb_data=0x1808
+edge=389 reset=0 cpu_cycle=378 cpu_pc=0x1770
+edge=390 reset=0 cpu_cycle=379 cpu_pc=0x1770
+edge=391 reset=0 cpu_cycle=380 cpu_pc=0x1770
+edge=392 reset=0 cpu_cycle=381 cpu_pc=0x1770 hc_req=1 hc_addr=0x200 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0x20000e1020000b90 hc_ve_start=0x0 hc_target=2
+edge=393 reset=0 cpu_cycle=382 cpu_pc=0x1774 hc_req=1 hc_addr=0x200 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0x20000e1020000b90 hc_ve_start=0x0 hc_target=2 hc_valid=1 hc_addr=0x200 hc_target=2 hc_rdata=0x0
+edge=394 reset=0 cpu_cycle=383 cpu_pc=0x1776
+edge=395 reset=0 cpu_cycle=384 cpu_pc=0x1778 retire=1 retire_pc=0x176c retire_instr=0xb5106b wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=396 reset=0 cpu_cycle=385 cpu_pc=0x1778
+edge=397 reset=0 cpu_cycle=386 cpu_pc=0x1778 hc_req=1 hc_addr=0x202 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0x203ffecf20000b70 hc_ve_start=0x0 hc_target=2
+edge=398 reset=0 cpu_cycle=387 cpu_pc=0x177a hc_req=1 hc_addr=0x202 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0x203ffecf20000b70 hc_ve_start=0x0 hc_target=2 hc_valid=1 hc_addr=0x202 hc_target=2 hc_rdata=0x0
+edge=399 reset=0 cpu_cycle=388 cpu_pc=0x177c
+edge=400 reset=0 cpu_cycle=389 cpu_pc=0x1780 retire=1 retire_pc=0x1770 retire_instr=0x6d6106b wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=401 reset=0 cpu_cycle=390 cpu_pc=0x1784 retire=1 retire_pc=0x1774 retire_instr=0x1071713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x80000
+edge=402 reset=0 cpu_cycle=391 cpu_pc=0x1786 retire=1 retire_pc=0x1776 retire_instr=0x1079793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x50000
+edge=403 reset=0 cpu_cycle=392 cpu_pc=0x1788 retire=1 retire_pc=0x1778 retire_instr=0x1075713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x8
+edge=404 reset=0 cpu_cycle=393 cpu_pc=0x178a retire=1 retire_pc=0x177a retire_instr=0xf76733 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x50008
+edge=405 reset=0 cpu_cycle=394 cpu_pc=0x178e retire=1 retire_pc=0x177c retire_instr=0x3f06b7 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x3f0000
+edge=406 reset=0 cpu_cycle=395 cpu_pc=0x178e retire=1 retire_pc=0x1780 retire_instr=0x1089793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x100000
+edge=407 reset=0 cpu_cycle=396 cpu_pc=0x178e retire=1 retire_pc=0x1784 retire_instr=0xd7f7b3 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x100000
+edge=408 reset=0 cpu_cycle=397 cpu_pc=0x178e
+edge=409 reset=0 cpu_cycle=398 cpu_pc=0x178e
+edge=410 reset=0 cpu_cycle=399 cpu_pc=0x178e
+edge=411 reset=0 cpu_cycle=400 cpu_pc=0x178e
+edge=412 reset=0 cpu_cycle=401 cpu_pc=0x178e
+edge=413 reset=0 cpu_cycle=402 cpu_pc=0x178e
+edge=414 reset=0 cpu_cycle=403 cpu_pc=0x178e
+edge=415 reset=0 cpu_cycle=404 cpu_pc=0x178e
+edge=416 reset=0 cpu_cycle=405 cpu_pc=0x178e
+edge=417 reset=0 cpu_cycle=406 cpu_pc=0x178e
+edge=418 reset=0 cpu_cycle=407 cpu_pc=0x178e
+edge=419 reset=0 cpu_cycle=408 cpu_pc=0x178e
+edge=420 reset=0 cpu_cycle=409 cpu_pc=0x1792
+edge=421 reset=0 cpu_cycle=410 cpu_pc=0x1794
+edge=422 reset=0 cpu_cycle=411 cpu_pc=0x1798 retire=1 retire_pc=0x1786 retire_instr=0x12683 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x10
+edge=423 reset=0 cpu_cycle=412 cpu_pc=0x179a retire=1 retire_pc=0x1788 retire_instr=0x1081813 wb_we=1 wb_fp=0 wb_rd=16 wb_data=0x10000
+edge=424 reset=0 cpu_cycle=413 cpu_pc=0x179c retire=1 retire_pc=0x178a retire_instr=0x1085813 wb_we=1 wb_fp=0 wb_rd=16 wb_data=0x1
+edge=425 reset=0 cpu_cycle=414 cpu_pc=0x17a0 retire=1 retire_pc=0x178e retire_instr=0x7c00637 wb_we=1 wb_fp=0 wb_rd=12 wb_data=0x7c00000
+edge=426 reset=0 cpu_cycle=415 cpu_pc=0x17a2 retire=1 retire_pc=0x1792 retire_instr=0x1669693 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x4000000
+edge=427 reset=0 cpu_cycle=416 cpu_pc=0x17a4 retire=1 retire_pc=0x1794 retire_instr=0x107e7b3 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x100001
+edge=428 reset=0 cpu_cycle=417 cpu_pc=0x17a4 retire=1 retire_pc=0x1798 retire_instr=0xc6f6b3 wb_we=1 wb_fp=0 wb_rd=13 wb_data=0x4000000
+edge=429 reset=0 cpu_cycle=418 cpu_pc=0x17a4 hc_req=1 hc_addr=0x204 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0x410000100050008 hc_ve_start=0x0 hc_target=2 retire=1 retire_pc=0x179a retire_instr=0xd7e7b3 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x4100001
+edge=430 reset=0 cpu_cycle=419 cpu_pc=0x17a6 hc_req=1 hc_addr=0x204 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0x410000100050008 hc_ve_start=0x0 hc_target=2 hc_valid=1 hc_addr=0x204 hc_target=2 hc_rdata=0x0
+edge=431 reset=0 cpu_cycle=420 cpu_pc=0x17a6
+edge=432 reset=0 cpu_cycle=421 cpu_pc=0x17a6 retire=1 retire_pc=0x179c retire_instr=0xcf7106b wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=433 reset=0 cpu_cycle=422 cpu_pc=0x17a6
+edge=434 reset=0 cpu_cycle=423 cpu_pc=0x17a6
+edge=435 reset=0 cpu_cycle=424 cpu_pc=0x17a6
+edge=436 reset=0 cpu_cycle=425 cpu_pc=0x17a6
+edge=437 reset=0 cpu_cycle=426 cpu_pc=0x17a6
+edge=438 reset=0 cpu_cycle=427 cpu_pc=0x17a6
+edge=439 reset=0 cpu_cycle=428 cpu_pc=0x17a6
+edge=440 reset=0 cpu_cycle=429 cpu_pc=0x17a6
+edge=441 reset=0 cpu_cycle=430 cpu_pc=0x17a6
+edge=442 reset=0 cpu_cycle=431 cpu_pc=0x17a6
+edge=443 reset=0 cpu_cycle=432 cpu_pc=0x17a6
+edge=444 reset=0 cpu_cycle=433 cpu_pc=0x17a6
+edge=445 reset=0 cpu_cycle=434 cpu_pc=0x17a8
+edge=446 reset=0 cpu_cycle=435 cpu_pc=0x17a8
+edge=447 reset=0 cpu_cycle=436 cpu_pc=0x17a8 retire=1 retire_pc=0x17a0 retire_instr=0x812783 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x1
+edge=448 reset=0 cpu_cycle=437 cpu_pc=0x17a8
+edge=449 reset=0 cpu_cycle=438 cpu_pc=0x17a8
+edge=450 reset=0 cpu_cycle=439 cpu_pc=0x17a8
+edge=451 reset=0 cpu_cycle=440 cpu_pc=0x17a8
+edge=452 reset=0 cpu_cycle=441 cpu_pc=0x17a8
+edge=453 reset=0 cpu_cycle=442 cpu_pc=0x17a8
+edge=454 reset=0 cpu_cycle=443 cpu_pc=0x17a8
+edge=455 reset=0 cpu_cycle=444 cpu_pc=0x17a8
+edge=456 reset=0 cpu_cycle=445 cpu_pc=0x17a8
+edge=457 reset=0 cpu_cycle=446 cpu_pc=0x17a8
+edge=458 reset=0 cpu_cycle=447 cpu_pc=0x17a8
+edge=459 reset=0 cpu_cycle=448 cpu_pc=0x17a8
+edge=460 reset=0 cpu_cycle=449 cpu_pc=0x17aa
+edge=461 reset=0 cpu_cycle=450 cpu_pc=0x17ac
+edge=462 reset=0 cpu_cycle=451 cpu_pc=0x17b0 retire=1 retire_pc=0x17a2 retire_instr=0x412703 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x0
+edge=463 reset=0 cpu_cycle=452 cpu_pc=0x17b2 retire=1 retire_pc=0x17a4 retire_instr=0xfff78793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x0
+edge=464 reset=0 cpu_cycle=453 cpu_pc=0x17b4 retire=1 retire_pc=0x17a6 retire_instr=0x579793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x0
+edge=465 reset=0 cpu_cycle=454 cpu_pc=0x17b6 retire=1 retire_pc=0x17a8 retire_instr=0x471713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x0
+edge=466 reset=0 cpu_cycle=455 cpu_pc=0x17ba retire=1 retire_pc=0x17aa retire_instr=0x1077713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x0
+edge=467 reset=0 cpu_cycle=456 cpu_pc=0x17ba retire=1 retire_pc=0x17ac retire_instr=0x207f793 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x0
+edge=468 reset=0 cpu_cycle=457 cpu_pc=0x17ba retire=1 retire_pc=0x17b0 retire_instr=0xe7e7b3 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x0
+edge=469 reset=0 cpu_cycle=458 cpu_pc=0x17ba
+edge=470 reset=0 cpu_cycle=459 cpu_pc=0x17ba
+edge=471 reset=0 cpu_cycle=460 cpu_pc=0x17ba
+edge=472 reset=0 cpu_cycle=461 cpu_pc=0x17ba
+edge=473 reset=0 cpu_cycle=462 cpu_pc=0x17ba
+edge=474 reset=0 cpu_cycle=463 cpu_pc=0x17ba
+edge=475 reset=0 cpu_cycle=464 cpu_pc=0x17ba
+edge=476 reset=0 cpu_cycle=465 cpu_pc=0x17ba
+edge=477 reset=0 cpu_cycle=466 cpu_pc=0x17ba
+edge=478 reset=0 cpu_cycle=467 cpu_pc=0x17ba
+edge=479 reset=0 cpu_cycle=468 cpu_pc=0x17ba
+edge=480 reset=0 cpu_cycle=469 cpu_pc=0x17ba
+edge=481 reset=0 cpu_cycle=470 cpu_pc=0x17bc
+edge=482 reset=0 cpu_cycle=471 cpu_pc=0x17c0
+edge=483 reset=0 cpu_cycle=472 cpu_pc=0x17c4 retire=1 retire_pc=0x17b2 retire_instr=0xc12703 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x4
+edge=484 reset=0 cpu_cycle=473 cpu_pc=0x17c6 retire=1 retire_pc=0x17b4 retire_instr=0x671713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x100
+edge=485 reset=0 cpu_cycle=474 cpu_pc=0x17ca retire=1 retire_pc=0x17b6 retire_instr=0x7c077713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x100
+edge=486 reset=0 cpu_cycle=475 cpu_pc=0x17ce retire=1 retire_pc=0x17ba retire_instr=0xe7e7b3 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x100
+edge=487 reset=0 cpu_cycle=476 cpu_pc=0x17d0 retire=1 retire_pc=0x17bc retire_instr=0x80002737 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x80002000
+edge=488 reset=0 cpu_cycle=477 cpu_pc=0x17d2 retire=1 retire_pc=0x17c0 retire_instr=0x80170713 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0x80001801
+edge=489 reset=0 cpu_cycle=478 cpu_pc=0x17d2 retire=1 retire_pc=0x17c4 retire_instr=0xe7e7b3 wb_we=1 wb_fp=0 wb_rd=15 wb_data=0x80001901
+edge=490 reset=0 cpu_cycle=479 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2 retire=1 retire_pc=0x17c6 retire_instr=0xc3000737 wb_we=1 wb_fp=0 wb_rd=14 wb_data=0xc3000000
+edge=491 reset=0 cpu_cycle=480 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2 sau_xbar_start=1
+edge=492 reset=0 cpu_cycle=481 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=493 reset=0 cpu_cycle=482 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=494 reset=0 cpu_cycle=483 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=495 reset=0 cpu_cycle=484 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=496 reset=0 cpu_cycle=485 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=497 reset=0 cpu_cycle=486 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=498 reset=0 cpu_cycle=487 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=499 reset=0 cpu_cycle=488 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=500 reset=0 cpu_cycle=489 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=501 reset=0 cpu_cycle=490 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=502 reset=0 cpu_cycle=491 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=503 reset=0 cpu_cycle=492 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=504 reset=0 cpu_cycle=493 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=505 reset=0 cpu_cycle=494 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=506 reset=0 cpu_cycle=495 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=507 reset=0 cpu_cycle=496 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=508 reset=0 cpu_cycle=497 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=509 reset=0 cpu_cycle=498 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=510 reset=0 cpu_cycle=499 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=511 reset=0 cpu_cycle=500 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=512 reset=0 cpu_cycle=501 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=513 reset=0 cpu_cycle=502 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=514 reset=0 cpu_cycle=503 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=515 reset=0 cpu_cycle=504 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=516 reset=0 cpu_cycle=505 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=517 reset=0 cpu_cycle=506 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=518 reset=0 cpu_cycle=507 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=519 reset=0 cpu_cycle=508 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=520 reset=0 cpu_cycle=509 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=521 reset=0 cpu_cycle=510 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=522 reset=0 cpu_cycle=511 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=523 reset=0 cpu_cycle=512 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=524 reset=0 cpu_cycle=513 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=525 reset=0 cpu_cycle=514 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=526 reset=0 cpu_cycle=515 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=527 reset=0 cpu_cycle=516 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=528 reset=0 cpu_cycle=517 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=529 reset=0 cpu_cycle=518 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=530 reset=0 cpu_cycle=519 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=531 reset=0 cpu_cycle=520 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=532 reset=0 cpu_cycle=521 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=533 reset=0 cpu_cycle=522 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=534 reset=0 cpu_cycle=523 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=535 reset=0 cpu_cycle=524 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=536 reset=0 cpu_cycle=525 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=537 reset=0 cpu_cycle=526 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=538 reset=0 cpu_cycle=527 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=539 reset=0 cpu_cycle=528 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=540 reset=0 cpu_cycle=529 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=541 reset=0 cpu_cycle=530 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=542 reset=0 cpu_cycle=531 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=543 reset=0 cpu_cycle=532 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=544 reset=0 cpu_cycle=533 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=545 reset=0 cpu_cycle=534 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=546 reset=0 cpu_cycle=535 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=547 reset=0 cpu_cycle=536 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=548 reset=0 cpu_cycle=537 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=549 reset=0 cpu_cycle=538 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=550 reset=0 cpu_cycle=539 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=551 reset=0 cpu_cycle=540 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=552 reset=0 cpu_cycle=541 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=553 reset=0 cpu_cycle=542 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=554 reset=0 cpu_cycle=543 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=555 reset=0 cpu_cycle=544 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=556 reset=0 cpu_cycle=545 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=557 reset=0 cpu_cycle=546 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=558 reset=0 cpu_cycle=547 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=559 reset=0 cpu_cycle=548 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=560 reset=0 cpu_cycle=549 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=561 reset=0 cpu_cycle=550 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=562 reset=0 cpu_cycle=551 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=563 reset=0 cpu_cycle=552 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=564 reset=0 cpu_cycle=553 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=565 reset=0 cpu_cycle=554 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=566 reset=0 cpu_cycle=555 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=567 reset=0 cpu_cycle=556 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=568 reset=0 cpu_cycle=557 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=569 reset=0 cpu_cycle=558 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=570 reset=0 cpu_cycle=559 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=571 reset=0 cpu_cycle=560 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=572 reset=0 cpu_cycle=561 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=573 reset=0 cpu_cycle=562 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=574 reset=0 cpu_cycle=563 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=575 reset=0 cpu_cycle=564 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=576 reset=0 cpu_cycle=565 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=577 reset=0 cpu_cycle=566 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=578 reset=0 cpu_cycle=567 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=579 reset=0 cpu_cycle=568 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=580 reset=0 cpu_cycle=569 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=581 reset=0 cpu_cycle=570 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=582 reset=0 cpu_cycle=571 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=583 reset=0 cpu_cycle=572 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=584 reset=0 cpu_cycle=573 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=585 reset=0 cpu_cycle=574 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=586 reset=0 cpu_cycle=575 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=587 reset=0 cpu_cycle=576 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=588 reset=0 cpu_cycle=577 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=589 reset=0 cpu_cycle=578 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=590 reset=0 cpu_cycle=579 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=591 reset=0 cpu_cycle=580 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=592 reset=0 cpu_cycle=581 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=593 reset=0 cpu_cycle=582 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=594 reset=0 cpu_cycle=583 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=595 reset=0 cpu_cycle=584 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=596 reset=0 cpu_cycle=585 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=597 reset=0 cpu_cycle=586 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=598 reset=0 cpu_cycle=587 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=599 reset=0 cpu_cycle=588 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=600 reset=0 cpu_cycle=589 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=601 reset=0 cpu_cycle=590 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=602 reset=0 cpu_cycle=591 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=603 reset=0 cpu_cycle=592 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=604 reset=0 cpu_cycle=593 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=605 reset=0 cpu_cycle=594 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=606 reset=0 cpu_cycle=595 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=607 reset=0 cpu_cycle=596 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=608 reset=0 cpu_cycle=597 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=609 reset=0 cpu_cycle=598 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=610 reset=0 cpu_cycle=599 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=611 reset=0 cpu_cycle=600 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=612 reset=0 cpu_cycle=601 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=613 reset=0 cpu_cycle=602 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=614 reset=0 cpu_cycle=603 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=615 reset=0 cpu_cycle=604 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=616 reset=0 cpu_cycle=605 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=617 reset=0 cpu_cycle=606 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=618 reset=0 cpu_cycle=607 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=619 reset=0 cpu_cycle=608 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=620 reset=0 cpu_cycle=609 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=621 reset=0 cpu_cycle=610 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=622 reset=0 cpu_cycle=611 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=623 reset=0 cpu_cycle=612 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=624 reset=0 cpu_cycle=613 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=625 reset=0 cpu_cycle=614 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=626 reset=0 cpu_cycle=615 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=627 reset=0 cpu_cycle=616 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=628 reset=0 cpu_cycle=617 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=629 reset=0 cpu_cycle=618 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=630 reset=0 cpu_cycle=619 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=631 reset=0 cpu_cycle=620 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=632 reset=0 cpu_cycle=621 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=633 reset=0 cpu_cycle=622 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=634 reset=0 cpu_cycle=623 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=635 reset=0 cpu_cycle=624 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=636 reset=0 cpu_cycle=625 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=637 reset=0 cpu_cycle=626 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=638 reset=0 cpu_cycle=627 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=639 reset=0 cpu_cycle=628 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=640 reset=0 cpu_cycle=629 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=641 reset=0 cpu_cycle=630 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=642 reset=0 cpu_cycle=631 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=643 reset=0 cpu_cycle=632 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=644 reset=0 cpu_cycle=633 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=645 reset=0 cpu_cycle=634 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=646 reset=0 cpu_cycle=635 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=647 reset=0 cpu_cycle=636 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=648 reset=0 cpu_cycle=637 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=649 reset=0 cpu_cycle=638 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=650 reset=0 cpu_cycle=639 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=651 reset=0 cpu_cycle=640 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=652 reset=0 cpu_cycle=641 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=653 reset=0 cpu_cycle=642 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=654 reset=0 cpu_cycle=643 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=655 reset=0 cpu_cycle=644 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=656 reset=0 cpu_cycle=645 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=657 reset=0 cpu_cycle=646 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=658 reset=0 cpu_cycle=647 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=659 reset=0 cpu_cycle=648 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=660 reset=0 cpu_cycle=649 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=661 reset=0 cpu_cycle=650 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=662 reset=0 cpu_cycle=651 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=663 reset=0 cpu_cycle=652 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=664 reset=0 cpu_cycle=653 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=665 reset=0 cpu_cycle=654 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=666 reset=0 cpu_cycle=655 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=667 reset=0 cpu_cycle=656 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=668 reset=0 cpu_cycle=657 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=669 reset=0 cpu_cycle=658 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=670 reset=0 cpu_cycle=659 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=671 reset=0 cpu_cycle=660 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=672 reset=0 cpu_cycle=661 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=673 reset=0 cpu_cycle=662 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=674 reset=0 cpu_cycle=663 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=675 reset=0 cpu_cycle=664 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=676 reset=0 cpu_cycle=665 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=677 reset=0 cpu_cycle=666 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=678 reset=0 cpu_cycle=667 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=679 reset=0 cpu_cycle=668 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=680 reset=0 cpu_cycle=669 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=681 reset=0 cpu_cycle=670 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=682 reset=0 cpu_cycle=671 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=683 reset=0 cpu_cycle=672 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=684 reset=0 cpu_cycle=673 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=685 reset=0 cpu_cycle=674 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=686 reset=0 cpu_cycle=675 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=687 reset=0 cpu_cycle=676 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=688 reset=0 cpu_cycle=677 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=689 reset=0 cpu_cycle=678 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=690 reset=0 cpu_cycle=679 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=691 reset=0 cpu_cycle=680 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=692 reset=0 cpu_cycle=681 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=693 reset=0 cpu_cycle=682 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=694 reset=0 cpu_cycle=683 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=695 reset=0 cpu_cycle=684 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=696 reset=0 cpu_cycle=685 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=697 reset=0 cpu_cycle=686 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=698 reset=0 cpu_cycle=687 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=699 reset=0 cpu_cycle=688 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=700 reset=0 cpu_cycle=689 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=701 reset=0 cpu_cycle=690 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=702 reset=0 cpu_cycle=691 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=703 reset=0 cpu_cycle=692 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=704 reset=0 cpu_cycle=693 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=705 reset=0 cpu_cycle=694 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=706 reset=0 cpu_cycle=695 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=707 reset=0 cpu_cycle=696 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=708 reset=0 cpu_cycle=697 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=709 reset=0 cpu_cycle=698 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=710 reset=0 cpu_cycle=699 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=711 reset=0 cpu_cycle=700 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=712 reset=0 cpu_cycle=701 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=713 reset=0 cpu_cycle=702 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=714 reset=0 cpu_cycle=703 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=715 reset=0 cpu_cycle=704 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=716 reset=0 cpu_cycle=705 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=717 reset=0 cpu_cycle=706 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=718 reset=0 cpu_cycle=707 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=719 reset=0 cpu_cycle=708 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=720 reset=0 cpu_cycle=709 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=721 reset=0 cpu_cycle=710 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=722 reset=0 cpu_cycle=711 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=723 reset=0 cpu_cycle=712 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=724 reset=0 cpu_cycle=713 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=725 reset=0 cpu_cycle=714 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=726 reset=0 cpu_cycle=715 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=727 reset=0 cpu_cycle=716 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=728 reset=0 cpu_cycle=717 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=729 reset=0 cpu_cycle=718 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=730 reset=0 cpu_cycle=719 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=731 reset=0 cpu_cycle=720 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=732 reset=0 cpu_cycle=721 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=733 reset=0 cpu_cycle=722 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=734 reset=0 cpu_cycle=723 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=735 reset=0 cpu_cycle=724 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=736 reset=0 cpu_cycle=725 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=737 reset=0 cpu_cycle=726 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=738 reset=0 cpu_cycle=727 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=739 reset=0 cpu_cycle=728 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=740 reset=0 cpu_cycle=729 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=741 reset=0 cpu_cycle=730 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=742 reset=0 cpu_cycle=731 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=743 reset=0 cpu_cycle=732 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=744 reset=0 cpu_cycle=733 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=745 reset=0 cpu_cycle=734 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=746 reset=0 cpu_cycle=735 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=747 reset=0 cpu_cycle=736 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=748 reset=0 cpu_cycle=737 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=749 reset=0 cpu_cycle=738 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=750 reset=0 cpu_cycle=739 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=751 reset=0 cpu_cycle=740 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=752 reset=0 cpu_cycle=741 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=753 reset=0 cpu_cycle=742 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=754 reset=0 cpu_cycle=743 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=755 reset=0 cpu_cycle=744 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=756 reset=0 cpu_cycle=745 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=757 reset=0 cpu_cycle=746 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=758 reset=0 cpu_cycle=747 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=759 reset=0 cpu_cycle=748 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=760 reset=0 cpu_cycle=749 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=761 reset=0 cpu_cycle=750 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=762 reset=0 cpu_cycle=751 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=763 reset=0 cpu_cycle=752 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=764 reset=0 cpu_cycle=753 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=765 reset=0 cpu_cycle=754 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=766 reset=0 cpu_cycle=755 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=767 reset=0 cpu_cycle=756 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=768 reset=0 cpu_cycle=757 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=769 reset=0 cpu_cycle=758 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=770 reset=0 cpu_cycle=759 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=771 reset=0 cpu_cycle=760 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=772 reset=0 cpu_cycle=761 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=773 reset=0 cpu_cycle=762 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=774 reset=0 cpu_cycle=763 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=775 reset=0 cpu_cycle=764 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=776 reset=0 cpu_cycle=765 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=777 reset=0 cpu_cycle=766 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=778 reset=0 cpu_cycle=767 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=779 reset=0 cpu_cycle=768 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=780 reset=0 cpu_cycle=769 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=781 reset=0 cpu_cycle=770 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=782 reset=0 cpu_cycle=771 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=783 reset=0 cpu_cycle=772 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=784 reset=0 cpu_cycle=773 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=785 reset=0 cpu_cycle=774 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=786 reset=0 cpu_cycle=775 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=787 reset=0 cpu_cycle=776 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=788 reset=0 cpu_cycle=777 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=789 reset=0 cpu_cycle=778 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=790 reset=0 cpu_cycle=779 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=791 reset=0 cpu_cycle=780 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=792 reset=0 cpu_cycle=781 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=793 reset=0 cpu_cycle=782 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=794 reset=0 cpu_cycle=783 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=795 reset=0 cpu_cycle=784 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=796 reset=0 cpu_cycle=785 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=797 reset=0 cpu_cycle=786 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=798 reset=0 cpu_cycle=787 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=799 reset=0 cpu_cycle=788 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=800 reset=0 cpu_cycle=789 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=801 reset=0 cpu_cycle=790 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=802 reset=0 cpu_cycle=791 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=803 reset=0 cpu_cycle=792 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=804 reset=0 cpu_cycle=793 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=805 reset=0 cpu_cycle=794 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=806 reset=0 cpu_cycle=795 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=807 reset=0 cpu_cycle=796 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=808 reset=0 cpu_cycle=797 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=809 reset=0 cpu_cycle=798 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=810 reset=0 cpu_cycle=799 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=811 reset=0 cpu_cycle=800 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=812 reset=0 cpu_cycle=801 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=813 reset=0 cpu_cycle=802 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=814 reset=0 cpu_cycle=803 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=815 reset=0 cpu_cycle=804 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=816 reset=0 cpu_cycle=805 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=817 reset=0 cpu_cycle=806 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=818 reset=0 cpu_cycle=807 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=819 reset=0 cpu_cycle=808 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=820 reset=0 cpu_cycle=809 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=821 reset=0 cpu_cycle=810 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=822 reset=0 cpu_cycle=811 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=823 reset=0 cpu_cycle=812 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=824 reset=0 cpu_cycle=813 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=825 reset=0 cpu_cycle=814 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=826 reset=0 cpu_cycle=815 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=827 reset=0 cpu_cycle=816 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=828 reset=0 cpu_cycle=817 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=829 reset=0 cpu_cycle=818 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=830 reset=0 cpu_cycle=819 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=831 reset=0 cpu_cycle=820 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=832 reset=0 cpu_cycle=821 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=833 reset=0 cpu_cycle=822 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=834 reset=0 cpu_cycle=823 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=835 reset=0 cpu_cycle=824 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=836 reset=0 cpu_cycle=825 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=837 reset=0 cpu_cycle=826 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=838 reset=0 cpu_cycle=827 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=839 reset=0 cpu_cycle=828 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=840 reset=0 cpu_cycle=829 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=841 reset=0 cpu_cycle=830 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=842 reset=0 cpu_cycle=831 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=843 reset=0 cpu_cycle=832 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=844 reset=0 cpu_cycle=833 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=845 reset=0 cpu_cycle=834 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=846 reset=0 cpu_cycle=835 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=847 reset=0 cpu_cycle=836 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=848 reset=0 cpu_cycle=837 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=849 reset=0 cpu_cycle=838 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=850 reset=0 cpu_cycle=839 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=851 reset=0 cpu_cycle=840 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=852 reset=0 cpu_cycle=841 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=853 reset=0 cpu_cycle=842 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=854 reset=0 cpu_cycle=843 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=855 reset=0 cpu_cycle=844 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=856 reset=0 cpu_cycle=845 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=857 reset=0 cpu_cycle=846 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=858 reset=0 cpu_cycle=847 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=859 reset=0 cpu_cycle=848 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=860 reset=0 cpu_cycle=849 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=861 reset=0 cpu_cycle=850 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=862 reset=0 cpu_cycle=851 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=863 reset=0 cpu_cycle=852 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=864 reset=0 cpu_cycle=853 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=865 reset=0 cpu_cycle=854 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=866 reset=0 cpu_cycle=855 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=867 reset=0 cpu_cycle=856 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=868 reset=0 cpu_cycle=857 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=869 reset=0 cpu_cycle=858 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=870 reset=0 cpu_cycle=859 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=871 reset=0 cpu_cycle=860 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=872 reset=0 cpu_cycle=861 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=873 reset=0 cpu_cycle=862 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=874 reset=0 cpu_cycle=863 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=875 reset=0 cpu_cycle=864 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=876 reset=0 cpu_cycle=865 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=877 reset=0 cpu_cycle=866 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=878 reset=0 cpu_cycle=867 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=879 reset=0 cpu_cycle=868 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=880 reset=0 cpu_cycle=869 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=881 reset=0 cpu_cycle=870 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=882 reset=0 cpu_cycle=871 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=883 reset=0 cpu_cycle=872 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=884 reset=0 cpu_cycle=873 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=885 reset=0 cpu_cycle=874 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=886 reset=0 cpu_cycle=875 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=887 reset=0 cpu_cycle=876 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=888 reset=0 cpu_cycle=877 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=889 reset=0 cpu_cycle=878 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=890 reset=0 cpu_cycle=879 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=891 reset=0 cpu_cycle=880 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=892 reset=0 cpu_cycle=881 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=893 reset=0 cpu_cycle=882 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=894 reset=0 cpu_cycle=883 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=895 reset=0 cpu_cycle=884 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=896 reset=0 cpu_cycle=885 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=897 reset=0 cpu_cycle=886 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=898 reset=0 cpu_cycle=887 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=899 reset=0 cpu_cycle=888 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=900 reset=0 cpu_cycle=889 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=901 reset=0 cpu_cycle=890 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=902 reset=0 cpu_cycle=891 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=903 reset=0 cpu_cycle=892 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=904 reset=0 cpu_cycle=893 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=905 reset=0 cpu_cycle=894 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=906 reset=0 cpu_cycle=895 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=907 reset=0 cpu_cycle=896 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=908 reset=0 cpu_cycle=897 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=909 reset=0 cpu_cycle=898 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=910 reset=0 cpu_cycle=899 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=911 reset=0 cpu_cycle=900 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=912 reset=0 cpu_cycle=901 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=913 reset=0 cpu_cycle=902 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=914 reset=0 cpu_cycle=903 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=915 reset=0 cpu_cycle=904 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=916 reset=0 cpu_cycle=905 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=917 reset=0 cpu_cycle=906 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=918 reset=0 cpu_cycle=907 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=919 reset=0 cpu_cycle=908 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=920 reset=0 cpu_cycle=909 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=921 reset=0 cpu_cycle=910 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=922 reset=0 cpu_cycle=911 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=923 reset=0 cpu_cycle=912 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=924 reset=0 cpu_cycle=913 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=925 reset=0 cpu_cycle=914 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=926 reset=0 cpu_cycle=915 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=927 reset=0 cpu_cycle=916 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=928 reset=0 cpu_cycle=917 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=929 reset=0 cpu_cycle=918 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=930 reset=0 cpu_cycle=919 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=931 reset=0 cpu_cycle=920 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=932 reset=0 cpu_cycle=921 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=933 reset=0 cpu_cycle=922 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=934 reset=0 cpu_cycle=923 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=935 reset=0 cpu_cycle=924 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=936 reset=0 cpu_cycle=925 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=937 reset=0 cpu_cycle=926 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=938 reset=0 cpu_cycle=927 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=939 reset=0 cpu_cycle=928 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=940 reset=0 cpu_cycle=929 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=941 reset=0 cpu_cycle=930 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=942 reset=0 cpu_cycle=931 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=943 reset=0 cpu_cycle=932 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=944 reset=0 cpu_cycle=933 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=945 reset=0 cpu_cycle=934 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=946 reset=0 cpu_cycle=935 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=947 reset=0 cpu_cycle=936 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=948 reset=0 cpu_cycle=937 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=949 reset=0 cpu_cycle=938 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=950 reset=0 cpu_cycle=939 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=951 reset=0 cpu_cycle=940 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=952 reset=0 cpu_cycle=941 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=953 reset=0 cpu_cycle=942 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=954 reset=0 cpu_cycle=943 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=955 reset=0 cpu_cycle=944 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=956 reset=0 cpu_cycle=945 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=957 reset=0 cpu_cycle=946 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=958 reset=0 cpu_cycle=947 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=959 reset=0 cpu_cycle=948 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=960 reset=0 cpu_cycle=949 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=961 reset=0 cpu_cycle=950 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=962 reset=0 cpu_cycle=951 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=963 reset=0 cpu_cycle=952 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=964 reset=0 cpu_cycle=953 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=965 reset=0 cpu_cycle=954 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=966 reset=0 cpu_cycle=955 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=967 reset=0 cpu_cycle=956 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=968 reset=0 cpu_cycle=957 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=969 reset=0 cpu_cycle=958 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=970 reset=0 cpu_cycle=959 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=971 reset=0 cpu_cycle=960 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=972 reset=0 cpu_cycle=961 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=973 reset=0 cpu_cycle=962 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=974 reset=0 cpu_cycle=963 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=975 reset=0 cpu_cycle=964 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=976 reset=0 cpu_cycle=965 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=977 reset=0 cpu_cycle=966 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=978 reset=0 cpu_cycle=967 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=979 reset=0 cpu_cycle=968 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=980 reset=0 cpu_cycle=969 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=981 reset=0 cpu_cycle=970 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=982 reset=0 cpu_cycle=971 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=983 reset=0 cpu_cycle=972 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=984 reset=0 cpu_cycle=973 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=985 reset=0 cpu_cycle=974 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=986 reset=0 cpu_cycle=975 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=987 reset=0 cpu_cycle=976 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=988 reset=0 cpu_cycle=977 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=989 reset=0 cpu_cycle=978 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=990 reset=0 cpu_cycle=979 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=991 reset=0 cpu_cycle=980 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=992 reset=0 cpu_cycle=981 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=993 reset=0 cpu_cycle=982 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=994 reset=0 cpu_cycle=983 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=995 reset=0 cpu_cycle=984 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=996 reset=0 cpu_cycle=985 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=997 reset=0 cpu_cycle=986 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=998 reset=0 cpu_cycle=987 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=999 reset=0 cpu_cycle=988 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1000 reset=0 cpu_cycle=989 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1001 reset=0 cpu_cycle=990 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1002 reset=0 cpu_cycle=991 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1003 reset=0 cpu_cycle=992 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1004 reset=0 cpu_cycle=993 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1005 reset=0 cpu_cycle=994 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1006 reset=0 cpu_cycle=995 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1007 reset=0 cpu_cycle=996 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1008 reset=0 cpu_cycle=997 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1009 reset=0 cpu_cycle=998 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1010 reset=0 cpu_cycle=999 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1011 reset=0 cpu_cycle=1000 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1012 reset=0 cpu_cycle=1001 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1013 reset=0 cpu_cycle=1002 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1014 reset=0 cpu_cycle=1003 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1015 reset=0 cpu_cycle=1004 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1016 reset=0 cpu_cycle=1005 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1017 reset=0 cpu_cycle=1006 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1018 reset=0 cpu_cycle=1007 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1019 reset=0 cpu_cycle=1008 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1020 reset=0 cpu_cycle=1009 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1021 reset=0 cpu_cycle=1010 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2
+edge=1022 reset=0 cpu_cycle=1011 cpu_pc=0x17d2 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2 sau_xbar_done=1
+event=sau_n_output operation=1 output_base=0x203ffecf output_bytes=288 data_hex=fcff0603fffb05fbfd07ff0200f900fb00f7fefcfffffffeff030207f8010e00fffafef9fb02ffff000403fffd040604ff0104050000030100fd030000fff80105ff07000602ff0505010100fbfe0106f90407fb0304050605fc05030202fd0404fe040000fd04010601fdfe0105fd04ff00000302fd01fb07fefe010801fd090300f704f9fa0202f5fc0405fd0000fa050402fffa03feff09fff4020403fe01faff02ff03fd000d00fbff01010900fcfdfe0304fc03fdfaff04fffbf6f8fffe010703fc0003fbfe0304f7f802ffff0c03020000fb030701f3fefefefbfe00fd000702fa03090202fffefffe020102ff02000301fefbffff080d00fc0c09fefbfd05fdfffefafafd0702fffc00f5ffff0308fdfe000502fc01fcfafefd030000
+edge=1023 reset=0 cpu_cycle=1012 cpu_pc=0x1808 hc_req=1 hc_addr=0x206 hc_re=0 hc_we=1 hc_write_type=1 hc_wdata=0xc300000080001901 hc_ve_start=0x0 hc_target=2 hc_valid=1 hc_addr=0x206 hc_target=2 hc_rdata=0x0
+edge=1024 reset=0 cpu_cycle=1013 cpu_pc=0x1808
+edge=1025 reset=0 cpu_cycle=1014 cpu_pc=0x1808 retire=1 retire_pc=0x17ca retire_instr=0x12e7906b wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=1026 reset=0 cpu_cycle=1015 cpu_pc=0x1808 retire=1 retire_pc=0x17ce retire_instr=0x8067 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0
+edge=1027 reset=0 cpu_cycle=1016 cpu_pc=0x180a
+edge=1028 reset=0 cpu_cycle=1017 cpu_pc=0x180e
+edge=1029 reset=0 cpu_cycle=1018 cpu_pc=0x1810
+edge=1030 reset=0 cpu_cycle=1019 cpu_pc=0x1810
+edge=1031 reset=0 cpu_cycle=1020 cpu_pc=0x1810
+edge=1032 reset=0 cpu_cycle=1021 cpu_pc=0x1810 retire=1 retire_pc=0x1808 retire_instr=0x100073 wb_we=0 wb_fp=0 wb_rd=0 wb_data=0x0

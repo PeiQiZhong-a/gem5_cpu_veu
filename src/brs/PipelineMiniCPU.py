@@ -23,8 +23,13 @@ class PipelineMiniCPU(ClockedObject):
     )
     tb_memory_kind = Param.String(
         "dut-kui",
-        "RTL memory model: dut-kui or npu-lpnpu-mikui",
+        "RTL memory model: dut-kui, npu-lpnpu-mikui, or npu-lpnpu-mikui-dma",
     )
+    dma_pio_enabled = Param.Bool(
+        False, "Route this PIO window through data_port to an external DMA")
+    dma_pio_base = Param.Addr(0x40019C00, "External DMA PIO base")
+    dma_pio_size = Param.Addr(0x100, "External DMA PIO size")
+    dma_irq = IntSinkPin("Independent DMA interrupt input")
     tb_imem_image_file = Param.String(
         "", "Raw image loaded into the selected RTL instruction SRAM")
     tb_dmem_image_file = Param.String(
@@ -33,6 +38,12 @@ class PipelineMiniCPU(ClockedObject):
     tb_inst_size = Param.Addr(0x00040000, "RTL instruction SRAM size")
     tb_data_base = Param.Addr(0x29120000, "RTL data SRAM base")
     tb_data_size = Param.Addr(0x00040000, "RTL decoded data window size")
+    tb_data_bank_size = Param.UInt32(
+        0x00010000, "dut_kui data bank size")
+    tb_data_bank_count = Param.UInt32(
+        4, "dut_kui decoded data bank count")
+    tb_data_real_bank_count = Param.UInt32(
+        3, "dut_kui physically backed data bank count")
 
     max_cycles = Param.UInt64(
         2_000_000,
@@ -61,17 +72,29 @@ class PipelineMiniCPU(ClockedObject):
     debug_instr_valid = Param.Bool(False, "Injected debug instruction valid")
     cycle_trace_file = Param.String(
         "", "Optional per-cycle RTL-comparison trace written in gem5 output")
+    cycle_trace_compact = Param.Bool(
+        False,
+        "Write a compact event-enriched cycle trace instead of full signal lines",
+    )
+    ebreak_terminates = Param.Bool(
+        False,
+        "Treat a retired EBREAK as a normal workload termination",
+    )
     veu_model = Param.String(
         "fake",
         "VEU backend model: fake or timing",
     )
+    sau_model = Param.String(
+        "stub",
+        "SAU backend model: stub or sau_n",
+    )
     veu_input_fifo_depth = Param.UInt32(
         4,
-        "TimingVEU input FIFO depth in 256-bit chunks",
+        "TimingVEU input FIFO depth in 128-bit chunks",
     )
     veu_execute_latency = Param.UInt32(
         3,
-        "TimingVEU execute latency per 256-bit chunk in CPU cycles",
+        "TimingVEU execute latency per 128-bit chunk in CPU cycles",
     )
     veu_execute_ii = Param.UInt32(
         1,
@@ -85,13 +108,21 @@ class PipelineMiniCPU(ClockedObject):
         "",
         "Normalized TimingVEU per-operation timing profile CSV",
     )
+    veu_terminal_behavior = Param.String(
+        "",
+        "Normalized TimingVEU terminal behavior CSV",
+    )
     veu_cycle_trace = Param.String(
         "",
         "Optional TimingVEU structural cycle trace CSV output",
     )
     veu_startup_cycles = Param.UInt32(
-        0,
+        4,
         "TimingVEU startup cycles before issuing the first load",
+    )
+    veu_lock_start_delay_cycles = Param.UInt32(
+        1,
+        "TimingVEU delay from operation start to Mikui VEU SRAM lock start",
     )
     veu_finish_cycles = Param.UInt32(
         0,

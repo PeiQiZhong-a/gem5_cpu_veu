@@ -77,10 +77,9 @@ struct DutKuiMemoryOutputs
 
 // Cycle model of the memory-facing portion of dut_kui. Instruction fetch is
 // an independent 128-bit path. RV data accesses pass through the RTL's
-// 32-to-256 converter, while TimingVEU accesses the 256-bit SRAM path directly.
-// The canonical SAU endpoint is 128-bit; this legacy wrapper adapts each SAU
-// beat to the addressed half of its internal 256-bit crossbar without changing
-// the CPU/SAU contract.
+// 32-to-256 converter. The canonical Mikui VEU and SAU endpoints are 128-bit;
+// this legacy wrapper adapts each accelerator beat to the addressed half of
+// its internal 256-bit crossbar without changing the CPU/accelerator contract.
 class DutKuiMemoryModel
 {
   public:
@@ -125,6 +124,7 @@ class DutKuiMemoryModel
 
     void writeByte(uint32_t address, uint8_t value);
     uint8_t readByte(uint32_t address) const;
+    bool dataMapped(uint32_t address) const;
     void writeWord(uint32_t address, uint32_t value);
     uint32_t readWord(uint32_t address) const;
 
@@ -186,7 +186,6 @@ class DutKuiMemoryModel
     std::deque<DelayedResponse<DutKuiIbusResponse>> ibusResponses;
     DutKuiMemoryOutputs visibleOutputs;
     bool instructionMapped(uint32_t address) const;
-    bool dataMapped(uint32_t address) const;
     DutKuiMemoryOutputs advance(
         bool veuLockActive, const SauMemoryOutput &sau);
 };

@@ -1,6 +1,7 @@
 Import('*')
 
 SimObject('PipelineMiniCPU.py', sim_objects=['PipelineMiniCPU'])
+SimObject('MikuiDecompressDma.py', sim_objects=['MikuiDecompressDma'])
 
 Source('pipeline_mini_cpu.cc')
 Source('pipeline/frontend_fetch_unit.cc')
@@ -19,16 +20,24 @@ Source('memory/dut_kui_data_crossbar.cc')
 Source('memory/sram_converter_32to256.cc')
 Source('memory/npu_lpnpu_mikui_memory_model.cc')
 Source('memory/npu_lpnpu_mikui_crossbar.cc')
+Source('memory/npu_lpnpu_mikui_dma_crossbar.cc')
 Source('memory/sram_converter_32to128.cc')
+Source('dma/mikui_decompressor.cc')
+Source('dma/mikui_decompress_dma.cc')
 Source('hc/hc_cbu.cc')
 Source('hc/hc_router.cc')
 Source('sau/sau_cbu.cc')
+Source('sau/conv3_csr_config.cc')
+Source('sau/sau_n_config_adapter.cc')
+Source('sau/sau_n_endpoint.cc')
+Source('sau/sau_n_memory_view.cc')
 Source('sau/stub_sau.cc')
 Source('veu/veu_cbu.cc')
 Source('veu/fake_veu.cc')
 Source('veu/timing_veu.cc')
 Source('veu/veu_functional.cc')
 Source('veu/veu_timing_profile.cc')
+Source('veu/veu_terminal_behavior.cc')
 
 GTest('brs_frontend_fetch_unit.test',
       'pipeline/frontend_fetch_unit.test.cc',
@@ -60,7 +69,16 @@ GTest('brs_npu_lpnpu_mikui_memory_model.test',
       'memory/npu_lpnpu_mikui_memory_model.test.cc',
       'memory/npu_lpnpu_mikui_memory_model.cc',
       'memory/npu_lpnpu_mikui_crossbar.cc',
+      'memory/npu_lpnpu_mikui_dma_crossbar.cc',
       'memory/sram_converter_32to128.cc')
+
+GTest('brs_npu_lpnpu_mikui_dma_crossbar.test',
+      'memory/npu_lpnpu_mikui_dma_crossbar.test.cc',
+      'memory/npu_lpnpu_mikui_dma_crossbar.cc')
+
+GTest('brs_mikui_decompressor.test',
+      'dma/mikui_decompressor.test.cc',
+      'dma/mikui_decompressor.cc')
 
 GTest('brs_dut_kui_data_crossbar.test',
       'memory/dut_kui_data_crossbar.test.cc',
@@ -103,7 +121,8 @@ GTest('brs_timing_veu.test',
       'veu/timing_veu.test.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_veu_issue.test',
       'pipeline/veu_issue.test.cc')
@@ -115,6 +134,53 @@ GTest('brs_sau_cbu.test',
       'sau/sau_cbu.test.cc',
       'hc/hc_cbu.cc',
       'sau/sau_cbu.cc')
+
+GTest('brs_conv3_csr_config.test',
+      'sau/conv3_csr_config.test.cc',
+      'sau/conv3_csr_config.cc')
+
+GTest('brs_sau_n_config_adapter.test',
+      'sau/sau_n_config_adapter.test.cc',
+      'sau/sau_n_config_adapter.cc',
+      'sau/conv3_csr_config.cc',
+      '../sau_n/streaming_pipeline_contract.cc',
+      '../sau_n/sau_types.cc',
+      '../sau_n/im2col_types.cc')
+
+GTest('brs_sau_n_endpoint.test',
+      'sau/sau_n_endpoint.test.cc',
+      'sau/sau_n_endpoint.cc',
+      'sau/sau_n_config_adapter.cc',
+      'sau/conv3_csr_config.cc',
+      'sau/sau_n_memory_view.cc',
+      'memory/dut_kui_memory_model.cc',
+      'memory/dut_kui_data_crossbar.cc',
+      'memory/sram_converter_32to256.cc',
+      '../sau_n/streaming_conv_pipeline_model.cc',
+      '../sau_n/pipelined_im2col_model.cc',
+      '../sau_n/streaming_pipeline_contract.cc',
+      '../sau_n/sau_model.cc',
+      '../sau_n/sau_generators.cc',
+      '../sau_n/banked_scratchpad.cc',
+      '../sau_n/im2col_address.cc',
+      '../sau_n/sau_types.cc',
+      '../sau_n/im2col_types.cc')
+
+GTest('brs_sau_n_memory_view.test',
+      'sau/sau_n_memory_view.test.cc',
+      'sau/sau_n_memory_view.cc',
+      'memory/dut_kui_memory_model.cc',
+      'memory/dut_kui_data_crossbar.cc',
+      'memory/sram_converter_32to256.cc',
+      '../sau_n/streaming_conv_pipeline_model.cc',
+      '../sau_n/pipelined_im2col_model.cc',
+      '../sau_n/streaming_pipeline_contract.cc',
+      '../sau_n/sau_model.cc',
+      '../sau_n/sau_generators.cc',
+      '../sau_n/banked_scratchpad.cc',
+      '../sau_n/im2col_address.cc',
+      '../sau_n/sau_types.cc',
+      '../sau_n/im2col_types.cc')
 
 GTest('brs_stub_sau.test',
       'sau/stub_sau.test.cc',
@@ -144,7 +210,8 @@ GTest('brs_pipeline_sau.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_veu_stall.test',
       'pipeline/pipeline_veu_stall.test.cc',
@@ -169,7 +236,8 @@ GTest('brs_pipeline_veu_stall.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_rv32m.test',
       'pipeline/pipeline_rv32m.test.cc',
@@ -192,7 +260,8 @@ GTest('brs_pipeline_rv32m.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_lsu_timing.test',
       'pipeline/pipeline_lsu_timing.test.cc',
@@ -215,7 +284,8 @@ GTest('brs_pipeline_lsu_timing.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_csr_trap.test',
       'pipeline/pipeline_csr_trap.test.cc',
@@ -238,7 +308,8 @@ GTest('brs_pipeline_csr_trap.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_control_fp.test',
       'pipeline/pipeline_control_fp.test.cc',
@@ -261,7 +332,8 @@ GTest('brs_pipeline_control_fp.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_veu_writeback.test',
       'pipeline/pipeline_veu_writeback.test.cc',
@@ -284,7 +356,8 @@ GTest('brs_pipeline_veu_writeback.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')
 
 GTest('brs_pipeline_veu_end_to_end.test',
       'pipeline/pipeline_veu_end_to_end.test.cc',
@@ -307,4 +380,5 @@ GTest('brs_pipeline_veu_end_to_end.test',
       'veu/fake_veu.cc',
       'veu/timing_veu.cc',
       'veu/veu_functional.cc',
-      'veu/veu_timing_profile.cc')
+      'veu/veu_timing_profile.cc',
+      'veu/veu_terminal_behavior.cc')

@@ -42,8 +42,10 @@ class PipelineCore
     void reset(uint32_t start_pc, uint32_t end_pc);
     void configureFrontend(uint32_t fifoDepth, uint32_t burstBytes);
     void configureTextEndTermination(bool enabled);
+    void configureEbreakTermination(bool enabled);
     void configureTrapVector(uint32_t trapVector);
-    void setInterruptInputs(uint32_t external, bool software, bool timer);
+    void setInterruptInputs(
+        uint32_t external, bool software, bool timer, bool dma = false);
     void setDebugInputs(bool halt, bool haltOnReset, bool resume,
                         uint32_t data0 = 0);
     void setDebugInstruction(uint32_t instruction, bool valid);
@@ -235,6 +237,8 @@ class PipelineCore
     uint32_t csr_mscratch = 0;
     uint32_t csr_mtvec = 0x100;
     uint32_t csr_mepc = 0;
+    bool csr_mcause_irq = false;
+    uint8_t csr_mcause_code = 0;
     uint32_t csr_mie = 0;
     bool csr_mcountinhibit_cycle = true;
     bool csr_mcountinhibit_instr = true;
@@ -263,9 +267,11 @@ class PipelineCore
     uint32_t irq_external_input = 0;
     bool irq_software_input = false;
     bool irq_timer_input = false;
+    bool irq_dma_input = false;
     uint32_t irq_external_sampled = 0;
     bool irq_software_sampled = false;
     bool irq_timer_sampled = false;
+    bool irq_dma_sampled = false;
     bool debug_halt_input = false;
     bool debug_halt_on_reset_input = false;
     bool debug_resume_input = false;
@@ -294,6 +300,7 @@ class PipelineCore
     uint32_t text_start = 0x80000000u;
     uint32_t text_end = 0x80000000u;
     bool text_end_termination = true;
+    bool ebreak_termination = false;
     bool fetch_waiting = false;
     bool fetch_response_valid = false;
     uint32_t fetch_response_addr = 0;

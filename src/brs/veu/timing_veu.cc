@@ -27,8 +27,13 @@ TimingVeu::configure(const VeuTimingConfig &config)
         throw std::runtime_error("TimingVEU cycle and depth parameters must be positive");
     }
     timingProfile.load(timing.timingProfilePath);
+    terminalBehavior.load(timing.terminalBehaviorPath);
     if (timingProfile.loaded() && timing.inputFifoDepth != 4) {
         throw std::runtime_error("calibrated TimingVEU profile requires FIFO depth 4");
+    }
+    if (terminalBehavior.loaded() && timing.inputFifoDepth != 4) {
+        throw std::runtime_error(
+            "calibrated TimingVEU terminal behavior requires FIFO depth 4");
     }
     traceStream.close();
     if (!timing.cycleTracePath.empty()) {
@@ -55,7 +60,6 @@ TimingVeu::reset()
     currentState = State::Idle;
     controlState = ControlState::Idle;
     csr = {};
-    csr.mask = FullWriteMask;
     requestReg = {};
     responseData = 0;
     pendingThreeSourceStart = false;
@@ -68,13 +72,25 @@ TimingVeu::reset()
     nextOperationId = 1;
     nextTransactionId = 1;
     operationStartCycle = 0;
+    lockStartCycle = 0;
+    statusClearTargetCycle = 0;
+    operationFinishTargetCycle = 0;
     nextVfuAcceptCycle = 0;
     drainReadyCycle = 0;
+    requestedVlen = 0;
+    operationRequestedVlen = 0;
+    operationEffectiveVlen = 0;
+    operationConfig = 0;
+    operationMask = 0;
+    operationScalar = 0;
     operationInstruction = VeuInstruction::Unknown;
     operationInfo = {};
+    activeTiming = {};
+    activeTerminal.reset();
     operationChunkCount = 0;
     nextExecuteChunk = 0;
     completedChunkCount = 0;
+    vfuAcceptCycles.clear();
     readRoundRobin = 0;
     nextReadChunk = {};
     outstandingBySource = {};
@@ -96,6 +112,9 @@ TimingVeu::reset()
     vsuQueueStalls = storePriorityCycles = readsBlockedByStore = 0;
     maskedWrites = zeroMaskSkippedWrites = retries = unexpectedResponses = 0;
     profileHits = profileMisses = profileFallbacks = 0;
+    terminalBehaviorUses = 0;
+    rtlSimTimingUses = legacyTimingUses = defaultTimingUses = 0;
+    rtlSimControlTimingUses = defaultControlTimingUses = 0;
     zeroLengthNoops = illegalOperations = 0;
 }
 
@@ -125,6 +144,19 @@ TimingVeu::readCsr(uint16_t addr) const
 void
 TimingVeu::writeCsr(uint16_t addr, uint32_t value, VeuWriteType writeType)
 {
+    if (static_cast<VeuCsr>(addr) == VeuCsr::VectorLength) {
+        uint32_t rawValue = csr.vlen;
+        switch (writeType) {
+          case VeuWriteType::Write:
+          case VeuWriteType::VectorStart: rawValue = value; break;
+          case VeuWriteType::Set: rawValue |= value; break;
+          case VeuWriteType::Clear: rawValue &= value; break;
+        }
+        requestedVlen = rawValue;
+        csr.vlen = effectiveVeuLengthAtStart(rawValue);
+        return;
+    }
+
     uint32_t *target = nullptr;
     switch (static_cast<VeuCsr>(addr)) {
       case VeuCsr::Status: target = &csr.status; break;
@@ -132,7 +164,7 @@ TimingVeu::writeCsr(uint16_t addr, uint32_t value, VeuWriteType writeType)
       case VeuCsr::ReadAddress2: target = &csr.raddr2; break;
       case VeuCsr::WriteAddress: target = &csr.waddr; break;
       case VeuCsr::Config: target = &csr.config; break;
-      case VeuCsr::VectorLength: target = &csr.vlen; break;
+      case VeuCsr::VectorLength: break;
       case VeuCsr::Mask: target = &csr.mask; break;
       case VeuCsr::ReadAddress3: target = &csr.raddr3; break;
       default: break;
@@ -161,11 +193,15 @@ TimingVeu::decodeStart(uint32_t start) const
           case 6: return VeuInstruction::And;
           case 7: return VeuInstruction::Or;
           case 8: return VeuInstruction::Xor;
+          case 9: return VeuInstruction::SlideUp;
+          case 10: return VeuInstruction::SlideDown;
           case 11: return VeuInstruction::Move;
           case 12: return VeuInstruction::ShiftRightLogical;
           case 13: return VeuInstruction::ShiftRightArithmetic;
           case 14: return VeuInstruction::NarrowClip;
+          case 15: return VeuInstruction::WidenReduceSum;
           case 16: return VeuInstruction::ReduceSum;
+          case 17: return VeuInstruction::Compress;
           case 18: return VeuInstruction::MultiplySubtract;
           case 19: return VeuInstruction::MultiplyAdd;
           case 20: return VeuInstruction::Multiply;
@@ -197,8 +233,9 @@ TimingVeu::acceptRequest(const VeuRequest &request)
 std::string
 TimingVeu::maskClassName() const
 {
-    return csr.mask == 0 ? "zero" :
-           (csr.mask == FullWriteMask ? "full" : "partial");
+    const uint32_t effectiveMask = csr.mask & FullWriteMask;
+    return effectiveMask == 0 ? "zero" :
+           (effectiveMask == FullWriteMask ? "full" : "partial");
 }
 
 std::string
@@ -213,7 +250,7 @@ TimingVeu::sourceSetName() const
         if (!result.empty()) result += "+";
         result += "src" + std::to_string(source);
     }
-    return result;
+    return result.empty() ? "none" : result;
 }
 
 void
@@ -257,62 +294,153 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
     }
 
     operationInstruction = decodeStart(start);
-    const bool scalarEnabled = (csr.config & 0x800u) != 0;
+    operationRequestedVlen = requestedVlen;
+    operationEffectiveVlen = csr.vlen;
+    operationConfig = csr.config;
+    // Mikui keeps a 32-bit CSR but exposes only a 16-bit VFU write strobe.
+    operationMask = csr.mask & FullWriteMask;
+    operationScalar = csr.raddr1;
+    const bool scalarEnabled = (operationConfig & 0x800u) != 0;
     operationInfo = VeuFunctionalExecutor::describe(operationInstruction,
                                                      scalarEnabled);
-    if (!operationInfo.supported) {
+    operationChunkCount = operationEffectiveVlen / VeuVectorBits;
+    const std::string terminalOp =
+        operationInstruction == VeuInstruction::Unknown ?
+            "unknown_start_bit" : operationInfo.name;
+    activeTerminal = terminalBehavior.select(
+        terminalOp, scalarEnabled, maskClassName(), operationChunkCount);
+    if (!operationInfo.supported && !activeTerminal) {
         ++illegalOperations;
         trace("illegal_operation", -1, VeuSource::None, 0, 0, nullptr, 0,
               "unsupported start bit");
         responseData = csr.status;
         return;
     }
+    if (operationInfo.rtlIllegal || terminalIllegalComplete()) {
+        ++illegalOperations;
+        trace("rtl_illegal_operation", -1, VeuSource::None, 0, 0, nullptr,
+              0, "RTL data path is present but VCU raises illegal_op");
+    }
 
-    const uint32_t effectiveBits = effectiveVeuLengthAtStart(csr.vlen);
-    operationChunkCount = effectiveBits / VeuVectorBits;
-    activeTiming = timingProfile.select(
-        operationInfo.name, (csr.config >> 7) & 0x3, scalarEnabled,
-        maskClassName(), sourceSetName(), timing.executeLatency,
-        timing.executeII, timing.inputFifoDepth, timing.maxOutstandingReads,
-        timing.vsuLatency);
-    if (activeTiming.matched) {
-        ++profileHits;
+    if (activeTerminal) {
+        activeTiming = {};
+        activeTiming.latency = 1;
+        activeTiming.initiationInterval = 1;
+        activeTiming.fifoDepth = 4;
+        activeTiming.maxOutstandingReads = 3;
+        activeTiming.vsuLatency = 1;
+        activeTiming.lockStartDelay = 1;
+        activeTiming.finishDrainCycles =
+            activeTerminal->lockFinishCycles -
+            activeTerminal->statusClearCycles;
+        activeTiming.operationCycles = activeTerminal->lockFinishCycles;
+        activeTiming.profileId = activeTerminal->behaviorId;
+        activeTiming.timingSource = "rtl_sim";
+        activeTiming.evidenceId = activeTerminal->evidenceId;
+        activeTiming.controlTimingSource = "rtl_sim";
+        activeTiming.controlEvidenceId = activeTerminal->evidenceId;
+        activeTiming.matched = true;
+        ++terminalBehaviorUses;
+        trace("terminal_behavior_selected", -1, VeuSource::None, 0, 0,
+              nullptr, 0, "classification=" +
+                  activeTerminal->classification + ";behavior_id=" +
+                  activeTerminal->behaviorId);
     } else {
-        ++profileMisses;
-        ++profileFallbacks;
-        if (timingProfile.loaded()) {
-            std::cerr << "warning: TimingVEU profile fallback for "
-                      << operationInfo.name << '\n';
+        activeTiming = timingProfile.select(
+            operationInfo.name, scalarEnabled,
+            maskClassName(), sourceSetName(), operationChunkCount,
+            timing.executeLatency,
+            timing.executeII, timing.inputFifoDepth,
+            timing.maxOutstandingReads, timing.vsuLatency,
+            timing.lockStartDelayCycles, timing.finishCycles);
+        if (activeTiming.matched) {
+            ++profileHits;
+        } else {
+            ++profileMisses;
+            ++profileFallbacks;
+            if (timingProfile.loaded()) {
+                std::cerr << "warning: TimingVEU profile fallback for "
+                          << operationInfo.name << '\n';
+            }
+            trace("timing_profile_fallback");
         }
-        trace("timing_profile_fallback");
+    }
+    if (activeTiming.timingSource == "rtl_sim") {
+        ++rtlSimTimingUses;
+    } else if (activeTiming.timingSource == "legacy_default") {
+        ++legacyTimingUses;
+    } else {
+        ++defaultTimingUses;
+    }
+    if (activeTiming.controlTimingSource == "rtl_sim") {
+        ++rtlSimControlTimingUses;
+    } else {
+        ++defaultControlTimingUses;
     }
 
     operationId = nextOperationId++;
     operationStartCycle = modelCycle;
+    lockStartCycle = modelCycle + activeTiming.lockStartDelay;
+    statusClearTargetCycle = 0;
+    operationFinishTargetCycle = 0;
+    if (activeTiming.operationCycles >= activeTiming.finishDrainCycles &&
+        activeTiming.controlTimingSource == "rtl_sim") {
+        operationFinishTargetCycle =
+            modelCycle + activeTiming.operationCycles;
+        statusClearTargetCycle =
+            operationFinishTargetCycle - activeTiming.finishDrainCycles;
+    }
     nextVfuAcceptCycle = modelCycle + timing.startupCycles;
     nextExecuteChunk = 0;
     completedChunkCount = 0;
+    vfuAcceptCycles.assign(executeChunkLimit(), 0);
     nextReadChunk = {};
     outstandingBySource = {};
-    readRoundRobin = 0;
+    // The RTL multiply-family load selector starts with operand 2.  Three
+    // source MAC/MSUB then rotate source2 -> source3 -> source1.
+    readRoundRobin =
+        operationInstruction == VeuInstruction::Multiply ||
+        operationInstruction == VeuInstruction::MultiplyAdd ||
+        operationInstruction == VeuInstruction::MultiplySubtract ? 1 : 0;
     for (auto &fifo : inputFifos) fifo.clear();
     vfuPipeline.clear();
     vsuPipeline.clear();
     storeQueue.clear();
-    outstanding.clear();
+    // Normally this map is empty.  A measured terminal case may still own a
+    // tail request after lock_finish; preserve it so its late response can be
+    // acknowledged even if software starts the next vector operation first.
     pendingResponses.clear();
     retryRequest.reset();
     functionalExecutor.reset();
     statusBusy = true;
-    lockActive = true;
+    lockActive = false;
     internalActive = true;
     currentState = State::Running;
     csr.status = (start << 1) | 1u;
     responseData = csr.status;
     ++startedOperations;
-    trace("operation_start");
+    trace("operation_start", -1, VeuSource::None, 0, 0, nullptr, 0,
+          "profile_id=" + activeTiming.profileId +
+              ";timing_source=" + activeTiming.timingSource +
+              ";evidence_id=" + activeTiming.evidenceId +
+              ";control_timing_source=" +
+                  activeTiming.controlTimingSource +
+              ";control_evidence_id=" +
+                  activeTiming.controlEvidenceId +
+              ";vfu_latency=" + std::to_string(activeTiming.latency) +
+              ";vfu_ii=" + std::to_string(activeTiming.initiationInterval) +
+              ";vsu_latency=" + std::to_string(activeTiming.vsuLatency) +
+              ";lock_start_delay=" +
+                  std::to_string(activeTiming.lockStartDelay) +
+              ";finish_drain_cycles=" +
+                  std::to_string(activeTiming.finishDrainCycles) +
+              ";operation_cycles=" +
+                  std::to_string(activeTiming.operationCycles));
     trace("status_set");
-    trace("lock_start");
+    if (activeTiming.lockStartDelay == 0) {
+        lockActive = true;
+        trace("lock_start");
+    }
 }
 
 uint64_t
@@ -326,6 +454,35 @@ uint64_t
 TimingVeu::fifoMaxOccupancy(unsigned source) const
 {
     return source < maxFifoOccupancy.size() ? maxFifoOccupancy[source] : 0;
+}
+
+uint32_t
+TimingVeu::executeChunkLimit() const
+{
+    if (activeTerminal && operationInstruction == VeuInstruction::Move) {
+        return operationChunkCount + activeTerminal->extraVfuAccepts;
+    }
+    return operationChunkCount;
+}
+
+uint32_t
+TimingVeu::readChunkLimit(VeuSource source) const
+{
+    if (activeTerminal && source == VeuSource::Source2) {
+        const uint32_t requestedReads =
+            VeuFunctionalExecutor::sourceRequired(operationInfo.sourceMask,
+                                                   source) ?
+                operationChunkCount : 0;
+        return requestedReads + activeTerminal->tailReads;
+    }
+    return operationChunkCount;
+}
+
+bool
+TimingVeu::terminalIllegalComplete() const
+{
+    return activeTerminal &&
+        activeTerminal->classification == "ILLEGAL_COMPLETE";
 }
 
 bool
@@ -404,7 +561,8 @@ TimingVeu::advancePipelines()
         vfuPipeline.pop_front();
         ++vfuCompleted;
         trace("vfu_done", token.chunk);
-        token.readyCycle = modelCycle + activeTiming.vsuLatency;
+        token.readyCycle = modelCycle + activeTiming.vsuLatency +
+            ((operationMask == 0 && !token.result.writeResult) ? 1 : 0);
         vsuPipeline.push_back(std::move(token));
     }
     while (!vsuPipeline.empty() && vsuPipeline.front().readyCycle <= modelCycle) {
@@ -416,19 +574,44 @@ TimingVeu::advancePipelines()
         ResultToken token = std::move(vsuPipeline.front());
         vsuPipeline.pop_front();
         trace("vsu_ready", token.chunk);
+        advanceVisibleOutputCsrs(token);
         if (token.result.writeResult) {
             storeQueue.push_back(std::move(token));
         } else {
-            if (csr.mask == 0) ++zeroMaskSkippedWrites;
+            if (operationMask == 0) ++zeroMaskSkippedWrites;
             completeChunk(token.chunk);
         }
     }
 }
 
 void
+TimingVeu::advanceVisibleOutputCsrs(ResultToken &token)
+{
+    token.writeAddress = csr.waddr;
+    const bool duplicateTerminalMoveWrite = activeTerminal &&
+        operationInstruction == VeuInstruction::Move &&
+        token.chunk + 1 == executeChunkLimit() && csr.waddr >= VeuVectorBytes;
+    if (duplicateTerminalMoveWrite) {
+        // The measured scalar VMV defect emits two distinct final store
+        // transactions to the same address.  It is not a held-valid sample.
+        token.writeAddress = csr.waddr - VeuVectorBytes;
+        token.advancesCsr = false;
+    }
+    if (!token.advancesCsr) {
+        return;
+    }
+    if (!operationInfo.reduction) {
+        csr.waddr += VeuVectorBytes;
+    }
+    csr.vlen = csr.vlen <= VeuVectorBits ? 0 : csr.vlen - VeuVectorBits;
+    requestedVlen = csr.vlen;
+}
+
+void
 TimingVeu::acceptVfuInput()
 {
-    if (nextExecuteChunk >= operationChunkCount) return;
+    if (terminalIllegalComplete() ||
+        nextExecuteChunk >= executeChunkLimit()) return;
     if (!allSourcesReady(nextExecuteChunk)) {
         ++fifoEmptyStalls;
         return;
@@ -439,11 +622,11 @@ TimingVeu::acceptVfuInput()
     }
     VeuFunctionalInput input;
     input.instruction = operationInstruction;
-    input.config = csr.config;
-    input.scalar = csr.raddr1;
-    input.writeMask = csr.mask;
+    input.config = operationConfig;
+    input.scalar = operationScalar;
+    input.writeMask = operationMask;
     input.chunkIndex = nextExecuteChunk;
-    input.chunkCount = operationChunkCount;
+    input.chunkCount = executeChunkLimit();
     for (uint8_t index = 0; index < 3; ++index) {
         const auto source = static_cast<VeuSource>(index + 1);
         if (!VeuFunctionalExecutor::sourceRequired(operationInfo.sourceMask,
@@ -455,9 +638,33 @@ TimingVeu::acceptVfuInput()
     }
     ResultToken token;
     token.chunk = nextExecuteChunk;
+    vfuAcceptCycles[input.chunkIndex] = modelCycle;
     token.result = functionalExecutor.execute(input);
-    token.readyCycle = modelCycle + activeTiming.latency;
-    vfuPipeline.push_back(std::move(token));
+    token.chunk = token.result.outputChunk;
+    token.readyCycle =
+        vfuAcceptCycles[token.chunk] + activeTiming.latency;
+    const bool hasExtraResult = token.result.hasExtraResult;
+    const uint32_t extraChunk = token.result.extraChunk;
+    const VeuVector extraData = token.result.extraData;
+    const uint32_t extraStrobe = token.result.writeStrobe;
+    const bool suppressedSlideDown =
+        operationInstruction == VeuInstruction::SlideDown &&
+        input.chunkCount > 1 && input.chunkIndex == 0;
+    if (!suppressedSlideDown) {
+        vfuPipeline.push_back(std::move(token));
+    }
+    if (input.chunkIndex + 1 == input.chunkCount && hasExtraResult) {
+        ResultToken extra;
+        extra.chunk = extraChunk;
+        extra.result.data = extraData;
+        extra.result.writeStrobe = extraStrobe;
+        extra.result.writeResult = extraStrobe != 0;
+        extra.result.outputChunk = extraChunk;
+        extra.advancesCsr = false;
+        extra.readyCycle =
+            vfuAcceptCycles[extraChunk] + activeTiming.latency + 1;
+        vfuPipeline.push_back(std::move(extra));
+    }
     ++vfuAccepted;
     maxVfuInFlight = std::max<uint64_t>(maxVfuInFlight, vfuPipeline.size());
     trace("vfu_accept", nextExecuteChunk);
@@ -468,14 +675,14 @@ TimingVeu::acceptVfuInput()
 uint32_t
 TimingVeu::sourceAddress(VeuSource source, uint32_t chunk) const
 {
-    uint32_t base = 0;
+    (void)chunk;
     switch (source) {
-      case VeuSource::Source1: base = csr.raddr1; break;
-      case VeuSource::Source2: base = csr.raddr2; break;
-      case VeuSource::Source3: base = csr.raddr3; break;
+      case VeuSource::Source1: return csr.raddr1;
+      case VeuSource::Source2: return csr.raddr2;
+      case VeuSource::Source3: return csr.raddr3;
       default: break;
     }
-    return base + chunk * VeuVectorBytes;
+    return 0;
 }
 
 bool
@@ -486,10 +693,18 @@ TimingVeu::readCanIssue() const
     }
     for (uint8_t index = 0; index < 3; ++index) {
         const auto source = static_cast<VeuSource>(index + 1);
+        const bool terminalTailSource = activeTerminal &&
+            source == VeuSource::Source2 && activeTerminal->tailReads != 0;
         if (!VeuFunctionalExecutor::sourceRequired(operationInfo.sourceMask,
-                                                   source)) continue;
-        if (nextReadChunk[index] < operationChunkCount &&
-            inputFifos[index].size() + outstandingBySource[index] <
+                                                   source) &&
+            !terminalTailSource) continue;
+        // The RTL return path has a register in front of the source FIFO.
+        // Consequently one response may remain in flight while the FIFO plus
+        // the other outstanding responses account for fifoDepth entries.
+        // The FIFO itself must still have room for the next committed return.
+        if (nextReadChunk[index] < readChunkLimit(source) &&
+            inputFifos[index].size() < activeTiming.fifoDepth &&
+            inputFifos[index].size() + outstandingBySource[index] <=
                 activeTiming.fifoDepth) return true;
     }
     return false;
@@ -504,11 +719,15 @@ TimingVeu::makeReadRequest()
     for (uint8_t offset = 0; offset < 3; ++offset) {
         const uint8_t index = (readRoundRobin + offset) % 3;
         const auto source = static_cast<VeuSource>(index + 1);
+        const bool terminalTailSource = activeTerminal &&
+            source == VeuSource::Source2 && activeTerminal->tailReads != 0;
         if (!VeuFunctionalExecutor::sourceRequired(operationInfo.sourceMask,
-                                                   source)) continue;
-        if (nextReadChunk[index] >= operationChunkCount) continue;
-        if (inputFifos[index].size() + outstandingBySource[index] >=
-            activeTiming.fifoDepth) {
+                                                   source) &&
+            !terminalTailSource) continue;
+        if (nextReadChunk[index] >= readChunkLimit(source)) continue;
+        if (inputFifos[index].size() >= activeTiming.fifoDepth ||
+            inputFifos[index].size() + outstandingBySource[index] >
+                activeTiming.fifoDepth) {
             ++fifoFullStalls;
             continue;
         }
@@ -549,6 +768,9 @@ TimingVeu::issueRequest(const TimingVeuMemoryRequest &request)
         const uint8_t index = static_cast<uint8_t>(request.source) - 1;
         ++nextReadChunk[index];
         ++outstandingBySource[index];
+        if (request.source == VeuSource::Source1) csr.raddr1 += VeuVectorBytes;
+        if (request.source == VeuSource::Source2) csr.raddr2 += VeuVectorBytes;
+        if (request.source == VeuSource::Source3) csr.raddr3 += VeuVectorBytes;
         ++memoryReads;
         maxOutstandingReadsSeen = std::max<uint64_t>(
             maxOutstandingReadsSeen, currentOutstandingReadCount());
@@ -561,14 +783,33 @@ TimingVeu::issueRequest(const TimingVeuMemoryRequest &request)
 void
 TimingVeu::issueOneMemoryRequest()
 {
+    // Measured ILLEGAL_COMPLETE rows raise illegal_op and complete after the
+    // fixed control interval without allowing their nominal VFU source
+    // selection (for example VMULH/VWREDSUM) to reach SRAM.
+    if (terminalIllegalComplete()) {
+        return;
+    }
+    // RTL VCU/VLU performs its CSR/lock/crossbar startup sequence before the
+    // first SRAM load becomes visible. A value of N therefore inserts N
+    // complete cycles between operation_start and the normal first-load edge.
+    if (modelCycle <= operationStartCycle + timing.startupCycles) {
+        return;
+    }
     if (retryRequest) {
         TimingVeuMemoryRequest request = *retryRequest;
+        if (request.isWrite) {
+            ++storePriorityCycles;
+            if (readCanIssue()) {
+                ++readsBlockedByStore;
+                trace("store_priority", request.chunkIndex);
+            }
+        }
         if (issueRequest(request)) retryRequest.reset();
         return;
     }
     if (!storeQueue.empty()) {
+        ++storePriorityCycles;
         if (readCanIssue()) {
-            ++storePriorityCycles;
             ++readsBlockedByStore;
             trace("store_priority", storeQueue.front().chunk);
         }
@@ -576,9 +817,14 @@ TimingVeu::issueOneMemoryRequest()
         TimingVeuMemoryRequest request;
         request.transactionId = nextTransactionId++;
         request.operationId = operationId;
-        request.chunkIndex = token.chunk;
-        request.address = csr.waddr +
-            (operationInfo.reduction ? 0 : token.chunk * VeuVectorBytes);
+        const bool finalOnlyMinMax =
+            (operationInstruction == VeuInstruction::ReduceMin ||
+             operationInstruction == VeuInstruction::ReduceMax) &&
+            operationChunkCount != 2;
+        request.chunkIndex =
+            operationInstruction == VeuInstruction::ReduceSum ||
+            finalOnlyMinMax ? 0 : token.chunk;
+        request.address = token.writeAddress;
         request.isWrite = true;
         request.writeStrobe = token.result.writeStrobe;
         request.data = token.result.data;
@@ -606,6 +852,23 @@ TimingVeu::completeMemoryRead(uint64_t transactionId, const VeuVector &data)
         ++unexpectedResponses;
         throw std::runtime_error("TimingVEU unknown, duplicate, or mismatched read response");
     }
+    // Some measured RTL terminal cases drop status/lock while a speculative
+    // tail read is still in flight.  The SRAM response is nevertheless
+    // consumed by the RTL return path; it must not resurrect the completed
+    // operation or leave gem5 waiting forever for an input FIFO consumer.
+    if (!internalActive || found->second.request.operationId != operationId) {
+        const auto request = found->second.request;
+        outstanding.erase(found);
+        if (!internalActive) {
+            const uint8_t index = static_cast<uint8_t>(request.source) - 1;
+            if (outstandingBySource[index] != 0) {
+                --outstandingBySource[index];
+            }
+        }
+        trace("terminal_late_read_response", request.chunkIndex,
+              request.source, transactionId, request.address, &data);
+        return;
+    }
     found->second.responseQueued = true;
     pendingResponses.push_back({transactionId, false, data});
 }
@@ -618,6 +881,13 @@ TimingVeu::completeMemoryWrite(uint64_t transactionId)
         found->second.responseQueued) {
         ++unexpectedResponses;
         throw std::runtime_error("TimingVEU unknown, duplicate, or mismatched write response");
+    }
+    if (!internalActive || found->second.request.operationId != operationId) {
+        const auto request = found->second.request;
+        outstanding.erase(found);
+        trace("terminal_late_write_response", request.chunkIndex,
+              VeuSource::None, transactionId, request.address);
+        return;
     }
     found->second.responseQueued = true;
     pendingResponses.push_back({transactionId, true, {}});
@@ -645,10 +915,43 @@ TimingVeu::quiescent() const
 void
 TimingVeu::enterDrainingIfDone()
 {
-    if (currentState == State::Running &&
-        completedChunkCount == operationChunkCount && quiescent()) {
+    const bool measuredControl = statusClearTargetCycle != 0;
+    if (currentState == State::Running && statusBusy && measuredControl &&
+        modelCycle >= statusClearTargetCycle) {
+        trace("status_clear");
+        statusBusy = false;
+        csr.status &= ~1u;
+    }
+
+    if (activeTerminal) {
+        if (activeTerminal->stuck || operationFinishTargetCycle == 0 ||
+            modelCycle < operationFinishTargetCycle) {
+            return;
+        }
+        if (operationInstruction != VeuInstruction::Move &&
+            activeTerminal->extraVfuAccepts != 0) {
+            vfuAccepted += activeTerminal->extraVfuAccepts;
+            trace("terminal_extra_vfu_accept", -1, VeuSource::None, 0, 0,
+                  nullptr, 0, "count=" +
+                      std::to_string(activeTerminal->extraVfuAccepts));
+        }
+        completeOperation();
+        return;
+    }
+
+    const bool dataPathDone =
+        completedChunkCount == operationChunkCount && quiescent();
+    if (currentState == State::Running && dataPathDone &&
+        (!measuredControl || !statusBusy)) {
+        if (statusBusy) {
+            trace("status_clear");
+            statusBusy = false;
+            csr.status &= ~1u;
+        }
         currentState = State::Draining;
-        drainReadyCycle = modelCycle + timing.finishCycles;
+        drainReadyCycle = measuredControl ?
+            operationFinishTargetCycle :
+            modelCycle + activeTiming.finishDrainCycles;
     }
     if (currentState == State::Draining && modelCycle >= drainReadyCycle &&
         quiescent()) {
@@ -659,25 +962,42 @@ TimingVeu::enterDrainingIfDone()
 void
 TimingVeu::completeOperation()
 {
-    trace("status_clear");
-    statusBusy = false;
-    csr.status &= ~1u;
     trace("lock_finish");
     lockActive = false;
     trace("operation_finish");
     internalActive = false;
     currentState = State::Idle;
     ++completedOperations;
+
+    if (activeTerminal) {
+        // Keep accepted external requests in `outstanding` until their SRAM
+        // responses arrive, but retire all purely internal artifacts.  This
+        // mirrors the observed RTL terminal state: software sees completion
+        // at the measured edge even though the crossbar can still return a
+        // previously accepted request on a later edge.
+        for (auto &fifo : inputFifos) fifo.clear();
+        vfuPipeline.clear();
+        vsuPipeline.clear();
+        storeQueue.clear();
+        retryRequest.reset();
+    }
 }
 
 void
 TimingVeu::advanceOperation()
 {
     if (!internalActive) return;
-    processResponses();
+    if (!lockActive && modelCycle >= lockStartCycle) {
+        lockActive = true;
+        trace("lock_start");
+    }
     advancePipelines();
     if (currentState == State::Running) {
+        // Operands returned on this edge are committed below and can only be
+        // consumed by the VFU on the following edge, matching the RTL FIFO
+        // boundary. Existing FIFO contents remain consumable here.
         acceptVfuInput();
+        processResponses();
         issueOneMemoryRequest();
         if (currentOutstandingReadCount()) ++loadWaitCycles;
         if (!vfuPipeline.empty()) ++executeCycles;
@@ -705,7 +1025,8 @@ TimingVeu::trace(const char *event, int32_t chunk, VeuSource source,
     }
     traceStream << modelCycle << ',' << event << ",0,0,"
                 << VeuFunctionalExecutor::instructionName(operationInstruction)
-                << ',' << csr.vlen << ',' << effectiveVeuLengthAtStart(csr.vlen)
+                << ',' << operationRequestedVlen << ','
+                << operationEffectiveVlen
                 << ',' << chunk << ',' << static_cast<unsigned>(source) << ','
                 << transactionId << ",0x" << std::hex << address << ','
                 << dataText.str() << ",0x" << strobe << std::dec << ','

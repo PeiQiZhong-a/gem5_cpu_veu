@@ -1,0 +1,62 @@
+{
+  "cycle_count": 238671,
+  "details": {
+    "compute_wait_cycles": 42048,
+    "expected_output_sha256": "9f1dcbc35c350d6027f98be0f5c8b43b42ca52b7604459c0c42be3aa88913d47",
+    "final_write_request_edge": 238668,
+    "final_write_response_edge": 238671,
+    "instruction_image": {
+      "sau_slots_in_image": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "word_count": 65536
+    },
+    "memory_requests": 18704,
+    "memory_responses": 18704,
+    "output_sha256": "9f1dcbc35c350d6027f98be0f5c8b43b42ca52b7604459c0c42be3aa88913d47",
+    "payloads": [
+      "0x2913200029130000",
+      "0x2913292029132900",
+      "0x410000100200010",
+      "0xc300000080001b11"
+    ],
+    "read_requests": 10512,
+    "roi_end_cycle": 238661,
+    "roi_start_cycle": 163844,
+    "sau_instruction_counts": {
+      "msetins1": 1,
+      "msetins2": 1,
+      "msetins3": 1,
+      "msetins4": 1
+    },
+    "write_requests": 8192,
+    "writeback_wait_cycles": 32768
+  },
+  "fixture": "generated_four_ins_full_offload",
+  "instruction_sha256": "5ec7bbd3f16e6e4d6e79207de8ab303d5712094985ab834da50d178aa2fbf510",
+  "memory_profile": {
+    "data_base": 689045504,
+    "format": "one 8-hex-digit 32-bit readmemh token per line",
+    "instruction_base": 0,
+    "instruction_bytes": 262144,
+    "instruction_words": 65536,
+    "real_data_bytes": 196608,
+    "word_to_cpu_bytes": "token value encoded little-endian"
+  },
+  "memory_sha256": "3095ac54ad22931d3a8a37513a9a4eaa9b8c23d57c0831ad919f6008b5b32811",
+  "retired_inst_count": 49150,
+  "roi_end_retired_inst": 49147,
+  "roi_start_retired_inst": 49147,
+  "sau_csr_handshake_cycles": 74825,
+  "sau_model": "conv3",
+  "stall_count": 132169,
+  "status": "PASS",
+  "termination": {
+    "termination": "ebreak",
+    "termination_edge": 238681,
+    "termination_pc": "0x5000"
+  }
+}
