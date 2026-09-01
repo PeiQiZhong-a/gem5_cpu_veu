@@ -30,6 +30,8 @@ NpuLpnpuMikuiMemoryModel::reset()
     pendingVeuRequests.clear();
     issuedVeuRequests.clear();
     previousVeuLockActive = false;
+    dmaDbusWordOffset = 0;
+    dmaDbusWrite = false;
     dbusConverter.reset();
     crossbar.reset();
     dmaCrossbar.reset();
@@ -129,25 +131,48 @@ NpuLpnpuMikuiMemoryModel::advance(
     const SramConverter32To128Output converterBefore =
         dbusConverter.evaluate();
     Sram128Response dbusResponseBefore;
-    if (config.dmaTopology) {
-        dbusResponseBefore = dmaCrossbar.evaluate().dbus;
-    } else {
+    if (!config.dmaTopology) {
         dbusResponseBefore = crossbar.evaluate().dbus;
     }
 
     Sram32Request dbusInput;
-    if (dbusAcceptedThisCycle && dbusConverter.canAccept()) {
-        dbusInput.valid = true;
-        dbusInput.address = acceptedDbus.address;
-        dbusInput.writeStrobe = acceptedDbus.writeStrobe;
-        dbusInput.writeData = acceptedDbus.writeData;
-        dbusAcceptedThisCycle = false;
-        acceptedDbus = {};
+    Sram128Request dmaDbusInput;
+    if (dbusAcceptedThisCycle) {
+        if (config.dmaTopology) {
+            dmaDbusInput.valid = true;
+            dmaDbusInput.address = acceptedDbus.address & ~uint32_t{0x0f};
+            dmaDbusWordOffset =
+                static_cast<uint8_t>((acceptedDbus.address >> 2) & 0x3);
+            dmaDbusWrite = acceptedDbus.writeStrobe != 0;
+            if (dmaDbusWrite) {
+                const uint8_t byteOffset = dmaDbusWordOffset * 4;
+                dmaDbusInput.writeStrobe =
+                    static_cast<uint16_t>(acceptedDbus.writeStrobe) <<
+                    byteOffset;
+                for (uint8_t byte = 0; byte < 4; ++byte) {
+                    dmaDbusInput.writeData[byteOffset + byte] =
+                        static_cast<uint8_t>(
+                            acceptedDbus.writeData >> (byte * 8));
+                }
+            }
+            dbusAcceptedThisCycle = false;
+            acceptedDbus = {};
+        } else if (dbusConverter.canAccept()) {
+            dbusInput.valid = true;
+            dbusInput.address = acceptedDbus.address;
+            dbusInput.writeStrobe = acceptedDbus.writeStrobe;
+            dbusInput.writeData = acceptedDbus.writeData;
+            dbusAcceptedThisCycle = false;
+            acceptedDbus = {};
+        }
     }
-    dbusConverter.clock(dbusInput, dbusResponseBefore);
+    if (!config.dmaTopology) {
+        dbusConverter.clock(dbusInput, dbusResponseBefore);
+    }
 
     NpuLpnpuMikuiCrossbarInputs crossbarInputs;
-    crossbarInputs.dbus = converterBefore.sram;
+    crossbarInputs.dbus = config.dmaTopology ?
+        dmaDbusInput : converterBefore.sram;
     const uint8_t sauMaster =
         static_cast<uint8_t>(NpuLpnpuMikuiMaster::Sau);
     const uint8_t veuMaster =
@@ -162,10 +187,12 @@ NpuLpnpuMikuiMemoryModel::advance(
         !veuLockActive && previousVeuLockActive;
 
     Sram128Response veuResponse;
+    Sram128Response dmaDbusResponseAfter;
     bool veuAccepted = false;
     if (config.dmaTopology) {
         dmaCrossbar.clock(crossbarInputs);
         const auto crossbarAfter = dmaCrossbar.evaluate();
+        dmaDbusResponseAfter = crossbarAfter.dbus;
         outputs.sau = crossbarAfter.masters[sauMaster];
         outputs.masterAccepted = crossbarAfter.acceptedMaster;
         outputs.masterDropped = crossbarAfter.droppedMaster;
@@ -213,13 +240,30 @@ NpuLpnpuMikuiMemoryModel::advance(
         }
     }
 
-    const SramConverter32To128Output converterAfter =
-        dbusConverter.evaluate();
-    if (converterAfter.master.valid) {
-        outputs.dbus.valid = true;
-        outputs.dbus.isWrite = converterAfter.master.isWrite;
-        outputs.dbus.readData = converterAfter.master.readData;
-        dbusOutstanding = false;
+    if (config.dmaTopology) {
+        if (dmaDbusResponseAfter.valid && dbusOutstanding) {
+            outputs.dbus.valid = true;
+            outputs.dbus.isWrite = dmaDbusWrite;
+            if (!dmaDbusWrite) {
+                const uint8_t byteOffset = dmaDbusWordOffset * 4;
+                for (uint8_t byte = 0; byte < 4; ++byte) {
+                    outputs.dbus.readData |=
+                        static_cast<uint32_t>(
+                            dmaDbusResponseAfter.readData[byteOffset + byte]) <<
+                        (byte * 8);
+                }
+            }
+            dbusOutstanding = false;
+        }
+    } else {
+        const SramConverter32To128Output converterAfter =
+            dbusConverter.evaluate();
+        if (converterAfter.master.valid) {
+            outputs.dbus.valid = true;
+            outputs.dbus.isWrite = converterAfter.master.isWrite;
+            outputs.dbus.readData = converterAfter.master.readData;
+            dbusOutstanding = false;
+        }
     }
 
     previousVeuLockActive = veuLockActive;

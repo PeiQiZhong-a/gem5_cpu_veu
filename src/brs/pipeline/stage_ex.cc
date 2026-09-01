@@ -14,10 +14,11 @@ namespace
 
 constexpr uint32_t Int32Min = 0x80000000u;
 constexpr uint32_t MinusOne = 0xffffffffu;
-// Multiplier.sv accepts in state 0, stalls through states 0 and 1, and
-// exposes ready in state 2. The instruction therefore occupies three EX
-// evaluations with two stalled evaluations before completion.
-constexpr uint32_t MultiplierLatencyCycles = 2;
+// Multiplier.sv accepts in state 0, then advances through states 1 and 2
+// before exposing ready in state 3.  The instruction therefore stalls for
+// three EX evaluations and completes on the fourth evaluation, matching the
+// RTL IDU-to-IEU registered-edge timing.
+constexpr uint32_t MultiplierLatencyCycles = 3;
 
 bool
 isMduInstr(InstrKind kind)

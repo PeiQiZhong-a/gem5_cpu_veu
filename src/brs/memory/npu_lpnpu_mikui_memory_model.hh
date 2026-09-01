@@ -93,6 +93,8 @@ class NpuLpnpuMikuiMemoryModel
     std::deque<DutKuiVeuRequest> pendingVeuRequests;
     std::deque<DutKuiVeuRequest> issuedVeuRequests;
     bool previousVeuLockActive = false;
+    uint8_t dmaDbusWordOffset = 0;
+    bool dmaDbusWrite = false;
 
     bool instructionMapped(uint32_t address) const;
     Sram128Request currentVeuBeat() const;

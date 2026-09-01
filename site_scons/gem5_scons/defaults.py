@@ -57,6 +57,7 @@ def EnvDefaults(env):
         "PATH",
         "PKG_CONFIG_PATH",
         "PROTOC",
+        "PYTHONHOME",
         "PYTHONPATH",
         "RANLIB",
         "TERM",  # for clang reports errors in color

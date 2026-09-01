@@ -202,7 +202,7 @@ TEST(PipelineRv32mTest, DecodesAllMExtensionFunct3Values)
     }
 }
 
-TEST(PipelineRv32mTest, MultiplierStallsForTwoExecuteCycles)
+TEST(PipelineRv32mTest, MultiplierStallsForThreeExecuteCycles)
 {
     PipelineCore core;
     core.reset(0x80000000u, 0x80000000u);
@@ -217,7 +217,7 @@ TEST(PipelineRv32mTest, MultiplierStallsForTwoExecuteCycles)
         }
     } while (core.mduStalled());
 
-    EXPECT_EQ(stalls, 2u);
+    EXPECT_EQ(stalls, 3u);
     EXPECT_TRUE(core.exmem_next.valid);
     EXPECT_EQ(core.exmem_next.alu_result, 42u);
 }

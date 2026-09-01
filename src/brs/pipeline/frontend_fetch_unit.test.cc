@@ -554,5 +554,26 @@ TEST(FrontendFetchUnitTest, RedirectClearsRegisteredIfOutput)
     EXPECT_EQ(frontend.getPC(), 0x40);
 }
 
+TEST(FrontendFetchUnitTest, IdleRedirectRequestsOnFollowingEdge)
+{
+    FrontendFetchUnit frontend;
+    frontend.reset(0);
+    advanceResetEnd(frontend, 128);
+
+    FrontendFetchUnit::Input input;
+    input.redirect = true;
+    input.redirectTarget = 0x40;
+    input.textEnd = 128;
+    auto out = frontend.step(input);
+    EXPECT_FALSE(out.requestValid);
+    EXPECT_EQ(frontend.getPC(), 0x40);
+
+    input = {};
+    input.textEnd = 128;
+    out = frontend.step(input);
+    ASSERT_TRUE(out.requestValid);
+    EXPECT_EQ(out.requestAddr, 0x40u);
+}
+
 } // anonymous namespace
 } // namespace gem5

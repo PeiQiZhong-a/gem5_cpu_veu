@@ -124,6 +124,26 @@ TEST(NpuLpnpuMikuiMemoryModelTest, DmaTopologyUsesThreePhysicalBanks)
     EXPECT_EQ(model.readByte(0x20028000), 0);
 }
 
+TEST(NpuLpnpuMikuiMemoryModelTest, DmaDbusUsesCombinationalWidthConverter)
+{
+    NpuLpnpuMikuiMemoryModel::Config config;
+    config.dmaTopology = true;
+    NpuLpnpuMikuiMemoryModel model(config);
+    constexpr uint32_t address = 0x2001000c;
+    ASSERT_TRUE(model.acceptDbus({address, 0xf, 0x44332211}, false));
+
+    auto outputs = model.clock(false);
+    ASSERT_TRUE(outputs.dbus.valid);
+    EXPECT_TRUE(outputs.dbus.isWrite);
+    EXPECT_EQ(model.readWord(address), 0x44332211u);
+
+    ASSERT_TRUE(model.acceptDbus({address, 0, 0}, false));
+    outputs = model.clock(false);
+    ASSERT_TRUE(outputs.dbus.valid);
+    EXPECT_FALSE(outputs.dbus.isWrite);
+    EXPECT_EQ(outputs.dbus.readData, 0x44332211u);
+}
+
 } // namespace
 } // namespace brs
 } // namespace gem5

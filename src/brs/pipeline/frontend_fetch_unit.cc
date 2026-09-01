@@ -487,9 +487,9 @@ FrontendFetchUnit::step(const Input &in)
     }
 
     // PFU only permits the initial IBus request after r_reset_end advances
-    // 0 -> 1 -> 2. A redirect is the IBU fetch-address-update path and is
-    // allowed to request independently of the normal PFU allow-input gate.
-    if ((resetEndReady || in.redirect) && fifo.count() < 4 &&
+    // 0 -> 1 -> 2. The JCU redirect is registered into IBU on this edge; the
+    // redirected request becomes visible on the following edge in RTL.
+    if (!in.redirect && resetEndReady && fifo.count() < 4 &&
         ibuCouldRequestAtEdgeStart && ibu.canRequest() && pc < in.textEnd) {
         out.requestValid = true;
         // Spirit exposes the true fetch address on ibus_out_addr.  The

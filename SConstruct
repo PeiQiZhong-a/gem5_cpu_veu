@@ -678,6 +678,12 @@ for variant_path in variant_paths:
                 f'to v{gcc_max_version}.\n'
             )
 
+        # GCC 8 implements std::filesystem in a separate static library.
+        # Keep this workstation-compatible build link-only: newer GCC
+        # versions provide the symbols directly in libstdc++.
+        if compareVersions(gcc_version, "9") < 0:
+            env.Append(LIBS=["stdc++fs"])
+
 
         # Add the appropriate Link-Time Optimization (LTO) flags if
         # `--with-lto` is set.
