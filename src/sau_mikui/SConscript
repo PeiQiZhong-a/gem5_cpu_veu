@@ -1,0 +1,37 @@
+Import('*')
+
+SimObject('MikuiSau.py', sim_objects=['MikuiSau'])
+
+Source('sau_csr.cc')
+Source('sau_scheduler.cc')
+Source('sau_address_generator.cc')
+Source('sau_memory_controller.cc')
+Source('sau_register_file.cc')
+Source('sau_shift_register.cc')
+Source('sau_feeder.cc')
+Source('sau_transposer.cc')
+Source('sau_pe.cc')
+Source('sau_array_engine.cc')
+Source('sau_output_path.cc')
+Source('mikui_sau_cycle_model.cc')
+Source('mikui_sau.cc')
+
+GTest('sau_mikui_csr_scheduler.test',
+      'tests/sau_csr_scheduler.test.cc',
+      'sau_csr.cc', 'sau_scheduler.cc')
+GTest('sau_mikui_transposer.test',
+      'tests/sau_transposer.test.cc', 'sau_transposer.cc')
+GTest('sau_mikui_pe_array.test',
+      'tests/sau_pe_array.test.cc', 'sau_pe.cc', 'sau_output_path.cc',
+      'sau_array_engine.cc')
+GTest('sau_mikui_memory_feeder.test',
+      'tests/sau_memory_feeder.test.cc',
+      'sau_address_generator.cc', 'sau_memory_controller.cc',
+      'sau_register_file.cc', 'sau_shift_register.cc', 'sau_feeder.cc')
+GTest('sau_mikui_cycle_model.test',
+      'tests/mikui_sau_cycle_model.test.cc',
+      'sau_csr.cc', 'sau_scheduler.cc', 'sau_address_generator.cc',
+      'sau_memory_controller.cc', 'sau_register_file.cc',
+      'sau_shift_register.cc', 'sau_feeder.cc', 'sau_transposer.cc',
+      'sau_pe.cc', 'sau_array_engine.cc', 'sau_output_path.cc',
+      'mikui_sau_cycle_model.cc')
