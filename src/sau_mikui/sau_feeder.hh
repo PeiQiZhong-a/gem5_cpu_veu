@@ -54,6 +54,8 @@ struct SauFeederOutputs
     bool bLast = false;
     bool cValid = false;
     Row16 c{};
+    bool functionalConvValid = false;
+    std::array<Row24, SauConstants::Rows> functionalConvResults{};
     uint8_t inputSwitch = 0;
 
     bool writeAddressValid = false;
@@ -99,6 +101,10 @@ class SauFeeder
         bool convWindowActive = false;
         uint8_t convWindowCount = 0;
         Row8 convWindowData{};
+        std::array<Beat128, 7> convActivationRows{};
+        uint8_t convActivationRowCount = 0;
+        std::array<Beat128, 49> convWeightRows{};
+        uint8_t convWeightRowCount = 0;
 
         std::array<Row16, SauConstants::Rows> outputBuffer{};
         uint8_t outputWriteRow = 0;

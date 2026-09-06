@@ -13,4 +13,6 @@ class MikuiSau(ClockedObject):
     strict_timing = Param.Bool(True, "Count and reject timing-contract errors")
     sau_clk_en = Param.Bool(True, "Enable SAU clock edges")
     cycle_trace_file = Param.String("", "Optional SAU cycle CSV trace")
+    output_trace_file = Param.String(
+        "", "Optional non-intrusive SAU 128-bit write stream CSV")
     trace_internal_pe = Param.Bool(False, "Reserved opt-in PE debug trace")

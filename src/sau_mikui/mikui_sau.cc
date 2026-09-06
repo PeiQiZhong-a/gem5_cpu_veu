@@ -1,5 +1,7 @@
 #include "sau_mikui/mikui_sau.hh"
 
+#include <iomanip>
+
 #include "base/logging.hh"
 #include "base/output.hh"
 
@@ -12,6 +14,12 @@ MikuiSau::WrapperStats::WrapperStats(statistics::Group *parent)
                "Accepted Mikui commands"),
       ADD_STAT(completedCommands, statistics::units::Count::get(),
                "Completed Mikui commands"),
+      ADD_STAT(commandCyclesSum, statistics::units::Cycle::get(),
+               "Sum of logical SAU start-to-done command cycles"),
+      ADD_STAT(firstCommandStartTick,
+               "Tick at which the first SAU command was accepted"),
+      ADD_STAT(lastCommandDoneTick,
+               "Tick at which the latest SAU command completed"),
       commandsByMode{{
           {this, "gemmCommands", statistics::units::Count::get(),
            "Accepted GEMM commands"},
@@ -75,7 +83,8 @@ MikuiSau::MikuiSau(const Params &params)
       model(params.strict_timing),
       tickEvent([this] { processSauEdge(); }, name() + ".sauTick"),
       clockEnabled(params.sau_clk_en),
-      tracePath(params.cycle_trace_file)
+      tracePath(params.cycle_trace_file),
+      outputTracePath(params.output_trace_file)
 {
     validateArchitecture(params.rows, params.cols, params.sram_delay_cycles);
     fatal_if(params.trace_internal_pe && tracePath.empty(),
@@ -90,6 +99,13 @@ MikuiSau::startup()
         fatal_if(!trace.is_open(), "Cannot open Mikui SAU trace '%s'",
                  tracePath);
         model.writeTraceHeader(trace);
+    }
+    if (!outputTracePath.empty()) {
+        outputTrace.open(
+            simout.resolve(outputTracePath), std::ios::out | std::ios::trunc);
+        fatal_if(!outputTrace.is_open(), "Cannot open SAU output trace '%s'",
+                 outputTracePath);
+        outputTrace << "sequence,tick,logical_addr,data_hex\n";
     }
 }
 
@@ -112,6 +128,7 @@ MikuiSau::reset()
     memoryRequests.clear();
     crossbarStarts.clear();
     crossbarDones.clear();
+    outputTraceSequence = 0;
 }
 
 brs::SauResponse
@@ -231,10 +248,19 @@ void
 MikuiSau::updateStats(const MikuiSauStats &before)
 {
     const auto &after = model.stats();
+    if (after.acceptedCommands > before.acceptedCommands &&
+        wrapperStats.firstCommandStartTick.value() == 0) {
+        wrapperStats.firstCommandStartTick = curTick();
+    }
+    if (after.completedCommands > before.completedCommands) {
+        wrapperStats.lastCommandDoneTick = curTick();
+    }
     wrapperStats.acceptedCommands +=
         after.acceptedCommands - before.acceptedCommands;
     wrapperStats.completedCommands +=
         after.completedCommands - before.completedCommands;
+    wrapperStats.commandCyclesSum +=
+        after.commandCyclesSum - before.commandCyclesSum;
     for (unsigned mode = 0; mode < after.commandByMode.size(); ++mode) {
         wrapperStats.commandsByMode[mode] +=
             after.commandByMode[mode] - before.commandByMode[mode];
@@ -271,6 +297,22 @@ MikuiSau::updateStats(const MikuiSauStats &before)
 }
 
 void
+MikuiSau::recordOutputWrite(const brs::Sram128Request &request)
+{
+    if (!outputTrace.is_open() || !request.valid || !request.isWrite()) {
+        return;
+    }
+    outputTrace << ++outputTraceSequence << ',' << curTick() << ",0x"
+                << std::hex << request.address << ',' << std::setfill('0');
+    for (auto it = request.writeData.rbegin();
+         it != request.writeData.rend(); ++it) {
+        outputTrace << std::setw(2) << static_cast<unsigned>(*it);
+    }
+    outputTrace << std::setfill(' ') << std::dec << '\n';
+    outputTrace.flush();
+}
+
+void
 MikuiSau::processSauEdge()
 {
     lastSauTick = curTick();
@@ -297,6 +339,7 @@ MikuiSau::processSauEdge()
         cpuResponses.push_back({newResponse, curTick()});
     }
     if (newMemory.request.valid) {
+        recordOutputWrite(newMemory.request);
         memoryRequests.push_back({newMemory.request, curTick()});
     }
     if (newMemory.crossbarStart && !oldMemory.crossbarStart) {

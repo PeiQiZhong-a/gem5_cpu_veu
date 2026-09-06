@@ -1,5 +1,7 @@
 #include "sau_mikui/sau_memory_controller.hh"
 
+#include "base/logging.hh"
+
 namespace gem5::sau_mikui
 {
 

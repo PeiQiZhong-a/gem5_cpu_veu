@@ -25,6 +25,21 @@ parser.add_argument(
     help="CPU clock. The Spirit testbench reference clock is 100MHz.",
 )
 parser.add_argument(
+    "--sau-clock-frequency",
+    default="",
+    help="Mikui SAU clock; defaults to --clock-frequency.",
+)
+parser.add_argument(
+    "--sau-cycle-trace",
+    default="",
+    help="Write the Mikui SAU structural cycle trace into the gem5 output directory.",
+)
+parser.add_argument(
+    "--sau-output-trace",
+    default="",
+    help="Write the non-intrusive SAU 128-bit write stream as CSV.",
+)
+parser.add_argument(
     "--reset-cycles",
     type=int,
     default=None,
@@ -71,6 +86,11 @@ parser.add_argument(
           "for HC/SAU/retire events."),
 )
 parser.add_argument(
+    "--quiet-cycle-console",
+    action="store_true",
+    help="Suppress the legacy per-cycle PipelineMiniCPU stdout status line.",
+)
+parser.add_argument(
     "--terminate-on-ebreak",
     action="store_true",
     help="Treat a retired EBREAK as the normal workload termination point.",
@@ -80,13 +100,6 @@ parser.add_argument(
     choices=["fake", "timing"],
     default="fake",
     help="VEU backend model. fake preserves current tests; timing runs the VEU state-machine model.",
-)
-parser.add_argument(
-    "--sau-model",
-    choices=["stub", "sau_n"],
-    default="stub",
-    help=("SAU backend model. stub preserves current behavior; sau_n uses "
-          "StreamingConvPipelineModel."),
 )
 parser.add_argument("--veu-input-fifo-depth", type=int, default=4)
 parser.add_argument("--veu-execute-latency", type=int, default=3)
@@ -219,6 +232,7 @@ mikui_dma_tb_mode = (
     args.mem_system == "rtl-npu-lpnpu-mikui-decompress-dma")
 mikui_tb_mode = (
     args.mem_system == "rtl-npu-lpnpu-mikui" or mikui_dma_tb_mode)
+mikui_three_bank_mode = mikui_dma_tb_mode
 rtl_tb_mode = dut_kui_tb_mode or mikui_tb_mode
 
 max_cycles = args.max_cycles
@@ -309,6 +323,17 @@ system.clk_domain = SrcClockDomain()
 system.clk_domain.clock = args.clock_frequency
 system.clk_domain.voltage_domain = VoltageDomain()
 
+if mikui_tb_mode:
+    system.sau_clk_domain = SrcClockDomain()
+    system.sau_clk_domain.clock = (
+        args.sau_clock_frequency or args.clock_frequency)
+    system.sau_clk_domain.voltage_domain = VoltageDomain()
+    system.mikui_sau = MikuiSau(
+        clk_domain=system.sau_clk_domain,
+        cycle_trace_file=args.sau_cycle_trace,
+        output_trace_file=args.sau_output_trace,
+    )
+
 system.mem_mode = "timing"
 
 if rtl_tb_mode:
@@ -316,17 +341,18 @@ if rtl_tb_mode:
     if mikui_tb_mode:
         rtl_inst_size = 0x00004000
         rtl_data_base = 0x20010000
-        if mikui_dma_tb_mode:
+        if mikui_three_bank_mode:
             rtl_data_size = 0x00018000
             system.mem_ranges = [
                 AddrRange(start=rtl_inst_base, size=rtl_inst_size),
                 AddrRange(start=0x20010000, size=0x00008000),
                 AddrRange(start=0x20018000, size=0x00008000),
                 AddrRange(start=0x20020000, size=0x00008000),
-                AddrRange(start=0x40019C00, size=0x00000100),
-                AddrRange(start=0x60000000, size=0x00001000),
-                AddrRange(start=0x60001000, size=0x00001000),
             ]
+            system.mem_ranges.append(
+                AddrRange(start=0x40019C00, size=0x00000100))
+            system.mem_ranges.append(
+                AddrRange(start=0x60000000, size=0x10000000))
         else:
             rtl_data_size = 0x00010000
             system.mem_ranges = [
@@ -393,9 +419,9 @@ system.pipeline = PipelineMiniCPU(
     debug_instr_valid=args.debug_instr_valid,
     cycle_trace_file=args.cycle_trace,
     cycle_trace_compact=args.cycle_trace_compact,
+    console_cycle_trace=not args.quiet_cycle_console,
     ebreak_terminates=args.terminate_on_ebreak,
     veu_model=args.veu_model,
-    sau_model=args.sau_model,
     veu_input_fifo_depth=args.veu_input_fifo_depth,
     veu_execute_latency=args.veu_execute_latency,
     veu_execute_ii=args.veu_execute_ii,
@@ -421,7 +447,7 @@ system.pipeline = PipelineMiniCPU(
     tb_memory_enabled=rtl_tb_mode,
     tb_memory_kind=(
         "npu-lpnpu-mikui-dma" if mikui_dma_tb_mode else
-        ("npu-lpnpu-mikui" if mikui_tb_mode else "dut-kui")),
+        "npu-lpnpu-mikui" if mikui_tb_mode else "dut-kui"),
     dma_pio_enabled=mikui_dma_tb_mode,
     tb_imem_image_file=args.imem_image if rtl_tb_mode else "",
     tb_dmem_image_file=args.dmem_image if rtl_tb_mode else "",
@@ -437,6 +463,8 @@ system.pipeline = PipelineMiniCPU(
         args.rtl_data_real_bank_count if dut_kui_tb_mode else 1),
 )
 system.pipeline.clk_domain = system.clk_domain
+if mikui_tb_mode:
+    system.pipeline.mikui_sau = system.mikui_sau
 
 if args.mem_system == "ddr3":
     system.membus = SystemXBar()
@@ -514,13 +542,7 @@ elif rtl_tb_mode:
     system.imem_stub = SimpleMemory(range=system.mem_ranges[0])
     system.imem_stub.port = system.membus.mem_side_ports
     if mikui_tb_mode:
-        system.dmem_stub0 = SimpleMemory(range=system.mem_ranges[1])
-        system.dmem_stub0.port = system.membus.mem_side_ports
-        system.dmem_stub1 = SimpleMemory(range=system.mem_ranges[2])
-        system.dmem_stub1.port = system.membus.mem_side_ports
         if mikui_dma_tb_mode:
-            system.dmem_stub2 = SimpleMemory(range=system.mem_ranges[3])
-            system.dmem_stub2.port = system.membus.mem_side_ports
             system.mikui_dma = MikuiDecompressDma(
                 pio_addr=0x40019C00,
                 pio_size=0x100,
@@ -529,20 +551,31 @@ elif rtl_tb_mode:
                 max_output_bytes=0x1000,
             )
             system.mikui_dma.pio = system.membus.mem_side_ports
-            system.mikui_dma.dma = system.membus.cpu_side_ports
             system.mikui_dma.irq = system.pipeline.dma_irq
 
-            system.dma_source_sram = SimpleMemory(
+            # The independent Mikui DMA remains a 32-bit, one-word-at-a-time
+            # AHB-style master. DDR4 and the embedded three-bank SRAM are the
+            # only slaves on its private data fabric.
+            system.dma_bus = NoncoherentXBar(
+                frontend_latency=0,
+                forward_latency=0,
+                response_latency=0,
+                width=4,
+            )
+            system.mikui_dma.dma = system.dma_bus.cpu_side_ports
+            system.pipeline.dma_sram_port = system.dma_bus.mem_side_ports
+
+            system.dma_ddr4_ctrl = MemCtrl()
+            system.dma_ddr4_ctrl.dram = DDR4_2400_8x8(
                 range=system.mem_ranges[5],
-                latency=args.mem_latency,
                 image_file=args.dma_input_image,
             )
-            system.dma_source_sram.port = system.membus.mem_side_ports
-            system.dma_destination_sram = SimpleMemory(
-                range=system.mem_ranges[6],
-                latency=args.mem_latency,
-            )
-            system.dma_destination_sram.port = system.membus.mem_side_ports
+            system.dma_ddr4_ctrl.port = system.dma_bus.mem_side_ports
+        else:
+            system.dmem_stub0 = SimpleMemory(range=system.mem_ranges[1])
+            system.dmem_stub0.port = system.membus.mem_side_ports
+            system.dmem_stub1 = SimpleMemory(range=system.mem_ranges[2])
+            system.dmem_stub1.port = system.membus.mem_side_ports
     else:
         system.dmem_stub = SimpleMemory(range=system.mem_ranges[1])
         system.dmem_stub.port = system.membus.mem_side_ports
@@ -606,7 +639,11 @@ print("Timeout cycles: {} ({})".format(
     "total clock edges including reset" if rtl_tb_mode else "active CPU cycles",
 ))
 print("VEU model: {}".format(args.veu_model))
-print("SAU model: {}".format(args.sau_model))
+print("SAU model: {}".format("mikui" if mikui_tb_mode else "stub"))
+if mikui_tb_mode:
+    print("SAU clock frequency: {}".format(
+        args.sau_clock_frequency or args.clock_frequency))
+    print("SAU cycle trace: {}".format(args.sau_cycle_trace or "<disabled>"))
 print("FakeVEU latency: {} cycles".format(args.fake_veu_latency))
 print("FakeVEU response data: {:#x}".format(args.fake_veu_response_data))
 if args.veu_model == "timing":
@@ -653,11 +690,12 @@ elif dut_kui_tb_mode:
     print("Shared arbitration: VEU lock blocks DBus; IBus remains independent")
 elif mikui_tb_mode:
     print("RTL IMEM range: 0x00000000..0x00003fff")
-    if mikui_dma_tb_mode:
+    if mikui_three_bank_mode:
         print("RTL stack SRAM: 0x20010000..0x20017fff")
         print("RTL ping SRAM:  0x20018000..0x2001ffff")
         print("RTL pong SRAM:  0x20020000..0x20027fff")
         print("RTL crossbar: crossbar_mi_full, B/C/D split = 4/8/12")
+        print("DDR4:          0x60000000..0x6fffffff (DDR4_2400_8x8)")
     else:
         print("RTL SRAM bank 0: 0x20010000..0x2001ffff")
         print("RTL SRAM bank 1: 0x20020000..0x2002ffff")

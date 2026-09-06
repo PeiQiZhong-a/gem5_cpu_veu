@@ -14,6 +14,7 @@
 
 #include "sim/sim_exit.hh"
 #include "mem/packet_access.hh"
+#include "sau_mikui/mikui_sau.hh"
 
 namespace gem5
 {
@@ -100,6 +101,66 @@ PipelineMiniCPU::CpuRequestPort::recvReqRetry()
     }
 }
 
+AddrRangeList
+PipelineMiniCPU::DmaSramResponsePort::getAddrRanges() const
+{
+    return {RangeSize(0x20010000, 0x00018000)};
+}
+
+bool
+PipelineMiniCPU::DmaSramResponsePort::recvTimingReq(PacketPtr pkt)
+{
+    if (!owner->acceptDmaSramTiming(pkt)) {
+        needRetry = true;
+        return false;
+    }
+    return true;
+}
+
+Tick
+PipelineMiniCPU::DmaSramResponsePort::recvAtomic(PacketPtr pkt)
+{
+    owner->accessDmaSramFunctional(pkt);
+    return owner->clockPeriod();
+}
+
+void
+PipelineMiniCPU::DmaSramResponsePort::recvFunctional(PacketPtr pkt)
+{
+    owner->accessDmaSramFunctional(pkt);
+}
+
+void
+PipelineMiniCPU::DmaSramResponsePort::sendResponse(PacketPtr pkt)
+{
+    panic_if(blockedResponse,
+             "Mikui DMA SRAM response overwritten while blocked");
+    if (!sendTimingResp(pkt)) {
+        blockedResponse = pkt;
+    } else {
+        trySendRetry();
+    }
+}
+
+void
+PipelineMiniCPU::DmaSramResponsePort::recvRespRetry()
+{
+    panic_if(!blockedResponse,
+             "Mikui DMA SRAM received an unexpected response retry");
+    PacketPtr pkt = blockedResponse;
+    blockedResponse = nullptr;
+    sendResponse(pkt);
+}
+
+void
+PipelineMiniCPU::DmaSramResponsePort::trySendRetry()
+{
+    if (needRetry && !owner->dmaSramBusy() && !blockedResponse) {
+        needRetry = false;
+        sendRetryReq();
+    }
+}
+
 PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     : ClockedObject(p),
       maxCycles(p.max_cycles),
@@ -141,9 +202,11 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       npuLpnpuMikuiMemory(makeNpuLpnpuMikuiMemoryConfig(p)),
       cycleTraceFile(p.cycle_trace_file),
       cycleTraceCompact(p.cycle_trace_compact),
+      consoleCycleTrace(p.console_cycle_trace),
       instPort(name() + ".inst_port", this, CpuRequestPort::PortKind::Inst),
       dataPort(name() + ".data_port", this, CpuRequestPort::PortKind::Data),
       veuPort(name() + ".veu_port", this, CpuRequestPort::PortKind::Veu),
+      dmaSramPort(name() + ".dma_sram_port", this),
       dmaIrqPin(name() + ".dma_irq", 0, this),
       icacheEnabled(p.icache_enabled),
       icacheSize(p.icache_size),
@@ -216,18 +279,10 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
               p.veu_model.c_str());
     }
 
-    fatal_if(p.sau_model != "stub" && p.sau_model != "sau_n",
-             "Unsupported sau_model '%s': expected stub or sau_n",
-             p.sau_model.c_str());
-    fatal_if(p.sau_model == "sau_n" &&
-             (!tbMemoryEnabled || tbMemoryKind != "dut-kui"),
-             "sau_model=%s requires rtl-dut-kui-tb mode",
-             p.sau_model.c_str());
-    if (p.sau_model == "sau_n") {
-        sauNSau = std::make_unique<brs::SauNEndpoint>(
-            dutKuiMemory, static_cast<uint32_t>(tbDataBase),
-            static_cast<uint64_t>(tbDataStorageSize));
-        core.attachSauEndpoint(*sauNSau);
+    if (p.mikui_sau) {
+        fatal_if(!npuLpnpuMikuiMemoryEnabled(),
+                 "MikuiSau requires an npu-lpnpu-mikui memory model");
+        core.attachSauEndpoint(*p.mikui_sau);
     } else {
         core.useStubSauEndpoint();
     }
@@ -271,10 +326,88 @@ PipelineMiniCPU::getPort(const std::string &if_name, PortID idx)
     if (if_name == "veu_port") {
         return veuPort;
     }
+    if (if_name == "dma_sram_port") {
+        return dmaSramPort;
+    }
     if (if_name == "dma_irq") {
         return dmaIrqPin;
     }
     return ClockedObject::getPort(if_name, idx);
+}
+
+bool
+PipelineMiniCPU::acceptDmaSramTiming(PacketPtr pkt)
+{
+    panic_if(!dmaPioEnabled,
+             "Mikui DMA SRAM request received outside DMA mode");
+    panic_if(!(pkt->isRead() || pkt->isWrite()),
+             "Mikui DMA SRAM accepts only reads and writes");
+    panic_if(pkt->getSize() != 4 || (pkt->getAddr() & 3),
+             "Mikui DMA SRAM requires aligned 32-bit requests");
+    panic_if(pkt->getAddr() < 0x20010000 ||
+             pkt->getAddr() + pkt->getSize() > 0x20028000,
+             "Mikui DMA SRAM request outside the three-bank window");
+    if (pendingDmaSramReq) {
+        return false;
+    }
+
+    brs::DutKuiDbusRequest request;
+    request.address = static_cast<uint32_t>(pkt->getAddr());
+    if (pkt->isWrite()) {
+        request.writeStrobe = 0xf;
+        request.writeData = pkt->getLE<uint32_t>();
+    }
+    if (!npuLpnpuMikuiMemory.acceptDmaDbus(request)) {
+        return false;
+    }
+    pendingDmaSramReq = pkt;
+    return true;
+}
+
+void
+PipelineMiniCPU::accessDmaSramFunctional(PacketPtr pkt)
+{
+    panic_if(!dmaPioEnabled,
+             "Mikui DMA SRAM functional request outside DMA mode");
+    panic_if(pkt->getSize() != 4 || (pkt->getAddr() & 3),
+             "Mikui DMA SRAM requires aligned 32-bit requests");
+    panic_if(pkt->getAddr() < 0x20010000 ||
+             pkt->getAddr() + pkt->getSize() > 0x20028000,
+             "Mikui DMA SRAM functional request outside the three-bank window");
+    if (pkt->isRead()) {
+        pkt->setLE<uint32_t>(npuLpnpuMikuiMemory.readWord(
+            static_cast<uint32_t>(pkt->getAddr())));
+    } else if (pkt->isWrite()) {
+        npuLpnpuMikuiMemory.writeWord(
+            static_cast<uint32_t>(pkt->getAddr()), pkt->getLE<uint32_t>());
+    } else {
+        panic("Mikui DMA SRAM functional access supports only reads/writes");
+    }
+    if (pkt->needsResponse()) {
+        pkt->makeResponse();
+    }
+}
+
+void
+PipelineMiniCPU::completeDmaSram(
+    const brs::DutKuiDbusResponse &response)
+{
+    panic_if(!pendingDmaSramReq,
+             "Mikui DMA SRAM returned without an outstanding request");
+    PacketPtr pkt = pendingDmaSramReq;
+    pendingDmaSramReq = nullptr;
+    panic_if(response.isWrite != pkt->isWrite(),
+             "Mikui DMA SRAM response type mismatch");
+    if (pkt->isRead()) {
+        pkt->setLE<uint32_t>(response.readData);
+    }
+    if (pkt->needsResponse()) {
+        pkt->makeResponse();
+        dmaSramPort.sendResponse(pkt);
+    } else {
+        delete pkt;
+        dmaSramPort.trySendRetry();
+    }
 }
 
 void
@@ -289,6 +422,17 @@ PipelineMiniCPU::lowerInterruptPin(int id)
 {
     panic_if(id != 0, "Unexpected PipelineMiniCPU interrupt pin %d", id);
     dmaIrqInput = false;
+}
+
+void
+PipelineMiniCPU::init()
+{
+    ClockedObject::init();
+    if (dmaPioEnabled) {
+        panic_if(!dmaSramPort.isConnected(),
+                 "Mikui DMA mode requires dma_sram_port to be connected");
+        dmaSramPort.sendRangeChange();
+    }
 }
 
 bool
@@ -1137,6 +1281,9 @@ PipelineMiniCPU::processDutKuiMemoryCycle(
     if (outputs.dbus.valid) {
         completeDutKuiData(outputs.dbus);
     }
+    if (outputs.dmaDbus.valid) {
+        completeDmaSram(outputs.dmaDbus);
+    }
     if (outputs.veuRead.valid) {
         core.acceptVeuMemoryRead(outputs.veuRead.transactionId,
                                  outputs.veuRead.readData);
@@ -1145,36 +1292,6 @@ PipelineMiniCPU::processDutKuiMemoryCycle(
         core.acceptVeuMemoryWrite(outputs.veuWrite.transactionId);
     }
     core.clockOneCycle();
-}
-
-void
-PipelineMiniCPU::writeSauNOutputTrace()
-{
-    if (!cycleTrace.is_open() || !sauNSau) {
-        return;
-    }
-
-    const uint64_t completed = sauNSau->operationCompleteCount();
-    if (completed <= sauNOutputTraceOperations) {
-        return;
-    }
-    const brs::SauNResolvedConfig *config = sauNSau->activeConfig();
-    fatal_if(config == nullptr,
-             "sau_n completed without an active configuration");
-
-    cycleTrace << "event=sau_n_output"
-        << " operation=" << completed
-        << " output_base=0x" << std::hex << config->abi.outputBase
-        << std::dec << " output_bytes=" << config->abi.outputBytes
-        << " data_hex=" << std::hex << std::setfill('0');
-    for (uint64_t byte = 0; byte < config->abi.outputBytes; ++byte) {
-        cycleTrace << std::setw(2)
-            << static_cast<unsigned>(dutKuiMemory.readByte(
-                config->abi.outputBase + byte));
-    }
-    cycleTrace << std::setfill(' ') << std::dec << '\n';
-    cycleTrace.flush();
-    sauNOutputTraceOperations = completed;
 }
 
 void
@@ -1454,7 +1571,6 @@ PipelineMiniCPU::processTick()
         core.evaluateSauMemory() : brs::SauMemoryOutput{};
     if (dutKuiMemoryEnabled()) {
         processDutKuiMemoryCycle(sauMemory);
-        writeSauNOutputTrace();
     } else {
         core.stepOneCycle();
     }
@@ -1473,71 +1589,6 @@ PipelineMiniCPU::processTick()
     pipeStats.sau_retire_count = core.getSauCompleteCount();
     pipeStats.sau_csr_handshake_cycles =
         core.getSauCsrHandshakeCycles();
-    if (sauNSau) {
-        pipeStats.sau_memory_requests = 0;
-        pipeStats.sau_compute_wait_cycles = 0;
-        pipeStats.sau_writeback_wait_cycles = 0;
-        pipeStats.sau_operation_start_count =
-            sauNSau->operationStartCount();
-        pipeStats.sau_operation_complete_count =
-            sauNSau->operationCompleteCount();
-        pipeStats.sau_roi_start_cycle = sauNSau->roiStartCycle();
-        pipeStats.sau_roi_end_cycle = sauNSau->roiEndCycle();
-        pipeStats.sau_n_model_ticks = sauNSau->modelTickCount();
-        pipeStats.sau_n_operation_start_count =
-            sauNSau->operationStartCount();
-        pipeStats.sau_n_operation_complete_count =
-            sauNSau->operationCompleteCount();
-        pipeStats.sau_n_roi_start_cycle = sauNSau->roiStartCycle();
-        pipeStats.sau_n_roi_end_cycle = sauNSau->roiEndCycle();
-        const auto *streamingStats = sauNSau->streamingStats();
-        if (streamingStats) {
-            pipeStats.sau_n_spad_read_requests_a =
-                streamingStats->spadReadRequestsA;
-            pipeStats.sau_n_spad_read_grants_a =
-                streamingStats->spadReadGrantsA;
-            pipeStats.sau_n_spad_read_responses_a =
-                streamingStats->spadReadResponsesA;
-            pipeStats.sau_n_spad_read_requests_b =
-                streamingStats->spadReadRequestsB;
-            pipeStats.sau_n_spad_read_grants_b =
-                streamingStats->spadReadGrantsB;
-            pipeStats.sau_n_spad_read_responses_b =
-                streamingStats->spadReadResponsesB;
-            pipeStats.sau_n_spad_read_requests_c =
-                streamingStats->spadReadRequestsC;
-            pipeStats.sau_n_spad_read_grants_c =
-                streamingStats->spadReadGrantsC;
-            pipeStats.sau_n_spad_read_responses_c =
-                streamingStats->spadReadResponsesC;
-            pipeStats.sau_n_spad_write_requests_d =
-                streamingStats->spadWriteRequestsD;
-            pipeStats.sau_n_spad_write_grants_d =
-                streamingStats->spadWriteGrantsD;
-            pipeStats.sau_n_b_buffer_hit_vectors =
-                streamingStats->bBufferHitVectors;
-            pipeStats.sau_n_b_buffer_switches =
-                streamingStats->bBufferSwitches;
-            pipeStats.sau_n_d_pending_peak =
-                streamingStats->dPendingPeak;
-            pipeStats.sau_n_output_elements =
-                streamingStats->outputElements;
-        }
-    }
-    const uint64_t sauStarts = sauNSau ?
-        sauNSau->operationStartCount() : 0;
-    if (sauStarts > observedSauOperationStarts) {
-        observedSauOperationStarts = sauStarts;
-        sauRoiStartRetiredInst = core.getRetiredInstCount();
-    }
-    const uint64_t sauCompletes = sauNSau ?
-        sauNSau->operationCompleteCount() : 0;
-    if (sauCompletes > observedSauOperationCompletes) {
-        observedSauOperationCompletes = sauCompletes;
-        sauRoiEndRetiredInst = core.getRetiredInstCount();
-    }
-    pipeStats.sau_roi_start_retired_inst = sauRoiStartRetiredInst;
-    pipeStats.sau_roi_end_retired_inst = sauRoiEndRetiredInst;
     pipeStats.veu_issue_count = core.getVeuIssueCount();
     pipeStats.veu_complete_count = core.getVeuCompleteCount();
     pipeStats.veu_csr_handshake_cycles = core.getVeuCsrHandshakeCycles();
@@ -1596,7 +1647,8 @@ PipelineMiniCPU::processTick()
         core.timingVeu.defaultControlTimingUseCount();
     pipeStats.veu_zero_length_noops = core.timingVeu.zeroLengthNoopCount();
     pipeStats.veu_illegal_operations = core.timingVeu.illegalOperationCount();
-    std::cout
+    if (consoleCycleTrace) {
+      std::cout
         << "[PipelineMiniCPU] cycle=" << core.getCycle()
         << " pc=0x" << std::hex << core.getPC() << std::dec
         << " IFID=" << core.ifidValid()
@@ -1616,6 +1668,7 @@ PipelineMiniCPU::processTick()
         << " ibusReq=" << core.getIbusReqCount()
         << " align=" << core.getAlignedInstrCount()
         << std::endl;
+    }
 
     if (core.done() && pendingVeuReq == nullptr &&
         veuPacketsInFlight == 0 && core.timingVeu.quiescent()) {

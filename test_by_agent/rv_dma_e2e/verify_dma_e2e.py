@@ -32,6 +32,8 @@ def main():
         "system.mikui_dma.decodeErrors": 0,
         "system.mikui_dma.irqAssertions": 1,
         "system.mikui_dma.outputChecksum": 0x2E342DF7,
+        "system.dma_ddr4_ctrl.dram.numReads::total": 2,
+        "system.dma_ddr4_ctrl.dram.bytesRead::total": 8,
     }
     errors = []
     if "PipelineMiniCPU completed test" not in log:
@@ -47,7 +49,9 @@ def main():
 
     if errors:
         raise SystemExit("DMA E2E FAIL: " + "; ".join(errors))
-    print("DMA E2E PASS: independent device decoded 0,-1,1,-2")
+    print(
+        "DMA E2E PASS: DDR4 -> 32-bit DMA -> shared stack SRAM -> CPU"
+    )
 
 
 if __name__ == "__main__":

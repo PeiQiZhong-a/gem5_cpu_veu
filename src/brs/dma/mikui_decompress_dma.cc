@@ -18,6 +18,11 @@ MikuiDecompressDma::DeviceStats::DeviceStats(statistics::Group *parent)
     ADD_STAT(inputBytes, "Compressed bytes read by the DMA"),
     ADD_STAT(outputBytes, "Decompressed bytes written by the DMA"),
     ADD_STAT(completedOperations, "Completed decompression operations"),
+    ADD_STAT(firstStartTick, "Tick at which the first operation started"),
+    ADD_STAT(lastCompletionTick,
+             "Tick at which the latest operation completed"),
+    ADD_STAT(operationTicks,
+             "Accumulated start-to-completion ticks for DMA operations"),
     ADD_STAT(decodeErrors, "Rejected or malformed decompression operations"),
     ADD_STAT(irqAssertions, "DMA interrupt assertions"),
     ADD_STAT(outputChecksum, "FNV-1a checksum of the latest output")
@@ -175,6 +180,10 @@ MikuiDecompressDma::start()
     }
 
     input.assign(length, 0);
+    activeStartTick = curTick();
+    if (stats.firstStartTick.value() == 0) {
+        stats.firstStartTick = activeStartTick;
+    }
     output.clear();
     transferOffset = 0;
     state = State::Reading;
@@ -260,6 +269,8 @@ void
 MikuiDecompressDma::finish()
 {
     state = State::Idle;
+    stats.lastCompletionTick = curTick();
+    stats.operationTicks += curTick() - activeStartTick;
     ++stats.completedOperations;
     setIrq(true);
 }

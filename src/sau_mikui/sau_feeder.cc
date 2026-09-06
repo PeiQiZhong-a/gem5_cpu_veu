@@ -91,6 +91,10 @@ SauFeeder::computeNext(const SauFeederInputs &inputs)
         next.labels = {};
         next.registerLoaded = false;
         next.registerReadWindows = 0;
+        next.convActivationRows = {};
+        next.convActivationRowCount = 0;
+        next.convWeightRows = {};
+        next.convWeightRowCount = 0;
     }
 
     if (!inputs.start) {
@@ -115,6 +119,14 @@ SauFeeder::computeNext(const SauFeederInputs &inputs)
             next.output.registerWriteValid = true;
             next.output.registerWriteData = inputs.memoryData;
             next.registerLoaded = true;
+            if (convolution && !depthwise &&
+                current.convActivationRowCount <
+                    next.convActivationRows.size()) {
+                next.convActivationRows[current.convActivationRowCount] =
+                    inputs.memoryData;
+                next.convActivationRowCount =
+                    current.convActivationRowCount + 1;
+            }
         }
 
         if (label.lastFlowTime) {
@@ -125,6 +137,45 @@ SauFeeder::computeNext(const SauFeederInputs &inputs)
             next.output.bValid = true;
             next.output.b = toRow8(inputs.memoryData);
             next.output.bLast = inputs.memoryLast;
+            const uint8_t kernel = current.command.convKernel & 0x7;
+            const unsigned taps = kernel * kernel;
+            if (!depthwise && !current.command.shift &&
+                label.state == SchedulerState::ReuseLoad &&
+                current.convWeightRowCount < taps &&
+                current.convWeightRowCount <
+                    next.convWeightRows.size()) {
+                const unsigned captured = current.convWeightRowCount;
+                next.convWeightRows[captured] = inputs.memoryData;
+                next.convWeightRowCount = captured + 1;
+                if (captured + 1 == taps &&
+                    current.convActivationRowCount >= kernel) {
+                    next.output.functionalConvValid = true;
+                    for (unsigned row = 0; row < SauConstants::Rows; ++row) {
+                        for (unsigned col = 0;
+                             col < SauConstants::Cols; ++col) {
+                            int32_t sum = 0;
+                            for (unsigned tap = 0; tap < taps; ++tap) {
+                                const unsigned sourceRow = tap / kernel;
+                                const unsigned horizontal = tap % kernel;
+                                const auto &activation =
+                                    current.convActivationRows[sourceRow];
+                                const auto &weight =
+                                    tap == captured
+                                        ? inputs.memoryData
+                                        : current.convWeightRows[tap];
+                                const int8_t a = static_cast<int8_t>(
+                                    activation[(row + horizontal) %
+                                               SauConstants::Cols]);
+                                const int8_t b =
+                                    static_cast<int8_t>(weight[col]);
+                                sum = saturatingAdd24(
+                                    sum, static_cast<int32_t>(a) * b);
+                            }
+                            next.output.functionalConvResults[row][col] = sum;
+                        }
+                    }
+                }
+            }
         } else {
             const Row8 data = toRow8(inputs.memoryData);
             if ((label.inputSwitch & 1) == 0) {
@@ -178,12 +229,31 @@ SauFeeder::computeNext(const SauFeederInputs &inputs)
         next.convWindowActive = true;
     }
     if (convolution && (current.convWindowActive || inputs.registerValid)) {
-        const Row8 data = inputs.registerValid ? inputs.registerData
-                                               : current.convWindowData;
         const uint8_t cycles =
             current.command.convKernel == 3
                 ? 9
                 : (current.command.convKernel == 5 ? 25 : 49);
+        Row8 data = inputs.registerValid ? inputs.registerData
+                                        : current.convWindowData;
+        const uint8_t kernel = current.command.convKernel & 0x7;
+        if (!depthwise && !current.command.shift && kernel >= 3 &&
+            current.convActivationRowCount >= kernel) {
+            // The functional INT8 convolution path consumes K SRAM rows and
+            // emits K horizontal windows from each row. The retained
+            // register/shift blocks still advance for timing, while this
+            // explicit indexing prevents non-uniform data from being
+            // diagonalized by the checkout's incomplete feeder model.
+            const unsigned row = current.convWindowCount / kernel;
+            const unsigned horizontal = current.convWindowCount % kernel;
+            if (row < kernel) {
+                const auto &source = current.convActivationRows[row];
+                for (unsigned lane = 0; lane < SauConstants::Cols; ++lane) {
+                    data[lane] = static_cast<int8_t>(
+                        source[(lane + horizontal) % SauConstants::Cols]);
+                }
+            }
+        }
+        next.convWindowData = data;
         next.output.aValid = true;
         next.output.a = data;
         next.output.aLast = current.convWindowCount == cycles - 1;

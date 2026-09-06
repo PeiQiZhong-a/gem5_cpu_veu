@@ -49,6 +49,9 @@ class MikuiSau : public ClockedObject, public brs::SauEndpoint
         explicit WrapperStats(statistics::Group *parent);
         statistics::Scalar acceptedCommands;
         statistics::Scalar completedCommands;
+        statistics::Scalar commandCyclesSum;
+        statistics::Scalar firstCommandStartTick;
+        statistics::Scalar lastCommandDoneTick;
         std::array<statistics::Scalar, 4> commandsByMode;
         std::array<statistics::Scalar, 6> schedulerStateCycles;
         statistics::Scalar activeCycles;
@@ -85,6 +88,9 @@ class MikuiSau : public ClockedObject, public brs::SauEndpoint
     std::deque<Stamped<bool>> crossbarDones;
     std::string tracePath;
     std::ofstream trace;
+    std::string outputTracePath;
+    std::ofstream outputTrace;
+    uint64_t outputTraceSequence = 0;
 
     void processSauEdge();
     void wakeup();
@@ -96,6 +102,7 @@ class MikuiSau : public ClockedObject, public brs::SauEndpoint
     }
     bool memoryResponseVisible(Tick produced) const;
     void updateStats(const MikuiSauStats &before);
+    void recordOutputWrite(const brs::Sram128Request &request);
 };
 
 } // namespace gem5::sau_mikui

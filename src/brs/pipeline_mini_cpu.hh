@@ -24,7 +24,6 @@
 #include "brs/pipeline_stats.hh"
 #include "brs/memory/dut_kui_memory_model.hh"
 #include "brs/memory/npu_lpnpu_mikui_memory_model.hh"
-#include "brs/sau/sau_n_endpoint.hh"
 
 namespace gem5
 {
@@ -54,6 +53,29 @@ class PipelineMiniCPU : public ClockedObject
 
         bool recvTimingResp(PacketPtr pkt) override;
         void recvReqRetry() override;
+    };
+
+    class DmaSramResponsePort : public ResponsePort
+    {
+      private:
+        PipelineMiniCPU *owner;
+        bool needRetry = false;
+        PacketPtr blockedResponse = nullptr;
+
+      public:
+        DmaSramResponsePort(
+            const std::string &name, PipelineMiniCPU *owner)
+          : ResponsePort(name), owner(owner)
+        {}
+
+        AddrRangeList getAddrRanges() const override;
+        bool recvTimingReq(PacketPtr pkt) override;
+        Tick recvAtomic(PacketPtr pkt) override;
+        void recvFunctional(PacketPtr pkt) override;
+        void recvRespRetry() override;
+
+        void sendResponse(PacketPtr pkt);
+        void trySendRetry();
     };
 
     uint64_t maxCycles;
@@ -91,21 +113,17 @@ class PipelineMiniCPU : public ClockedObject
     bool dmaIrqInput = false;
     brs::DutKuiMemoryModel dutKuiMemory;
     brs::NpuLpnpuMikuiMemoryModel npuLpnpuMikuiMemory;
-    std::unique_ptr<brs::SauNEndpoint> sauNSau;
-    uint64_t observedSauOperationStarts = 0;
-    uint64_t observedSauOperationCompletes = 0;
-    uint64_t sauRoiStartRetiredInst = 0;
-    uint64_t sauRoiEndRetiredInst = 0;
     bool tbInstOutstanding = false;
     bool tbDataOutstanding = false;
     std::string cycleTraceFile;
     bool cycleTraceCompact;
+    bool consoleCycleTrace;
     std::ofstream cycleTrace;
-    uint64_t sauNOutputTraceOperations = 0;
 
     CpuRequestPort instPort;
     CpuRequestPort dataPort;
     CpuRequestPort veuPort;
+    DmaSramResponsePort dmaSramPort;
     IntSinkPin<PipelineMiniCPU> dmaIrqPin;
     PacketPtr pendingInstFetch = nullptr;
     bool instFetchRetry = false;
@@ -127,6 +145,8 @@ class PipelineMiniCPU : public ClockedObject
     PacketPtr pendingVeuReq = nullptr;
     bool veuReqRetry = false;
     uint64_t veuPacketsInFlight = 0;
+
+    PacketPtr pendingDmaSramReq = nullptr;
 
     struct VeuSenderState : public Packet::SenderState
     {
@@ -167,6 +187,10 @@ class PipelineMiniCPU : public ClockedObject
     bool requestVeuTiming(const brs::TimingVeuMemoryRequest &request);
     bool completeTimingVeu(PacketPtr pkt);
     void retryVeuRequest();
+    bool acceptDmaSramTiming(PacketPtr pkt);
+    void accessDmaSramFunctional(PacketPtr pkt);
+    void completeDmaSram(const brs::DutKuiDbusResponse &response);
+    bool dmaSramBusy() const { return pendingDmaSramReq != nullptr; }
     void preloadElf();
     void preloadProgramFunctional();
     void usePreloadedProgram();
@@ -178,7 +202,6 @@ class PipelineMiniCPU : public ClockedObject
     void writeDutKuiCycleTrace(
         const brs::SauMemoryOutput &sau,
         const brs::DutKuiMemoryOutputs &outputs);
-    void writeSauNOutputTrace();
     void processDutKuiMemoryCycle(const brs::SauMemoryOutput &sau);
     bool dutKuiMemoryEnabled() const;
     bool npuLpnpuMikuiMemoryEnabled() const;
@@ -200,6 +223,7 @@ class PipelineMiniCPU : public ClockedObject
     void raiseInterruptPin(int id);
     void lowerInterruptPin(int id);
 
+    void init() override;
     void startup() override;
 };
 

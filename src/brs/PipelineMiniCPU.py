@@ -76,6 +76,8 @@ class PipelineMiniCPU(ClockedObject):
         False,
         "Write a compact event-enriched cycle trace instead of full signal lines",
     )
+    console_cycle_trace = Param.Bool(
+        True, "Print the legacy per-cycle CPU status line to stdout")
     ebreak_terminates = Param.Bool(
         False,
         "Treat a retired EBREAK as a normal workload termination",
@@ -84,9 +86,9 @@ class PipelineMiniCPU(ClockedObject):
         "fake",
         "VEU backend model: fake or timing",
     )
-    sau_model = Param.String(
-        "stub",
-        "SAU backend model: stub or sau_n",
+    mikui_sau = Param.MikuiSau(
+        NULL,
+        "Optional Mikui SAU endpoint; NULL keeps the lightweight stub",
     )
     veu_input_fifo_depth = Param.UInt32(
         4,
@@ -144,3 +146,5 @@ class PipelineMiniCPU(ClockedObject):
     inst_port = RequestPort("Instruction fetch port")
     data_port = RequestPort("Data access port")
     veu_port = RequestPort("VEU data access port")
+    dma_sram_port = ResponsePort(
+        "Independent DMA access to the embedded Mikui three-bank SRAM")

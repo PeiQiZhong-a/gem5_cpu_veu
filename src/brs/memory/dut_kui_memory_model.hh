@@ -64,6 +64,7 @@ struct DutKuiMemoryOutputs
 {
     DutKuiIbusResponse ibus;
     DutKuiDbusResponse dbus;
+    DutKuiDbusResponse dmaDbus;
     DutKuiVeuResponse veuRead;
     DutKuiVeuResponse veuWrite;
     SauMemoryResponse sau;

@@ -27,6 +27,16 @@ def sw(rs2, rs1, imm):
     )
 
 
+def lw(rd, rs1, imm):
+    return (
+        ((imm & 0xFFF) << 20)
+        | (rs1 << 15)
+        | (0x2 << 12)
+        | (rd << 7)
+        | 0x03
+    )
+
+
 def branch(rs1, rs2, imm, funct3):
     encoded = imm & 0x1FFF
     return (
@@ -64,11 +74,12 @@ def compressed_input():
 
 
 def main():
-    # Program the actual dt_dma four-register ABI, then leave enough guest
-    # cycles for the independently scheduled 32-bit AHB reads and writes.
+    # Program the actual dt_dma four-register ABI. The guest then polls the
+    # shared stack SRAM, proving that the DMA destination and CPU DBUS observe
+    # the same physical three-bank storage.
     words = [
-        lui(1, 0x60000),       # x1 = compressed source SRAM
-        lui(2, 0x60001),       # x2 = decompressed destination SRAM
+        lui(1, 0x60000),       # x1 = compressed source in DDR4
+        lui(2, 0x20010),       # x2 = destination in stack SRAM
         lui(4, 0x4001A),
         addi(4, 4, -0x400),    # x4 = 0x40019c00 register base
         sw(1, 4, 0x04),        # SRC
@@ -77,9 +88,10 @@ def main():
         sw(5, 4, 0x0C),        # LENGTH in bytes
         addi(5, 0, 1),
         sw(5, 4, 0x00),        # CTRL.START
-        addi(6, 0, 200),
-        addi(6, 6, -1),
-        bne(6, 0, -4),
+        lui(7, 0x00FF0),
+        addi(7, 7, 0x1FE),     # x7 = expected 0x00ff01fe
+        lw(8, 2, 0),           # poll the DMA-written shared SRAM word
+        bne(8, 7, -4),
         0x00100073,            # EBREAK
     ]
     (ROOT / "instr_mem.hex").write_text(

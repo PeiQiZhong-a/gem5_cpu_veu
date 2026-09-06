@@ -12,8 +12,11 @@ construction.
 memory, register/shift, feeder, transposer, 256 PE, output, and writeback
 blocks. `MikuiSau` is a `ClockedObject` that supplies timestamped CPU and SRAM
 mailboxes, so CPU and SAU clocks may differ without same-Tick visibility.
-Normal `PipelineMiniCPU` runs select this model; `--sau-model stub` retains the
-lightweight endpoint for older tests.
+`PipelineMiniCPU` uses this model in each Mikui RTL memory mode;
+other memory modes and standalone CPU tests retain the lightweight stub.
+
+The memory controller keeps the original fixed-SRAM timing contract with
+`ResponseDelay=2` and `ControlDelay=3`.
 
 ## Build and test
 
@@ -25,7 +28,7 @@ scons build/RISCV/gem5.opt \
   build/RISCV/sau_mikui/sau_mikui_transposer.test.opt \
   build/RISCV/sau_mikui/sau_mikui_pe_array.test.opt \
   build/RISCV/sau_mikui/sau_mikui_memory_feeder.test.opt \
-  build/RISCV/sau_mikui/sau_mikui_cycle_model.test.opt -j32
+  build/RISCV/sau_mikui/sau_mikui_cycle_model.test.opt -j8
 
 for test in build/RISCV/sau_mikui/*.test.opt; do
   "$test" --gtest_brief=1
@@ -67,8 +70,11 @@ used as cycle-acceptance evidence for the frozen baseline above. Generate or
 provide a case from the frozen commit before declaring the full RTL waveform
 check complete.
 
-The current array engine advances all 256 PE states, but GEMM/convolution
-writeback is still selected from the engine's parallel result matrices. A
+The current array engine advances all 256 PE states. Dense standard INT8
+convolution uses the feeder's explicit K-row/K-window organization and the
+engine's parallel result matrix for functional writeback; this avoids the
+checkout's incomplete non-uniform weight/activation wavefront while retaining
+the existing command and PE timing. A
 trial switch to PE-registered results exposed an unresolved RETAIN command
 boundary: the next command can update before the previous PE wavefront reaches
 the RTL `OS_valid` boundary. Therefore this checkout is a tested functional

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "sau_mikui/mikui_sau_cycle_model.hh"
@@ -15,6 +16,7 @@ enum class MemoryPattern
     Ones,
     ZeroBias,
     RowPattern,
+    ConvOnesZeroBias,
 };
 
 class TestMemoryDriver
@@ -34,7 +36,7 @@ class TestMemoryDriver
         if (pending.valid) {
             response.valid = true;
             if (!pending.isWrite()) {
-                fillReadData(response.readData);
+                fillReadData(pending, response.readData);
             }
         }
 
@@ -43,25 +45,30 @@ class TestMemoryDriver
         pending = visibleRequest;
     }
 
-  private:
     void
-    fillReadData(Beat128 &data) const
+    fillReadData(const brs::Sram128Request &request, Beat128 &data) const
     {
         if (pattern == MemoryPattern::Ones) {
             data.fill(1);
         } else if (pattern == MemoryPattern::ZeroBias) {
-            if (pending.address < 0x20024000 ||
-                pending.address >= 0x20024020) {
+            if (request.address < 0x20024000 ||
+                request.address >= 0x20024020) {
                 data.fill(1);
             }
-        } else if (pending.address >= 0x20018000 &&
-                   pending.address < 0x20019000) {
+        } else if (pattern == MemoryPattern::ConvOnesZeroBias) {
+            if (request.address < 0x20024000 ||
+                request.address >= 0x20024020) {
+                data.fill(1);
+            }
+        } else if (request.address >= 0x20018000 &&
+                   request.address < 0x20019000) {
             const uint8_t row = static_cast<uint8_t>(
-                ((pending.address - 0x20018000) >> 4) + 1);
+                ((request.address - 0x20018000) >> 4) + 1);
             data.fill(row);
         }
     }
 
+  private:
     MemoryPattern pattern;
     const MikuiSauCycleModel *owner = nullptr;
     brs::Sram128Request pending{};
@@ -87,6 +94,14 @@ clockWithRowPattern(MikuiSauCycleModel &model,
                     const brs::SauRequest &request = {})
 {
     static TestMemoryDriver memory(MemoryPattern::RowPattern);
+    memory.clock(model, request);
+}
+
+void
+clockWithConvOnesZeroBias(MikuiSauCycleModel &model,
+                          const brs::SauRequest &request = {})
+{
+    static TestMemoryDriver memory(MemoryPattern::ConvOnesZeroBias);
     memory.clock(model, request);
 }
 
@@ -253,6 +268,61 @@ TEST(MikuiSauCycleModelTest, RunsStridedStandardThreeByThreeConvolution)
     for (unsigned row = 0; row < writes.size(); ++row) {
         for (unsigned col = 0; col < writes[row].size(); ++col) {
             EXPECT_EQ(writes[row][col], 9u) << "row=" << row << " col=" << col;
+        }
+    }
+}
+
+TEST(MikuiSauCycleModelTest, WritesShiftedThreeByThreeConvolutionLayout)
+{
+    for (const bool shift : {false, true}) {
+        MikuiSauCycleModel model;
+        const uint64_t command0 =
+            (uint64_t{3} << 2) | (static_cast<uint64_t>(shift) << 5) |
+            (uint64_t{1} << 39);
+        clockWithConvOnesZeroBias(model, write(0x200, command0));
+        clockWithConvOnesZeroBias(model);
+        const uint64_t steps = uint64_t{1} | (uint64_t{1} << 8) |
+                               (uint64_t{1} << 16) |
+                               (uint64_t{16} << 32) |
+                               (uint64_t{16} << 40) |
+                               (uint64_t{1} << 48);
+        clockWithConvOnesZeroBias(model, write(0x202, steps));
+        clockWithConvOnesZeroBias(model);
+        clockWithConvOnesZeroBias(
+            model,
+            write(0x204,
+                  uint64_t{0x10000} | (uint64_t{0x18000} << 32)));
+        clockWithConvOnesZeroBias(model);
+        clockWithConvOnesZeroBias(
+            model,
+            write(0x206,
+                  uint64_t{1} | (uint64_t{0x20000} << 9) |
+                      (uint64_t{0x24000} << 32) |
+                      (static_cast<uint64_t>(CalculateMode::Conv) << 52) |
+                      (uint64_t{1} << 56),
+                  1));
+        clockWithConvOnesZeroBias(model);
+
+        std::vector<Beat128> writes;
+        bool done = false;
+        for (unsigned cycle = 0; cycle < 4000 && !done; ++cycle) {
+            const auto memory = model.evaluateMemory();
+            done |= memory.crossbarDone;
+            if (memory.request.valid && memory.request.isWrite()) {
+                writes.push_back(memory.request.writeData);
+            }
+            clockWithConvOnesZeroBias(model);
+        }
+        ASSERT_TRUE(done) << "shift=" << shift;
+        ASSERT_EQ(writes.size(), shift ? 32u : 16u);
+        for (unsigned beat = 0; beat < writes.size(); ++beat) {
+            for (unsigned byte = 0; byte < writes[beat].size(); ++byte) {
+                const uint8_t expected =
+                    shift ? ((byte & 1) ? 5 : 4) : 9;
+                EXPECT_EQ(writes[beat][byte], expected)
+                    << "shift=" << shift << " beat=" << beat
+                    << " byte=" << byte;
+            }
         }
     }
 }

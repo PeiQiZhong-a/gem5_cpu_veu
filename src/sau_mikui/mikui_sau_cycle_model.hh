@@ -26,6 +26,7 @@ struct MikuiSauStats
     uint64_t idleCycles = 0;
     uint64_t acceptedCommands = 0;
     uint64_t completedCommands = 0;
+    uint64_t commandCyclesSum = 0;
     std::array<uint64_t, 4> commandByMode{};
     std::array<uint64_t, 6> schedulerStateCycles{};
     uint64_t sramReadBeats = 0;
@@ -68,7 +69,6 @@ class MikuiSauCycleModel
     brs::SauMemoryOutput evaluateMemory() const;
     void clockEdge(const brs::SauRequest &request,
                    const brs::SauMemoryResponse &memoryResponse);
-
     bool active() const;
     uint64_t
     cycle() const

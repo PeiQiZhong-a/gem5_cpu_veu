@@ -35,6 +35,7 @@ class NpuLpnpuMikuiMemoryModel
     void reset();
     bool acceptIbus(const DutKuiIbusRequest &request);
     bool acceptDbus(const DutKuiDbusRequest &request, bool veuLockActive);
+    bool acceptDmaDbus(const DutKuiDbusRequest &request);
     bool acceptVeu(const DutKuiVeuRequest &request);
     const DutKuiMemoryOutputs &evaluate() const { return visibleOutputs; }
     void clockEdge(bool veuLockActive, const SauMemoryOutput &sau = {});
@@ -82,12 +83,15 @@ class NpuLpnpuMikuiMemoryModel
 
     bool ibusOutstanding = false;
     bool dbusOutstanding = false;
+    bool dmaDbusOutstanding = false;
     uint32_t veuOutstanding = 0;
     bool ibusAcceptedThisCycle = false;
     bool dbusAcceptedThisCycle = false;
+    bool dmaDbusAcceptedThisCycle = false;
     bool veuAcceptedThisCycle = false;
     DutKuiIbusRequest acceptedIbus;
     DutKuiDbusRequest acceptedDbus;
+    DutKuiDbusRequest acceptedDmaDbus;
     DutKuiVeuRequest acceptedVeu;
 
     std::deque<DutKuiVeuRequest> pendingVeuRequests;
@@ -95,6 +99,14 @@ class NpuLpnpuMikuiMemoryModel
     bool previousVeuLockActive = false;
     uint8_t dmaDbusWordOffset = 0;
     bool dmaDbusWrite = false;
+
+    enum class DbusOwner : uint8_t
+    {
+        None,
+        Cpu,
+        Dma
+    };
+    DbusOwner activeDbusOwner = DbusOwner::None;
 
     bool instructionMapped(uint32_t address) const;
     Sram128Request currentVeuBeat() const;

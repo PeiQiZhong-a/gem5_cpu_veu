@@ -20,18 +20,22 @@ NpuLpnpuMikuiMemoryModel::reset()
 {
     ibusOutstanding = false;
     dbusOutstanding = false;
+    dmaDbusOutstanding = false;
     veuOutstanding = 0;
     ibusAcceptedThisCycle = false;
     dbusAcceptedThisCycle = false;
+    dmaDbusAcceptedThisCycle = false;
     veuAcceptedThisCycle = false;
     acceptedIbus = {};
     acceptedDbus = {};
+    acceptedDmaDbus = {};
     acceptedVeu = {};
     pendingVeuRequests.clear();
     issuedVeuRequests.clear();
     previousVeuLockActive = false;
     dmaDbusWordOffset = 0;
     dmaDbusWrite = false;
+    activeDbusOwner = DbusOwner::None;
     dbusConverter.reset();
     crossbar.reset();
     dmaCrossbar.reset();
@@ -69,6 +73,20 @@ NpuLpnpuMikuiMemoryModel::acceptDbus(
     dbusAcceptedThisCycle = true;
     dbusOutstanding = true;
     (void)veuLockActive;
+    return true;
+}
+
+bool
+NpuLpnpuMikuiMemoryModel::acceptDmaDbus(
+    const DutKuiDbusRequest &request)
+{
+    if (!config.dmaTopology || dmaDbusOutstanding ||
+        dmaDbusAcceptedThisCycle) {
+        return false;
+    }
+    acceptedDmaDbus = request;
+    dmaDbusAcceptedThisCycle = true;
+    dmaDbusOutstanding = true;
     return true;
 }
 
@@ -137,26 +155,41 @@ NpuLpnpuMikuiMemoryModel::advance(
 
     Sram32Request dbusInput;
     Sram128Request dmaDbusInput;
-    if (dbusAcceptedThisCycle) {
-        if (config.dmaTopology) {
-            dmaDbusInput.valid = true;
-            dmaDbusInput.address = acceptedDbus.address & ~uint32_t{0x0f};
-            dmaDbusWordOffset =
-                static_cast<uint8_t>((acceptedDbus.address >> 2) & 0x3);
-            dmaDbusWrite = acceptedDbus.writeStrobe != 0;
-            if (dmaDbusWrite) {
-                const uint8_t byteOffset = dmaDbusWordOffset * 4;
-                dmaDbusInput.writeStrobe =
-                    static_cast<uint16_t>(acceptedDbus.writeStrobe) <<
-                    byteOffset;
-                for (uint8_t byte = 0; byte < 4; ++byte) {
-                    dmaDbusInput.writeData[byteOffset + byte] =
-                        static_cast<uint8_t>(
-                            acceptedDbus.writeData >> (byte * 8));
-                }
+    if (config.dmaTopology && activeDbusOwner == DbusOwner::None &&
+        (dbusAcceptedThisCycle || dmaDbusAcceptedThisCycle)) {
+        // Both the CPU and the independent DMA enter crossbar_mi_full through
+        // its single 32-bit DBUS path. Preserve the native-compute-side
+        // priority used by the RTL family: a queued CPU request wins over a
+        // queued DMA request, while the DMA request remains pending.
+        const bool selectCpu = dbusAcceptedThisCycle;
+        const DutKuiDbusRequest &selected =
+            selectCpu ? acceptedDbus : acceptedDmaDbus;
+        dmaDbusInput.valid = true;
+        dmaDbusInput.address = selected.address & ~uint32_t{0x0f};
+        dmaDbusWordOffset =
+            static_cast<uint8_t>((selected.address >> 2) & 0x3);
+        dmaDbusWrite = selected.writeStrobe != 0;
+        if (dmaDbusWrite) {
+            const uint8_t byteOffset = dmaDbusWordOffset * 4;
+            dmaDbusInput.writeStrobe =
+                static_cast<uint16_t>(selected.writeStrobe) << byteOffset;
+            for (uint8_t byte = 0; byte < 4; ++byte) {
+                dmaDbusInput.writeData[byteOffset + byte] =
+                    static_cast<uint8_t>(selected.writeData >> (byte * 8));
             }
+        }
+        activeDbusOwner = selectCpu ? DbusOwner::Cpu : DbusOwner::Dma;
+        if (selectCpu) {
             dbusAcceptedThisCycle = false;
             acceptedDbus = {};
+        } else {
+            dmaDbusAcceptedThisCycle = false;
+            acceptedDmaDbus = {};
+        }
+    } else if (dbusAcceptedThisCycle) {
+        if (config.dmaTopology) {
+            // A request is already active on the shared DBUS. Keep this CPU
+            // request queued so it receives priority when that request ends.
         } else if (dbusConverter.canAccept()) {
             dbusInput.valid = true;
             dbusInput.address = acceptedDbus.address;
@@ -241,19 +274,28 @@ NpuLpnpuMikuiMemoryModel::advance(
     }
 
     if (config.dmaTopology) {
-        if (dmaDbusResponseAfter.valid && dbusOutstanding) {
-            outputs.dbus.valid = true;
-            outputs.dbus.isWrite = dmaDbusWrite;
+        if (dmaDbusResponseAfter.valid &&
+            activeDbusOwner != DbusOwner::None) {
+            DutKuiDbusResponse &response =
+                activeDbusOwner == DbusOwner::Cpu ?
+                    outputs.dbus : outputs.dmaDbus;
+            response.valid = true;
+            response.isWrite = dmaDbusWrite;
             if (!dmaDbusWrite) {
                 const uint8_t byteOffset = dmaDbusWordOffset * 4;
                 for (uint8_t byte = 0; byte < 4; ++byte) {
-                    outputs.dbus.readData |=
+                    response.readData |=
                         static_cast<uint32_t>(
                             dmaDbusResponseAfter.readData[byteOffset + byte]) <<
                         (byte * 8);
                 }
             }
-            dbusOutstanding = false;
+            if (activeDbusOwner == DbusOwner::Cpu) {
+                dbusOutstanding = false;
+            } else {
+                dmaDbusOutstanding = false;
+            }
+            activeDbusOwner = DbusOwner::None;
         }
     } else {
         const SramConverter32To128Output converterAfter =

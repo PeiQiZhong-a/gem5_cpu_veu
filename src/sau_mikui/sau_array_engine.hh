@@ -30,6 +30,8 @@ struct SauArrayEngineInputs
     bool bLast = false;
     bool cValid = false;
     Row16 c{};
+    bool functionalConvValid = false;
+    std::array<Row24, SauConstants::Rows> functionalConvResults{};
     bool outputReady = true;
 };
 
@@ -70,6 +72,8 @@ class SauArrayEngine
         SauCommand pendingCommand{};
         bool pendingCommandValid = false;
         bool suppressOutput = false;
+        bool retainConvResults = false;
+        bool functionalConvResultsValid = false;
         SauArrayEngineOutputs output{};
     } current, next;
 

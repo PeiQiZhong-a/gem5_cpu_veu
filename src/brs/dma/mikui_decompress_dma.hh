@@ -54,6 +54,9 @@ class MikuiDecompressDma : public DmaDevice
         statistics::Scalar inputBytes;
         statistics::Scalar outputBytes;
         statistics::Scalar completedOperations;
+        statistics::Scalar firstStartTick;
+        statistics::Scalar lastCompletionTick;
+        statistics::Scalar operationTicks;
         statistics::Scalar decodeErrors;
         statistics::Scalar irqAssertions;
         statistics::Scalar outputChecksum;
@@ -75,6 +78,7 @@ class MikuiDecompressDma : public DmaDevice
     State state = State::Idle;
     bool startPending = false;
     bool irqAsserted = false;
+    Tick activeStartTick = 0;
     size_t transferOffset = 0;
     std::vector<uint8_t> input;
     std::vector<uint8_t> output;

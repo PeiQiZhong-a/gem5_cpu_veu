@@ -264,6 +264,8 @@ MikuiSauCycleModel::clockEdge(const brs::SauRequest &request,
     arrayInputs.bLast = convolution ? feederOut.bLast : trans1.last;
     arrayInputs.cValid = feederOut.cValid;
     arrayInputs.c = feederOut.c;
+    arrayInputs.functionalConvValid = feederOut.functionalConvValid;
+    arrayInputs.functionalConvResults = feederOut.functionalConvResults;
     array.computeNext(arrayInputs);
 
     const uint64_t edgeCycle = statistics.cycles;
@@ -340,6 +342,10 @@ MikuiSauCycleModel::clockEdge(const brs::SauRequest &request,
     }
     if (schedulerOut.crossbarDone) {
         ++statistics.completedCommands;
+        if (commandMilestones.done >= commandMilestones.start) {
+            statistics.commandCyclesSum +=
+                commandMilestones.done - commandMilestones.start;
+        }
     }
     ++statistics
           .schedulerStateCycles[static_cast<unsigned>(schedulerOut.state)];

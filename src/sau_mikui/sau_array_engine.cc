@@ -58,7 +58,16 @@ SauArrayEngine::computeNext(const SauArrayEngineInputs &inputs)
             next.outputRow = 0;
             next.depthwiseMask = 1;
             next.sawLast = false;
-            next.directResults = {};
+            if (inputs.command.operation != CalculateMode::Conv ||
+                !current.retainConvResults) {
+                next.directResults = {};
+                next.functionalConvResultsValid = false;
+            }
+            if (inputs.command.operation == CalculateMode::Conv) {
+                next.retainConvResults =
+                    inputs.command.flowMode == FlowMode::Retain ||
+                    inputs.command.flowMode == FlowMode::Tretain;
+            }
             if (current.controller == ArrayEngineState::Idle ||
                 current.controller == ArrayEngineState::Done) {
                 next.suppressOutput = false;
@@ -73,6 +82,16 @@ SauArrayEngine::computeNext(const SauArrayEngineInputs &inputs)
     }
     if (inputs.cValid) {
         next.bias = inputs.c;
+    }
+    if (inputs.functionalConvValid) {
+        next.functionalConvResultsValid = true;
+        for (unsigned row = 0; row < SauConstants::Rows; ++row) {
+            for (unsigned col = 0; col < SauConstants::Cols; ++col) {
+                next.directResults[row][col] = saturatingAdd24(
+                    current.directResults[row][col],
+                    inputs.functionalConvResults[row][col]);
+            }
+        }
     }
 
     const bool convolution = current.command.convKernel >= 3;
@@ -198,7 +217,16 @@ SauArrayEngine::computeNext(const SauArrayEngineInputs &inputs)
             next.outputRow = 0;
             next.depthwiseMask = 1;
             next.sawLast = false;
-            next.directResults = {};
+            if (current.pendingCommand.operation != CalculateMode::Conv ||
+                !current.retainConvResults) {
+                next.directResults = {};
+                next.functionalConvResultsValid = false;
+            }
+            if (current.pendingCommand.operation == CalculateMode::Conv) {
+                next.retainConvResults =
+                    current.pendingCommand.flowMode == FlowMode::Retain ||
+                    current.pendingCommand.flowMode == FlowMode::Tretain;
+            }
         }
     }
 
@@ -214,6 +242,15 @@ SauArrayEngine::computeNext(const SauArrayEngineInputs &inputs)
         if (current.command.operation == CalculateMode::Add ||
             current.command.operation == CalculateMode::Transposer) {
             result = current.directResults[row];
+        } else if (current.command.operation == CalculateMode::Conv &&
+                   current.command.registerMode != 2 &&
+                   !current.command.shift &&
+                   current.functionalConvResultsValid) {
+            result = current.directResults[row];
+            for (unsigned col = 0; col < SauConstants::Cols; ++col) {
+                result[col] =
+                    saturatingAdd24(result[col], current.bias[col]);
+            }
         } else {
             result = arrayOut.results[row];
             if (current.command.operation == CalculateMode::Conv &&
