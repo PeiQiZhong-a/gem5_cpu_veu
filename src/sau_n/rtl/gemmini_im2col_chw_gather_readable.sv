@@ -1,25 +1,22 @@
-// CHW/W-inner gather-style Im2Col reference RTL.
+// Continuous-NCHW gather-style Im2Col reference RTL.
 //
-// This is the same idea as docs/gemmini_im2col_gather_readable.sv, but the
-// scratchpad/input layout assumption is changed from NHWC-like rows to CHW-like
-// rows:
+// The scratchpad stores one dense NCHW byte stream without padding between
+// input rows, channels, or batches:
 //
-//   row address order:
-//     N -> C -> packed H/W word
+//   tensor_offset = (((n * C) + c) * H + h) * W + w
+//   byte_address  = cfg_spad_base + tensor_offset
+//   bank          = byte_address % SP_BANKS
+//   row           = byte_address / SP_BANKS
 //
-//   row data:
-//     if W <= 16:
-//       pack floor(16 / W) complete H rows into one scratchpad row.
-//       Example W=5:
-//         row data = h0.w0..w4, h1.w0..w4, h2.w0..w4, zero
+// cfg_spad_base is a byte address and may start at any bank. SP_BANKS must be a
+// power of two. Each int8 bank has an independent row address, so one output
+// vector may gather bytes from different scratchpad rows in the same cycle.
+// A read request is accepted at a rising edge and returns with resp_valid one
+// cycle later. Each bank keeps at most one outstanding request.
 //
-//     if W > 16:
-//       split one H row over multiple W words:
-//         row data = input[n][c][h][w_base + 0 ... w_base + 15]
-//
-// In other words, W is the innermost dimension and one logical 16-byte row is
-// physically striped across 16 int8 SRAM banks. The CHW lane index selects the
-// int8 bank, while the packed H/W word index selects that bank's row.
+// Scratchpad storage and output-vector packing are independent. For example,
+// W=5 stores h3.w0 in row0.bank15, but an output group still uses lanes 0..14
+// for three spatial rows and emits lane15 as data=0, mask=0.
 //
 // This is a readable design sketch, not drop-in Gemmini RTL.
 
@@ -29,11 +26,15 @@ module gemmini_im2col_chw_gather_readable #(
     parameter int SP_BANKS        = BLOCK_SIZE,
     parameter int SP_BANK_ENTRIES = 4096,
     parameter int FIFO_DEPTH      = 4,
+    parameter int KERNEL_PATTERN_BITS = 32,
     parameter int SP_BANK_BITS    = $clog2(SP_BANKS),
     parameter int SP_ROW_BITS     = $clog2(SP_BANK_ENTRIES),
     parameter int SP_ADDR_BITS    = SP_BANK_BITS + SP_ROW_BITS,
     parameter int FIFO_PTR_W      = $clog2(FIFO_DEPTH),
-    parameter int LANE_W          = $clog2(BLOCK_SIZE)
+    parameter int LANE_W          = $clog2(BLOCK_SIZE),
+    parameter int GROUP_W         = 13,
+    parameter int SPATIAL_W       = 32,
+    parameter int MAX_SEG_C       = 16
 ) (
     input  logic                         clk,
     input  logic                         rst_n,
@@ -42,10 +43,22 @@ module gemmini_im2col_chw_gather_readable #(
     input  logic [SP_ADDR_BITS-1:0]      cfg_spad_base,
     input  logic [15:0]                  cfg_n,
     input  logic [15:0]                  cfg_c,
+    // cfg_c is the dense tensor's total C stride. The segment fields select
+    // a contiguous channel slice and keep the emitted local K index at zero.
+    input  logic [15:0]                  cfg_c_base,
+    input  logic [15:0]                  cfg_c_count,
+    // Optional one-spatial-group command used by channel-tile retain.
+    input  logic                         cfg_single_group_mode,
+    input  logic [15:0]                  cfg_group_n,
+    input  logic [GROUP_W-1:0]           cfg_group_index,
+    input  logic [15:0]                  cfg_group_oh_base,
+    input  logic [15:0]                  cfg_group_ow_base,
     input  logic [15:0]                  cfg_h,
     input  logic [15:0]                  cfg_w,
     input  logic [15:0]                  cfg_out_h,
     input  logic [15:0]                  cfg_out_w,
+    input  logic                         cfg_mline_mode,
+    input  logic [4:0]                   cfg_rows_per_group,
     input  logic [3:0]                   cfg_kernel_h,
     input  logic [3:0]                   cfg_kernel_w,
     input  logic [3:0]                   cfg_stride_h,
@@ -59,31 +72,39 @@ module gemmini_im2col_chw_gather_readable #(
     // DW conv: this layout is also natural because each channel is independent.
     input  logic                         cfg_dw_mode,
 
-    // One bit per kernel tap. For a 3x3 dilation=2 horizontal tap group this
-    // can represent a pattern like 1,0,1,0,1,...
-    input  logic [BLOCK_SIZE-1:0]         cfg_kernel_pattern,
+    // One bit per kernel tap in row-major order. 32 bits cover every tap of
+    // the supported 1x1, 3x3 and 5x5 kernels.
+    input  logic [KERNEL_PATTERN_BITS-1:0] cfg_kernel_pattern,
+    input  logic [GROUP_W-1:0]           cfg_groups_per_n,
 
     input  logic                         start,
     output logic                         busy,
     output logic                         done,
+    // One-cycle error pulse for a start issued before configuration capture.
+    output logic                         cfg_error,
 
     output logic [SP_BANKS-1:0]           sram_req_valid,
     output logic [SP_BANKS-1:0][SP_ROW_BITS-1:0] sram_req_addr,
     input  logic [SP_BANKS-1:0]           sram_resp_valid,
-    input  logic [SP_BANKS-1:0][ELEM_W-1:0] sram_resp_data,
+    input  var logic [SP_BANKS-1:0][ELEM_W-1:0] sram_resp_data,
 
     output logic                         feed_valid,
     input  logic                         feed_ready,
     output logic [BLOCK_SIZE*ELEM_W-1:0] feed_data,
-    output logic [BLOCK_SIZE-1:0]         feed_mask
+    output logic [BLOCK_SIZE-1:0]         feed_mask,
+    output logic [BLOCK_SIZE-1:0]         feed_row_mask,
+    output logic [15:0]                   feed_n_index,
+    output logic [GROUP_W-1:0]            feed_group_index,
+    output logic [BLOCK_SIZE*SPATIAL_W-1:0] feed_spatial_index
 );
 
+    // Waveform-only summary of the deepest occupied pipeline stage. The data
+    // path itself is controlled by the s1/s2/s3 valid bits below.
     typedef enum logic [2:0] {
         ST_IDLE,
         ST_ISSUE,
         ST_COLLECT,
         ST_PUSH,
-        ST_NEXT,
         ST_DONE
     } state_e;
 
@@ -91,48 +112,206 @@ module gemmini_im2col_chw_gather_readable #(
         logic valid;
         logic [SP_BANK_BITS-1:0] bank;
         logic [SP_ROW_BITS-1:0] row;
-        logic [LANE_W-1:0] lane_sel;
         logic [LANE_W-1:0] dst_lane;
     } lane_req_t;
+
+    localparam int DESCRIPTOR_DEPTH = 2;
+    localparam int DESCRIPTOR_COUNT_W = $clog2(DESCRIPTOR_DEPTH + 1);
 
     state_e state;
 
     logic [SP_ADDR_BITS-1:0] spad_base_q;
-    logic [15:0] n_q, c_q, h_q, w_q, out_h_q, out_w_q;
+    logic [15:0] n_q, c_q, c_base_q, c_count_q, h_q, w_q, out_h_q, out_w_q;
     logic [3:0] kernel_h_q, kernel_w_q;
     logic [3:0] stride_h_q, stride_w_q;
     logic [3:0] dilation_h_q, dilation_w_q;
     logic [15:0] pad_top_q, pad_left_q;
-    logic dw_mode_q;
-    logic [BLOCK_SIZE-1:0] kernel_pattern_q;
+    logic [KERNEL_PATTERN_BITS-1:0] kernel_pattern_q;
+    logic single_group_mode_q;
+    logic [15:0] group_n_q;
+    logic [GROUP_W-1:0] group_config_index_q;
 
-    // Output tile and kernel/channel counters.
+    // Cursor for the next vector entering the coordinate pipeline.
     logic [15:0] n_idx;
     logic [15:0] c_idx;
     logic [15:0] oh_idx;
     logic [15:0] ow_base;
+    logic [GROUP_W-1:0] group_idx;
     logic [3:0]  kh_idx;
     logic [3:0]  kw_idx;
 
-    logic [31:0] w_words;
-    logic [31:0] rows_per_word;
-    logic [31:0] spatial_words_per_channel;
-    logic [31:0] n_word_stride;
+    logic mline_mode_q;
+    logic [4:0] rows_per_group_q;
+    logic [31:0] channel_byte_stride;
+    logic [31:0] batch_byte_stride;
+    logic        config_captured;
+    logic [GROUP_W-1:0] groups_per_n;
 
+    // Stage 0 captures the cursor state and cheap lane/output mapping. Coord
+    // then registers the padding/valid/spatial result before the existing G0
+    // boundary, removing that cone from the Stage-0-to-G0 path.
+    localparam int COORD_TAP_W = $clog2(KERNEL_PATTERN_BITS);
+    logic stage0_valid;
+    logic stage0_in_valid;
+    logic stage0_ready;
+    logic stage0_fire;
+    logic stage0_to_coord;
+    logic [15:0] stage0_n_idx, stage0_c_idx;
+    logic [15:0] stage0_oh_idx, stage0_ow_base;
+    logic [GROUP_W-1:0] stage0_group_idx;
+    logic [3:0] stage0_kh_idx, stage0_kw_idx;
+    logic stage0_last;
+    logic [BLOCK_SIZE*16-1:0] stage0_out_h;
+    logic [BLOCK_SIZE*16-1:0] stage0_out_w;
+    logic [BLOCK_SIZE*32-1:0] stage0_local_h;
+    logic [BLOCK_SIZE*32-1:0] stage0_local_w;
+    logic [BLOCK_SIZE*COORD_TAP_W-1:0] stage0_tap_index;
+    logic [BLOCK_SIZE*16-1:0] coord_stage0_out_h;
+    logic [BLOCK_SIZE*16-1:0] coord_stage0_out_w;
+    logic [BLOCK_SIZE*32-1:0] coord_stage0_local_h;
+    logic [BLOCK_SIZE*32-1:0] coord_stage0_local_w;
+    logic [BLOCK_SIZE*COORD_TAP_W-1:0] coord_stage0_tap_index;
+
+    // Coord is the elastic intermediate token. It holds the expensive
+    // geometry results; G0 performs only the final metadata combines.
+    logic coord_valid;
+    logic coord_ready;
+    logic coord_to_g0;
+    logic coord_last;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] coord_spatial_base_q;
+    logic [BLOCK_SIZE*16-1:0] coord_out_w_q;
+    logic [BLOCK_SIZE-1:0] coord_tap_active_q;
+    logic [BLOCK_SIZE-1:0] coord_boundary_valid_q;
+    logic [BLOCK_SIZE-1:0] coord_row_eligible_q;
+    logic [BLOCK_SIZE-1:0] coord_c_valid_q;
+    logic [BLOCK_SIZE-1:0] coord_is_padding_q;
+    logic [BLOCK_SIZE*16-1:0] coord_in_h_q;
+    logic [BLOCK_SIZE*16-1:0] coord_in_w_q;
+    logic [15:0] coord_n_index_q;
+    logic [GROUP_W-1:0] coord_group_index_q;
+    logic [15:0] coord_n_idx_q;
+    logic [15:0] coord_c_idx_q;
+
+    // G0: geometry/padding token.  This elastic register remains the stage-1
+    // output boundary; A1 below derives bank/row from its held coordinates.
+    logic g0_valid;
+    logic g0_last;
+    logic [BLOCK_SIZE-1:0] g0_req_valid;
+    logic [BLOCK_SIZE-1:0] g0_zero;
+    logic [BLOCK_SIZE-1:0] g0_row_mask;
+    logic [BLOCK_SIZE*16-1:0] g0_in_h;
+    logic [BLOCK_SIZE*16-1:0] g0_in_w;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] g0_spatial_index;
+    logic [15:0] g0_n_index;
+    logic [GROUP_W-1:0] g0_group_index;
+    logic [15:0] g0_n_idx;
+    logic [15:0] g0_c_idx;
+    logic g0_to_s1;
+    logic g0_ready;
+    logic g0_in_fire;
+    logic s1_ready;
+
+    // Stage 1: A1 address generation and descriptor holding.
     lane_req_t lane_req [BLOCK_SIZE];
-    lane_req_t lane_req_q [BLOCK_SIZE];
     logic [BLOCK_SIZE-1:0] lane_zero;
-    logic [BLOCK_SIZE-1:0] lane_done;
-    logic [BLOCK_SIZE*ELEM_W-1:0] interm_data;
-    logic [BLOCK_SIZE-1:0] interm_valid;
+    logic [BLOCK_SIZE-1:0] lane_row_mask;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] lane_spatial_index;
+    logic cursor_last;
+    logic producer_active;
+    logic start_accept;
+    logic start_reject;
+    logic cursor_step;
+    logic s1_valid;
+    logic s1_last;
+    lane_req_t s1_req [BLOCK_SIZE];
+    logic [BLOCK_SIZE-1:0] s1_zero;
+    logic [BLOCK_SIZE-1:0] s1_row_mask;
+    logic [15:0] s1_n_index;
+    logic [GROUP_W-1:0] s1_group_index;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] s1_spatial_index;
 
-    logic [BLOCK_SIZE*ELEM_W-1:0] fifo_data [FIFO_DEPTH];
-    logic [BLOCK_SIZE-1:0] fifo_mask [FIFO_DEPTH];
-    logic [FIFO_PTR_W:0] fifo_count;
-    logic [FIFO_PTR_W-1:0] fifo_rptr;
-    logic [FIFO_PTR_W-1:0] fifo_wptr;
+    logic s1_to_buffer;
+    logic buffer_in_ready;
+    logic buffer_out_valid;
+    logic [DESCRIPTOR_COUNT_W-1:0] descriptor_occupancy;
+    logic buffer_out_last;
+    logic [BLOCK_SIZE-1:0] buffer_out_req_valid;
+    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] buffer_out_req_bank;
+    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] buffer_out_req_row;
+    logic [BLOCK_SIZE-1:0] buffer_out_zero;
+    logic [BLOCK_SIZE-1:0] buffer_out_row_mask;
+    logic [15:0] buffer_out_n_index;
+    logic [GROUP_W-1:0] buffer_out_group_index;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] buffer_out_spatial_index;
+
+`ifndef SYNTHESIS
+    // Simulation-only hierarchy mirrors.  The production s2/s3 state is
+    // owned by im2col_gather_engine; these names preserve legacy TB probes.
+    // Stage 2: one request per bank per cycle. A conflict-free vector leaves
+    // this stage in one cycle; same-bank/different-row requests are serialized.
+    logic s2_valid;
+    logic s2_last;
+    lane_req_t s2_req [BLOCK_SIZE];
+    logic [BLOCK_SIZE-1:0] s2_lane_done;
+    logic [BLOCK_SIZE-1:0] s2_pending_lane;
+    logic [BLOCK_SIZE*ELEM_W-1:0] s2_data;
+    logic [BLOCK_SIZE-1:0] s2_mask;
+    logic [BLOCK_SIZE-1:0] s2_row_mask;
+    logic [15:0] s2_n_index;
+    logic [GROUP_W-1:0] s2_group_index;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] s2_spatial_index;
+    logic [SP_BANKS-1:0] s2_bank_pending;
+    logic [SP_BANKS-1:0][BLOCK_SIZE-1:0] s2_bank_dst_mask;
+    logic [BLOCK_SIZE-1:0] s2_lane_done_after_resp;
+    logic [BLOCK_SIZE-1:0] s2_pending_after_resp;
+    logic [BLOCK_SIZE*ELEM_W-1:0] s2_data_after_resp;
+    logic [SP_BANKS-1:0] s2_bank_pending_after_resp;
+    logic [BLOCK_SIZE-1:0] s2_response_lane_mask;
+    logic [BLOCK_SIZE*ELEM_W-1:0] s2_response_lane_data;
+    logic [BLOCK_SIZE-1:0] s2_issue_lane;
+    logic [SP_BANKS-1:0] s2_issue_bank_valid;
+    logic [SP_BANKS-1:0][BLOCK_SIZE-1:0] s2_issue_bank_dst_mask;
+    logic [BLOCK_SIZE-1:0] s2_mask_after_issue;
+    logic s2_complete_after_issue;
+
+    // Stage 3: capture the final fixed-latency SRAM response and hold the
+    // assembled vector until the output FIFO can accept it.
+    logic s3_valid;
+    logic s3_last;
+    lane_req_t s3_req [BLOCK_SIZE];
+    logic [BLOCK_SIZE-1:0] s3_pending_lane;
+    logic [BLOCK_SIZE*ELEM_W-1:0] s3_data;
+    logic [BLOCK_SIZE-1:0] s3_mask;
+    logic [BLOCK_SIZE-1:0] s3_row_mask;
+    logic [15:0] s3_n_index;
+    logic [GROUP_W-1:0] s3_group_index;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] s3_spatial_index;
+    logic [SP_BANKS-1:0] s3_bank_pending;
+    logic [SP_BANKS-1:0][BLOCK_SIZE-1:0] s3_bank_dst_mask;
+    logic [BLOCK_SIZE-1:0] s3_pending_after_resp;
+    logic [BLOCK_SIZE*ELEM_W-1:0] s3_data_after_resp;
+    logic [SP_BANKS-1:0] s3_bank_pending_after_resp;
+    logic [BLOCK_SIZE-1:0] s3_response_lane_mask;
+    logic [BLOCK_SIZE*ELEM_W-1:0] s3_response_lane_data;
+    logic s3_complete_after_resp;
+
+    logic s1_to_s2;
+    logic s2_to_s3;
+    logic s3_ready;
+`endif
+
     logic fifo_push;
     logic fifo_pop;
+    logic gather_s1_ready;
+    logic gather_busy;
+    logic gather_output_valid;
+    logic gather_output_last;
+    logic [BLOCK_SIZE*ELEM_W-1:0] gather_output_data;
+    logic [BLOCK_SIZE-1:0] gather_output_mask;
+    logic [BLOCK_SIZE-1:0] gather_output_row_mask;
+    logic [15:0] gather_output_n_index;
+    logic [GROUP_W-1:0] gather_output_group_index;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] gather_output_spatial_index;
 
     // Debug-friendly mirrors of the procedural lane calculations. These are
     // intentionally module-level signals so DVE can show them as normal waves.
@@ -144,526 +323,537 @@ module gemmini_im2col_chw_gather_readable #(
     logic signed [32:0] dbg_real_w [BLOCK_SIZE];
     logic [31:0] dbg_local_h [BLOCK_SIZE];
     logic [31:0] dbg_local_w [BLOCK_SIZE];
-    logic [SP_ADDR_BITS-1:0] dbg_row_addr [BLOCK_SIZE];
+    logic [31:0] dbg_byte_addr [BLOCK_SIZE];
     logic [SP_BANK_BITS-1:0] dbg_bank [BLOCK_SIZE];
     logic [SP_ROW_BITS-1:0] dbg_row [BLOCK_SIZE];
-    logic [LANE_W-1:0] dbg_lane_sel [BLOCK_SIZE];
-    logic [3:0] dbg_tap_index [BLOCK_SIZE];
+    logic [$clog2(KERNEL_PATTERN_BITS)-1:0] dbg_tap_index [BLOCK_SIZE];
     logic [BLOCK_SIZE-1:0] dbg_is_padding;
     logic [BLOCK_SIZE-1:0] dbg_lane_req_valid;
     logic [BLOCK_SIZE-1:0] dbg_lane_zero;
     logic dbg_collect_all_done;
+    logic [BLOCK_SIZE-1:0] coord_gen_req_valid;
+    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] coord_gen_req_bank;
+    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] coord_gen_req_row;
+    logic [BLOCK_SIZE-1:0] coord_gen_zero;
+    logic [BLOCK_SIZE-1:0] coord_gen_row_mask;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] coord_gen_spatial_index;
+    logic [BLOCK_SIZE*SPATIAL_W-1:0] coord_gen_spatial_base;
+    logic [BLOCK_SIZE-1:0] coord_gen_tap_active;
+    logic [BLOCK_SIZE-1:0] coord_gen_boundary_valid;
+    logic [BLOCK_SIZE-1:0] coord_gen_row_eligible;
+    logic [BLOCK_SIZE-1:0] coord_gen_c_valid;
+    logic [BLOCK_SIZE-1:0] coord_gen_is_padding;
+    logic [BLOCK_SIZE*16-1:0] coord_gen_in_h;
+    logic [BLOCK_SIZE*16-1:0] coord_gen_in_w;
+    logic [BLOCK_SIZE-1:0] coord_req_valid;
+    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] coord_req_bank;
+    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] coord_req_row;
+    logic [BLOCK_SIZE*16-1:0] coord_in_h;
+    logic [BLOCK_SIZE*16-1:0] coord_in_w;
+    logic [BLOCK_SIZE-1:0] s1_req_valid_packed;
+    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] s1_req_bank_packed;
+    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] s1_req_row_packed;
+    logic [BLOCK_SIZE-1:0] a1_req_valid;
+    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] a1_req_bank;
+    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] a1_req_row;
 
-    function automatic [SP_ROW_BITS-1:0] sp_row(input logic [SP_ADDR_BITS-1:0] a);
-        sp_row = a[SP_ROW_BITS-1:0];
-    endfunction
+    assign start_accept = start && !busy && config_captured;
+    assign start_reject = start && !busy && !config_captured;
 
-    function automatic [31:0] rows_per_word_lut(input logic [15:0] w);
-        begin
-            unique case (w)
-                16'd0: rows_per_word_lut = 32'd1;
-                16'd1: rows_per_word_lut = 32'd16;
-                16'd2: rows_per_word_lut = 32'd8;
-                16'd3: rows_per_word_lut = 32'd5;
-                16'd4: rows_per_word_lut = 32'd4;
-                16'd5: rows_per_word_lut = 32'd3;
-                16'd6, 16'd7, 16'd8: rows_per_word_lut = 32'd2;
-                default: rows_per_word_lut = 32'd1;
-            endcase
-        end
-    endfunction
-
-    function automatic [31:0] ceil_h_by_rows_per_word(
-        input logic [15:0] h,
-        input logic [31:0] rpword
+    im2col_coord_stage0 #(
+        .BLOCK_SIZE(BLOCK_SIZE),
+        .KERNEL_PATTERN_BITS(KERNEL_PATTERN_BITS)
+    ) u_coord_stage0 (
+        .w_q(w_q), .mline_mode_q(mline_mode_q),
+        .oh_idx(oh_idx), .ow_base(ow_base),
+        .kh_idx(kh_idx), .kw_idx(kw_idx), .kernel_w_q(kernel_w_q),
+        .lane_out_h(coord_stage0_out_h), .lane_out_w(coord_stage0_out_w),
+        .lane_local_h(coord_stage0_local_h), .lane_local_w(coord_stage0_local_w),
+        .lane_tap_index(coord_stage0_tap_index)
     );
-        logic [16:0] h_plus_4;
-        begin
-            h_plus_4 = {1'b0, h} + 17'd4;
-            unique case (rpword)
-                32'd16: ceil_h_by_rows_per_word = ({16'd0, h} + 32'd15) >> 4;
-                32'd8:  ceil_h_by_rows_per_word = ({16'd0, h} + 32'd7) >> 3;
-                32'd5:  ceil_h_by_rows_per_word = (h_plus_4 * 32'd52429) >> 18;
-                32'd4:  ceil_h_by_rows_per_word = ({16'd0, h} + 32'd3) >> 2;
-                32'd3:  ceil_h_by_rows_per_word = (({1'b0, h} + 17'd2) * 32'd43691) >> 17;
-                32'd2:  ceil_h_by_rows_per_word = ({16'd0, h} + 32'd1) >> 1;
-                default: ceil_h_by_rows_per_word = {16'd0, h};
-            endcase
-        end
-    endfunction
 
-    function automatic [31:0] h_div_rows_per_word(
-        input logic [15:0] h,
-        input logic [31:0] rpword
+    im2col_coord_gen #(
+        .BLOCK_SIZE(BLOCK_SIZE),
+        .ELEM_W(ELEM_W),
+        .SP_BANKS(SP_BANKS),
+        .SP_BANK_BITS(SP_BANK_BITS),
+        .SP_ROW_BITS(SP_ROW_BITS),
+        .SP_ADDR_BITS(SP_ADDR_BITS),
+        .KERNEL_PATTERN_BITS(KERNEL_PATTERN_BITS),
+        .GROUP_W(GROUP_W),
+        .SPATIAL_W(SPATIAL_W)
+    ) u_coord_gen (
+        .spad_base_q(spad_base_q),
+        .n_q(n_q), .c_q(c_q), .c_base_q(c_base_q), .c_count_q(c_count_q),
+        .h_q(h_q), .w_q(w_q), .out_h_q(out_h_q), .out_w_q(out_w_q),
+        .mline_mode_q(mline_mode_q),
+        .kernel_h_q(kernel_h_q), .kernel_w_q(kernel_w_q),
+        .stride_h_q(stride_h_q), .stride_w_q(stride_w_q),
+        .dilation_h_q(dilation_h_q), .dilation_w_q(dilation_w_q),
+        .pad_top_q(pad_top_q), .pad_left_q(pad_left_q),
+        .kernel_pattern_q(kernel_pattern_q),
+        .n_idx(stage0_n_idx), .c_idx(stage0_c_idx),
+        .stage0_oh_idx(stage0_oh_idx), .stage0_ow_base(stage0_ow_base),
+        .stage0_group_idx(stage0_group_idx),
+        .stage0_kh_idx(stage0_kh_idx), .stage0_kw_idx(stage0_kw_idx),
+        .stage0_out_h(stage0_out_h), .stage0_out_w(stage0_out_w),
+        .stage0_local_h(stage0_local_h), .stage0_local_w(stage0_local_w),
+        .stage0_tap_index(stage0_tap_index),
+        .rows_per_group_q(rows_per_group_q),
+        .channel_byte_stride_q(channel_byte_stride),
+        .batch_byte_stride_q(batch_byte_stride),
+        .lane_req_valid(coord_gen_req_valid),
+        .lane_req_bank(coord_gen_req_bank),
+        .lane_req_row(coord_gen_req_row),
+        .lane_zero(coord_gen_zero),
+        .lane_row_mask(coord_gen_row_mask),
+        .lane_spatial_index(coord_gen_spatial_index),
+        .lane_spatial_base(coord_gen_spatial_base),
+        .lane_tap_active(coord_gen_tap_active),
+        .lane_boundary_valid(coord_gen_boundary_valid),
+        .lane_row_eligible(coord_gen_row_eligible),
+        .lane_c_valid(coord_gen_c_valid),
+        .lane_is_padding(coord_gen_is_padding),
+        .lane_in_h(coord_gen_in_h), .lane_in_w(coord_gen_in_w),
+        .dbg_out_h(dbg_out_h), .dbg_out_w(dbg_out_w),
+        .dbg_padded_h(dbg_padded_h), .dbg_padded_w(dbg_padded_w),
+        .dbg_real_h(dbg_real_h), .dbg_real_w(dbg_real_w),
+        .dbg_local_h(dbg_local_h), .dbg_local_w(dbg_local_w),
+        .dbg_byte_addr(dbg_byte_addr), .dbg_bank(dbg_bank), .dbg_row(dbg_row),
+        .dbg_tap_index(dbg_tap_index), .dbg_is_padding(dbg_is_padding),
+        .dbg_lane_req_valid(dbg_lane_req_valid), .dbg_lane_zero(dbg_lane_zero)
     );
-        begin
-            unique case (rpword)
-                32'd16: h_div_rows_per_word = {16'd0, h} >> 4;
-                32'd8:  h_div_rows_per_word = {16'd0, h} >> 3;
-                32'd4:  h_div_rows_per_word = {16'd0, h} >> 2;
-                32'd2:  h_div_rows_per_word = {16'd0, h} >> 1;
-                32'd5:  h_div_rows_per_word = ({1'b0, h} * 32'd52429) >> 18;
-                32'd3:  h_div_rows_per_word = ({1'b0, h} * 32'd43691) >> 17;
-                default: h_div_rows_per_word = {16'd0, h};
-            endcase
-        end
-    endfunction
 
-    function automatic [31:0] h_mod_rows_per_word(
-        input logic [15:0] h,
-        input logic [31:0] rpword
-    );
-        logic [31:0] div_value;
-        begin
-            div_value = h_div_rows_per_word(h, rpword);
-            unique case (rpword)
-                32'd16: h_mod_rows_per_word = {28'd0, h[3:0]};
-                32'd8:  h_mod_rows_per_word = {29'd0, h[2:0]};
-                32'd5:  h_mod_rows_per_word = {16'd0, h} - div_value * 32'd5;
-                32'd4:  h_mod_rows_per_word = {30'd0, h[1:0]};
-                32'd3:  h_mod_rows_per_word = {16'd0, h} - div_value * 32'd3;
-                32'd2:  h_mod_rows_per_word = {31'd0, h[0]};
-                default: h_mod_rows_per_word = 32'd0;
-            endcase
-        end
-    endfunction
-
-    function automatic [31:0] lane_div_w(
-        input int lane,
-        input logic [15:0] w
-    );
-        begin
-            unique case (w)
-                16'd0: lane_div_w = 32'd0;
-                16'd1: lane_div_w = lane;
-                16'd2: lane_div_w = lane >> 1;
-                16'd3: lane_div_w = (lane < 3) ? 32'd0 : (lane < 6) ? 32'd1 :
-                                     (lane < 9) ? 32'd2 : (lane < 12) ? 32'd3 :
-                                     (lane < 15) ? 32'd4 : 32'd5;
-                16'd4: lane_div_w = lane >> 2;
-                16'd5: lane_div_w = (lane < 5) ? 32'd0 : (lane < 10) ? 32'd1 :
-                                     (lane < 15) ? 32'd2 : 32'd3;
-                16'd6: lane_div_w = (lane < 6) ? 32'd0 : (lane < 12) ? 32'd1 : 32'd2;
-                16'd7: lane_div_w = (lane < 7) ? 32'd0 : (lane < 14) ? 32'd1 : 32'd2;
-                16'd8: lane_div_w = lane >> 3;
-                default: lane_div_w = 32'd0;
-            endcase
-        end
-    endfunction
-
-    function automatic [31:0] lane_mod_w(
-        input int lane,
-        input logic [15:0] w
-    );
-        logic [31:0] div_value;
-        begin
-            div_value = lane_div_w(lane, w);
-            unique case (w)
-                16'd0: lane_mod_w = 32'd0;
-                16'd1: lane_mod_w = 32'd0;
-                16'd2: lane_mod_w = lane[0];
-                16'd3: lane_mod_w = lane - div_value * 32'd3;
-                16'd4: lane_mod_w = lane[1:0];
-                16'd5: lane_mod_w = lane - div_value * 32'd5;
-                16'd6: lane_mod_w = lane - div_value * 32'd6;
-                16'd7: lane_mod_w = lane - div_value * 32'd7;
-                16'd8: lane_mod_w = lane[2:0];
-                default: lane_mod_w = lane;
-            endcase
-        end
-    endfunction
-
-    function automatic [SP_ADDR_BITS-1:0] chw_row_addr(
+    function automatic [31:0] g0_chw_byte_addr(
         input logic [15:0] n,
         input logic [15:0] c,
         input logic [15:0] h,
         input logic [15:0] w
     );
-        logic [31:0] w_word;
-        logic [31:0] h_word;
-        logic [31:0] word_offset;
+        logic [31:0] tensor_offset;
         begin
-            if (w_q <= BLOCK_SIZE) begin
-                h_word = h_div_rows_per_word(h, rows_per_word);
-                word_offset =
-                    n * n_word_stride +
-                    c * spatial_words_per_channel +
-                    h_word;
-            end else begin
-                w_word = {16'd0, w} >> 4;
-                word_offset =
-                    n * n_word_stride +
-                    c * spatial_words_per_channel +
-                    h * w_words +
-                    w_word;
-            end
-            chw_row_addr = spad_base_q + word_offset[SP_ADDR_BITS-1:0];
+            tensor_offset = n * batch_byte_stride +
+                (c_base_q + c) * channel_byte_stride +
+                h * {16'd0, w_q} + {16'd0, w};
+            g0_chw_byte_addr = spad_base_q + tensor_offset;
         end
     endfunction
 
-    function automatic [LANE_W-1:0] chw_lane_sel(
-        input logic [15:0] h,
-        input logic [15:0] w
-    );
-        logic [31:0] lane;
-        begin
-            if (w_q <= BLOCK_SIZE) begin
-                lane = h_mod_rows_per_word(h, rows_per_word) * w_q + w;
-            end else begin
-                lane = {28'd0, w[3:0]};
-            end
-            chw_lane_sel = lane[LANE_W-1:0];
-        end
-    endfunction
+    // Finish the registered coordinate token. This is deliberately limited
+    // to additions/Boolean combines and the address split consumed by A1.
+    always_comb begin
+        coord_req_valid = '0;
+        coord_req_bank = '0;
+        coord_req_row = '0;
+        lane_zero = '0;
+        lane_row_mask = '0;
+        lane_spatial_index = '0;
+        coord_in_h = coord_in_h_q;
+        coord_in_w = coord_in_w_q;
+        for (int i = 0; i < BLOCK_SIZE; i++) begin
+            logic [31:0] byte_addr;
+            logic row_mask_i;
 
-    assign w_words = (w_q == 0) ? 32'd1 : (({16'd0, w_q} + 32'd15) >> 4);
-    assign rows_per_word = rows_per_word_lut(w_q);
-    assign spatial_words_per_channel =
-        (w_q <= BLOCK_SIZE) ? ceil_h_by_rows_per_word(h_q, rows_per_word) :
-                               ({16'd0, h_q} * w_words);
-    assign n_word_stride = c_q * spatial_words_per_channel;
+            row_mask_i = coord_boundary_valid_q[i] && coord_row_eligible_q[i];
+            lane_row_mask[i] = row_mask_i;
+            if (row_mask_i)
+                lane_spatial_index[i*SPATIAL_W +: SPATIAL_W] =
+                    coord_spatial_base_q[i*SPATIAL_W +: SPATIAL_W] +
+                    coord_out_w_q[i*16 +: 16];
+            coord_req_valid[i] = coord_tap_active_q[i] && row_mask_i &&
+                !coord_is_padding_q[i] && coord_c_valid_q[i];
+            lane_zero[i] = coord_tap_active_q[i] && row_mask_i &&
+                coord_is_padding_q[i] && coord_c_valid_q[i];
 
-    assign feed_valid = (fifo_count != 0);
-    assign feed_data  = fifo_data[fifo_rptr];
-    assign feed_mask  = fifo_mask[fifo_rptr];
-    assign fifo_pop   = feed_valid && feed_ready;
-    assign fifo_push  = (state == ST_PUSH) && (fifo_count != FIFO_DEPTH);
-    assign busy       = (state != ST_IDLE);
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            spad_base_q <= '0;
-            n_q <= '0;
-            c_q <= '0;
-            h_q <= '0;
-            w_q <= '0;
-            out_h_q <= '0;
-            out_w_q <= '0;
-            kernel_h_q <= '0;
-            kernel_w_q <= '0;
-            stride_h_q <= '0;
-            stride_w_q <= '0;
-            dilation_h_q <= '0;
-            dilation_w_q <= '0;
-            pad_top_q <= '0;
-            pad_left_q <= '0;
-            dw_mode_q <= 1'b0;
-            kernel_pattern_q <= '0;
-        end else if (cfg_valid) begin
-            spad_base_q <= cfg_spad_base;
-            n_q <= cfg_n;
-            c_q <= cfg_c;
-            h_q <= cfg_h;
-            w_q <= cfg_w;
-            out_h_q <= cfg_out_h;
-            out_w_q <= cfg_out_w;
-            kernel_h_q <= cfg_kernel_h;
-            kernel_w_q <= cfg_kernel_w;
-            stride_h_q <= cfg_stride_h;
-            stride_w_q <= cfg_stride_w;
-            dilation_h_q <= cfg_dilation_h;
-            dilation_w_q <= cfg_dilation_w;
-            pad_top_q <= cfg_pad_top;
-            pad_left_q <= cfg_pad_left;
-            dw_mode_q <= cfg_dw_mode;
-            kernel_pattern_q <= cfg_kernel_pattern;
+            byte_addr = g0_chw_byte_addr(
+                coord_n_idx_q, coord_c_idx_q,
+                coord_in_h_q[i*16 +: 16], coord_in_w_q[i*16 +: 16]);
+            coord_req_bank[i*SP_BANK_BITS +: SP_BANK_BITS] =
+                byte_addr[SP_BANK_BITS-1:0];
+            coord_req_row[i*SP_ROW_BITS +: SP_ROW_BITS] =
+                byte_addr[SP_ADDR_BITS-1:SP_BANK_BITS];
         end
     end
 
-    // Build lane requests for one feed vector.
-    //
-    // For CHW/W-inner layout:
-    //
-    // If W <= 16, several H rows can share one scratchpad row. For example
-    // W=5 packs three H rows and leaves one zero lane. In this case feed lane i
-    // maps to:
-    //
-    //   local_h = i / W
-    //   local_w = i % W
-    //   out_h   = oh_idx + local_h
-    //   out_w   = local_w
-    //
-    // and the scratchpad source lane/int8 bank is:
-    //
-    //   lane_sel = (h % floor(16/W)) * W + w
-    //
-    // If W > 16, one H row is split across W words and:
-    //
-    //   out_h = oh_idx
-    //   out_w = ow_base + i
-    //   lane_sel = w % 16
+    // A1 remains combinational in Step 2.  It consumes only the registered
+    // G0 geometry, so the cursor-to-address cone is split at g0_valid.
     always_comb begin
+        a1_req_valid = '0;
+        a1_req_bank = '0;
+        a1_req_row = '0;
         for (int i = 0; i < BLOCK_SIZE; i++) begin
-            logic [15:0] out_h_i;
-            logic [15:0] out_w_i;
             logic [15:0] in_h_i;
             logic [15:0] in_w_i;
-            logic [31:0] padded_h_i;
-            logic [31:0] padded_w_i;
-            logic signed [32:0] real_h_i;
-            logic signed [32:0] real_w_i;
-            logic is_padding;
-            logic [31:0] local_h;
-            logic [31:0] local_w;
-            logic [SP_ADDR_BITS-1:0] row_addr;
-            logic [3:0] tap_index;
+            logic [31:0] byte_addr;
 
-            if (w_q <= BLOCK_SIZE) begin
-                local_h = lane_div_w(i, w_q);
-                local_w = lane_mod_w(i, w_q);
-                out_h_i = oh_idx + local_h[15:0];
-                out_w_i = local_w[15:0];
-            end else begin
-                local_h = 32'd0;
-                local_w = i;
-                out_h_i = oh_idx;
-                out_w_i = ow_base + i;
-            end
+            in_h_i = g0_in_h[i*16 +: 16];
+            in_w_i = g0_in_w[i*16 +: 16];
+            byte_addr = g0_chw_byte_addr(g0_n_idx, g0_c_idx, in_h_i, in_w_i);
+            a1_req_valid[i] = g0_req_valid[i];
+            a1_req_bank[i*SP_BANK_BITS +: SP_BANK_BITS] =
+                byte_addr[SP_BANK_BITS-1:0];
+            a1_req_row[i*SP_ROW_BITS +: SP_ROW_BITS] =
+                byte_addr[SP_ADDR_BITS-1:SP_BANK_BITS];
+        end
+    end
 
-            padded_h_i = oh_idx * stride_h_q + kh_idx * dilation_h_q;
-            if (w_q <= BLOCK_SIZE) begin
-                padded_h_i = out_h_i * stride_h_q + kh_idx * dilation_h_q;
-            end
-            padded_w_i = out_w_i * stride_w_q + kw_idx * dilation_w_q;
-            real_h_i = $signed({1'b0, padded_h_i}) - $signed({1'b0, pad_top_q});
-            real_w_i = $signed({1'b0, padded_w_i}) - $signed({1'b0, pad_left_q});
-            is_padding =
-                (real_h_i < 0) ||
-                (real_w_i < 0) ||
-                (real_h_i >= $signed({1'b0, h_q})) ||
-                (real_w_i >= $signed({1'b0, w_q}));
+    always_comb begin
+        s1_req_valid_packed = '0;
+        s1_req_bank_packed = '0;
+        s1_req_row_packed = '0;
+        for (int i = 0; i < BLOCK_SIZE; i++) begin
+            s1_req_valid_packed[i] = s1_req[i].valid;
+            s1_req_bank_packed[i*SP_BANK_BITS +: SP_BANK_BITS] = s1_req[i].bank;
+            s1_req_row_packed[i*SP_ROW_BITS +: SP_ROW_BITS] = s1_req[i].row;
+        end
+    end
 
-            in_h_i = real_h_i[15:0];
-            in_w_i = real_w_i[15:0];
-            row_addr = chw_row_addr(n_idx, c_idx, in_h_i, in_w_i);
-            tap_index = kh_idx * kernel_w_q + kw_idx;
+    im2col_cfg_cursor #(
+        .BLOCK_SIZE(BLOCK_SIZE),
+        .SP_BANKS(SP_BANKS),
+        .SP_BANK_ENTRIES(SP_BANK_ENTRIES),
+        .SP_ADDR_BITS(SP_ADDR_BITS),
+        .KERNEL_PATTERN_BITS(KERNEL_PATTERN_BITS),
+        .GROUP_W(GROUP_W),
+        .MAX_SEG_C(MAX_SEG_C)
+    ) u_cfg_cursor (
+        .clk(clk),
+        .rst_n(rst_n),
+        .cfg_valid(cfg_valid),
+        .cfg_spad_base(cfg_spad_base),
+        .cfg_n(cfg_n),
+        .cfg_c(cfg_c),
+        .cfg_c_base(cfg_c_base),
+        .cfg_c_count(cfg_c_count),
+        .cfg_single_group_mode(cfg_single_group_mode),
+        .cfg_group_n(cfg_group_n),
+        .cfg_group_index(cfg_group_index),
+        .cfg_group_oh_base(cfg_group_oh_base),
+        .cfg_group_ow_base(cfg_group_ow_base),
+        .cfg_h(cfg_h),
+        .cfg_w(cfg_w),
+        .cfg_out_h(cfg_out_h),
+        .cfg_out_w(cfg_out_w),
+        .cfg_mline_mode(cfg_mline_mode),
+        .cfg_rows_per_group(cfg_rows_per_group),
+        .cfg_kernel_h(cfg_kernel_h),
+        .cfg_kernel_w(cfg_kernel_w),
+        .cfg_stride_h(cfg_stride_h),
+        .cfg_stride_w(cfg_stride_w),
+        .cfg_dilation_h(cfg_dilation_h),
+        .cfg_dilation_w(cfg_dilation_w),
+        .cfg_pad_top(cfg_pad_top),
+        .cfg_pad_left(cfg_pad_left),
+        .cfg_kernel_pattern(cfg_kernel_pattern),
+        .cfg_groups_per_n(cfg_groups_per_n),
+        .start_accept(start_accept),
+        .cursor_step(cursor_step),
+        .spad_base_q(spad_base_q),
+        .n_q(n_q),
+        .c_q(c_q),
+        .c_base_q(c_base_q),
+        .c_count_q(c_count_q),
+        .h_q(h_q),
+        .w_q(w_q),
+        .out_h_q(out_h_q),
+        .out_w_q(out_w_q),
+        .kernel_h_q(kernel_h_q),
+        .kernel_w_q(kernel_w_q),
+        .stride_h_q(stride_h_q),
+        .stride_w_q(stride_w_q),
+        .dilation_h_q(dilation_h_q),
+        .dilation_w_q(dilation_w_q),
+        .pad_top_q(pad_top_q),
+        .pad_left_q(pad_left_q),
+        .kernel_pattern_q(kernel_pattern_q),
+        .single_group_mode_q(single_group_mode_q),
+        .group_n_q(group_n_q),
+        .group_config_index_q(group_config_index_q),
+        .n_idx(n_idx),
+        .c_idx(c_idx),
+        .oh_idx(oh_idx),
+        .ow_base(ow_base),
+        .group_idx(group_idx),
+        .kh_idx(kh_idx),
+        .kw_idx(kw_idx),
+        .mline_mode_q(mline_mode_q),
+        .rows_per_group_q(rows_per_group_q),
+        .channel_byte_stride(channel_byte_stride),
+        .batch_byte_stride(batch_byte_stride),
+        .config_captured(config_captured),
+        .groups_per_n(groups_per_n),
+        .cursor_last(cursor_last),
+        .producer_active(producer_active)
+    );
 
+
+    // Rebuild the parameterized lane request type from the A1 outputs.
+    always_comb begin
+        for (int i = 0; i < BLOCK_SIZE; i++) begin
             lane_req[i] = '0;
-            lane_zero[i] = 1'b0;
-            lane_req[i].valid =
-                kernel_pattern_q[tap_index] &&
-                (out_h_i < out_h_q) &&
-                (out_w_i < out_w_q) &&
-                !is_padding &&
-                ((w_q > BLOCK_SIZE) || (local_h < rows_per_word)) &&
-                (c_idx < c_q);
-            lane_zero[i] =
-                kernel_pattern_q[tap_index] &&
-                (out_h_i < out_h_q) &&
-                (out_w_i < out_w_q) &&
-                is_padding &&
-                ((w_q > BLOCK_SIZE) || (local_h < rows_per_word)) &&
-                (c_idx < c_q);
-            lane_req[i].bank = chw_lane_sel(in_h_i, in_w_i);
-            lane_req[i].row = sp_row(row_addr);
-            lane_req[i].lane_sel = chw_lane_sel(in_h_i, in_w_i);
+            lane_req[i].valid = a1_req_valid[i];
+            lane_req[i].bank = a1_req_bank[i*SP_BANK_BITS +: SP_BANK_BITS];
+            lane_req[i].row = a1_req_row[i*SP_ROW_BITS +: SP_ROW_BITS];
             lane_req[i].dst_lane = i[LANE_W-1:0];
-
-            dbg_out_h[i] = out_h_i;
-            dbg_out_w[i] = out_w_i;
-            dbg_padded_h[i] = padded_h_i;
-            dbg_padded_w[i] = padded_w_i;
-            dbg_real_h[i] = real_h_i;
-            dbg_real_w[i] = real_w_i;
-            dbg_local_h[i] = local_h;
-            dbg_local_w[i] = local_w;
-            dbg_row_addr[i] = row_addr;
-            dbg_bank[i] = lane_req[i].bank;
-            dbg_row[i] = lane_req[i].row;
-            dbg_lane_sel[i] = lane_req[i].lane_sel;
-            dbg_tap_index[i] = tap_index;
-            dbg_is_padding[i] = is_padding;
-            dbg_lane_req_valid[i] = lane_req[i].valid;
-            dbg_lane_zero[i] = lane_zero[i];
         end
     end
 
-    always_comb begin
-        dbg_collect_all_done = 1'b1;
-        for (int i = 0; i < BLOCK_SIZE; i++) begin
-            if (lane_req_q[i].valid && !lane_done[i]) begin
-                dbg_collect_all_done = 1'b0;
-            end
-        end
+    im2col_descriptor_buffer #(
+        .BLOCK_SIZE(BLOCK_SIZE), .SP_BANK_BITS(SP_BANK_BITS),
+        .SP_ROW_BITS(SP_ROW_BITS), .GROUP_W(GROUP_W), .SPATIAL_W(SPATIAL_W),
+        .DEPTH(DESCRIPTOR_DEPTH)
+    ) u_descriptor_buffer (
+        .clk(clk), .rst_n(rst_n),
+        .in_valid(s1_valid), .in_ready(buffer_in_ready),
+        .in_last(s1_last), .in_req_valid(s1_req_valid_packed),
+        .in_req_bank(s1_req_bank_packed), .in_req_row(s1_req_row_packed),
+        .in_zero(s1_zero), .in_row_mask(s1_row_mask),
+        .in_n_index(s1_n_index), .in_group_index(s1_group_index),
+        .in_spatial_index(s1_spatial_index),
+        .out_valid(buffer_out_valid), .out_ready(gather_s1_ready),
+        .out_last(buffer_out_last), .out_req_valid(buffer_out_req_valid),
+        .out_req_bank(buffer_out_req_bank), .out_req_row(buffer_out_req_row),
+        .out_zero(buffer_out_zero), .out_row_mask(buffer_out_row_mask),
+        .out_n_index(buffer_out_n_index), .out_group_index(buffer_out_group_index),
+        .out_spatial_index(buffer_out_spatial_index),
+        .occupancy(descriptor_occupancy)
+    );
+
+    im2col_gather_engine #(
+        .BLOCK_SIZE(BLOCK_SIZE), .ELEM_W(ELEM_W), .SP_BANKS(SP_BANKS),
+        .SP_BANK_BITS(SP_BANK_BITS), .SP_ROW_BITS(SP_ROW_BITS),
+        .SP_ADDR_BITS(SP_ADDR_BITS), .GROUP_W(GROUP_W), .SPATIAL_W(SPATIAL_W)
+    ) u_gather_engine (
+        .clk(clk), .rst_n(rst_n),
+        .s1_valid(buffer_out_valid), .s1_last(buffer_out_last),
+        .s1_req_valid(buffer_out_req_valid),
+        .s1_req_bank(buffer_out_req_bank), .s1_req_row(buffer_out_req_row),
+        .s1_zero(buffer_out_zero), .s1_row_mask(buffer_out_row_mask),
+        .s1_n_index(buffer_out_n_index), .s1_group_index(buffer_out_group_index),
+        .s1_spatial_index(buffer_out_spatial_index),
+        .sram_resp_valid(sram_resp_valid), .sram_resp_data(sram_resp_data),
+        .output_ready(fifo_push), .s1_ready(gather_s1_ready),
+        .sram_req_valid(sram_req_valid), .sram_req_addr(sram_req_addr),
+        .output_valid(gather_output_valid), .output_last(gather_output_last),
+        .output_data(gather_output_data), .output_mask(gather_output_mask),
+        .output_row_mask(gather_output_row_mask),
+        .output_n_index(gather_output_n_index),
+        .output_group_index(gather_output_group_index),
+        .output_spatial_index(gather_output_spatial_index),
+        .busy(gather_busy), .collect_done(dbg_collect_all_done)
+    );
+
+    assign s1_to_buffer = s1_valid && buffer_in_ready;
+    assign s1_to_s2 = s1_to_buffer;
+    assign s1_ready = !s1_valid || s1_to_buffer;
+    assign g0_to_s1 = g0_valid && s1_ready;
+    assign g0_ready = !g0_valid || s1_ready;
+    assign coord_to_g0 = coord_valid && g0_ready;
+    assign coord_ready = !coord_valid || g0_ready;
+    // The cursor is the producer of the Stage-0 token. Keep the elastic
+    // contract explicit: producer_active is input valid and cursor_step is
+    // the Stage-0 input transfer event.
+    assign stage0_in_valid = producer_active;
+    assign stage0_ready = !stage0_valid || coord_ready;
+    assign stage0_fire = stage0_in_valid && stage0_ready;
+    assign stage0_to_coord = stage0_valid && coord_ready;
+    // Compatibility alias: the cursor input fire is now the stage-0 fire.
+    // No downstream logic uses g0_in_fire as a separate protocol event.
+    assign g0_in_fire = stage0_fire;
+    assign cursor_step = stage0_fire;
+
+    im2col_output_fifo #(
+        .BLOCK_SIZE(BLOCK_SIZE), .ELEM_W(ELEM_W), .FIFO_DEPTH(FIFO_DEPTH),
+        .FIFO_PTR_W(FIFO_PTR_W), .GROUP_W(GROUP_W), .SPATIAL_W(SPATIAL_W)
+    ) u_output_fifo (
+        .clk(clk), .rst_n(rst_n), .in_valid(gather_output_valid),
+        .in_data(gather_output_data), .in_mask(gather_output_mask),
+        .in_row_mask(gather_output_row_mask), .in_n_index(gather_output_n_index),
+        .in_group_index(gather_output_group_index),
+        .in_spatial_index(gather_output_spatial_index), .feed_ready(feed_ready),
+        .feed_valid(feed_valid), .feed_data(feed_data), .feed_mask(feed_mask),
+        .feed_row_mask(feed_row_mask), .feed_n_index(feed_n_index),
+        .feed_group_index(feed_group_index), .feed_spatial_index(feed_spatial_index),
+        .push_fire(fifo_push), .pop_fire(fifo_pop)
+    );
+
+`ifndef SYNTHESIS
+    // Compatibility mirrors for existing waveform/testbench hierarchy probes.
+    assign s2_valid = u_gather_engine.s2_valid;
+    assign s2_pending_lane = u_gather_engine.s2_pending_lane;
+    assign s2_data_after_resp = u_gather_engine.s2_data_after_resp;
+    assign s2_bank_pending = u_gather_engine.s2_bank_pending;
+    assign s2_bank_dst_mask = u_gather_engine.s2_bank_dst_mask;
+    assign s2_issue_lane = u_gather_engine.s2_issue_lane;
+    assign s2_to_s3 = u_gather_engine.s2_to_s3;
+    assign s3_valid = u_gather_engine.s3_valid;
+    assign s3_pending_lane = u_gather_engine.s3_pending_lane;
+    assign s3_data_after_resp = u_gather_engine.s3_data_after_resp;
+    assign s3_bank_pending = u_gather_engine.s3_bank_pending;
+    assign s3_bank_dst_mask = u_gather_engine.s3_bank_dst_mask;
+    for (genvar g = 0; g < BLOCK_SIZE; g++) begin : g_compat_req
+        assign s2_req[g] = u_gather_engine.s2_req[g];
+        assign s3_req[g] = u_gather_engine.s3_req[g];
     end
+`endif
 
-    // One read per int8 bank per cycle. The 16-byte logical row is striped
-    // across 16 banks, so lane_sel is also the physical bank id. If stride or
-    // dilation maps several destination lanes to the same bank but different
-    // rows, this scheduler takes multiple cycles to collect the full vector.
+    assign busy = producer_active || stage0_valid || coord_valid || g0_valid || s1_valid ||
+                  (descriptor_occupancy != 0) || gather_busy;
+
     always_comb begin
-        sram_req_valid = '0;
-        sram_req_addr = '0;
-
-        for (int i = 0; i < BLOCK_SIZE; i++) begin
-            if (lane_req_q[i].valid && !lane_done[i]) begin
-                if (!sram_req_valid[lane_req_q[i].bank]) begin
-                    sram_req_valid[lane_req_q[i].bank] = 1'b1;
-                    sram_req_addr[lane_req_q[i].bank] = lane_req_q[i].row;
-                end
-            end
-        end
+        if (!busy)
+            state = ST_IDLE;
+        else if (done)
+            state = ST_DONE;
+        else if (gather_output_valid)
+            state = ST_PUSH;
+        else if (gather_busy)
+            state = ST_COLLECT;
+        else
+            state = ST_ISSUE;
     end
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            fifo_count <= '0;
-            fifo_rptr <= '0;
-            fifo_wptr <= '0;
-        end else begin
-            unique case ({fifo_push, fifo_pop})
-                2'b10: begin
-                    fifo_data[fifo_wptr] <= interm_data;
-                    fifo_mask[fifo_wptr] <= interm_valid;
-                    fifo_wptr <= fifo_wptr + 1'b1;
-                    fifo_count <= fifo_count + 1'b1;
-                end
-                2'b01: begin
-                    fifo_rptr <= fifo_rptr + 1'b1;
-                    fifo_count <= fifo_count - 1'b1;
-                end
-                2'b11: begin
-                    fifo_data[fifo_wptr] <= interm_data;
-                    fifo_mask[fifo_wptr] <= interm_valid;
-                    fifo_wptr <= fifo_wptr + 1'b1;
-                    fifo_rptr <= fifo_rptr + 1'b1;
-                end
-                default: begin end
-            endcase
-        end
-    end
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state <= ST_IDLE;
             done <= 1'b0;
-            n_idx <= '0;
-            c_idx <= '0;
-            oh_idx <= '0;
-            ow_base <= '0;
-            kh_idx <= '0;
-            kw_idx <= '0;
-            lane_done <= '0;
-            interm_data <= '0;
-            interm_valid <= '0;
-            for (int i = 0; i < BLOCK_SIZE; i++) begin
-                lane_req_q[i] <= '0;
+            cfg_error <= 1'b0;
+            stage0_valid <= 1'b0;
+            stage0_n_idx <= '0;
+            stage0_c_idx <= '0;
+            stage0_oh_idx <= '0;
+            stage0_ow_base <= '0;
+            stage0_group_idx <= '0;
+            stage0_kh_idx <= '0;
+            stage0_kw_idx <= '0;
+            stage0_last <= 1'b0;
+            stage0_out_h <= '0;
+            stage0_out_w <= '0;
+            stage0_local_h <= '0;
+            stage0_local_w <= '0;
+            stage0_tap_index <= '0;
+            coord_valid <= 1'b0;
+            coord_last <= 1'b0;
+            coord_spatial_base_q <= '0;
+            coord_out_w_q <= '0;
+            coord_tap_active_q <= '0;
+            coord_boundary_valid_q <= '0;
+            coord_row_eligible_q <= '0;
+            coord_c_valid_q <= '0;
+            coord_is_padding_q <= '0;
+            coord_in_h_q <= '0;
+            coord_in_w_q <= '0;
+            coord_n_index_q <= '0;
+            coord_group_index_q <= '0;
+            coord_n_idx_q <= '0;
+            coord_c_idx_q <= '0;
+            g0_valid <= 1'b0;
+            g0_last <= 1'b0;
+            g0_req_valid <= '0;
+            g0_zero <= '0;
+            g0_row_mask <= '0;
+            g0_in_h <= '0;
+            g0_in_w <= '0;
+            g0_spatial_index <= '0;
+            g0_n_index <= '0;
+            g0_group_index <= '0;
+            g0_n_idx <= '0;
+            g0_c_idx <= '0;
+            s1_valid <= 1'b0;
+            s1_last <= 1'b0;
+            s1_zero <= '0;
+            s1_row_mask <= '0;
+            s1_n_index <= '0;
+            s1_group_index <= '0;
+            s1_spatial_index <= '0;
+            for (int i = 0; i < BLOCK_SIZE; i++)
+                s1_req[i] <= '0;
+        end else begin
+            done <= 1'b0;
+            cfg_error <= 1'b0;
+            if (start_reject) begin
+                cfg_error <= 1'b1;
+                done <= 1'b1;
             end
-        end else begin
-            done <= 1'b0;
+            if (fifo_push && gather_output_last)
+                done <= 1'b1;
 
-            unique case (state)
-                ST_IDLE: begin
-                    if (start) begin
-                        n_idx <= '0;
-                        c_idx <= '0;
-                        oh_idx <= '0;
-                        ow_base <= '0;
-                        kh_idx <= '0;
-                        kw_idx <= '0;
-                        state <= ST_ISSUE;
-                    end
-                end
+            // Stage 0 captures one complete cursor token. It may accept the
+            // next token while its previous token advances into Coord.
+            if (stage0_fire) begin
+                stage0_valid <= 1'b1;
+                stage0_n_idx <= n_idx;
+                stage0_c_idx <= c_idx;
+                stage0_oh_idx <= oh_idx;
+                stage0_ow_base <= ow_base;
+                stage0_group_idx <= group_idx;
+                stage0_kh_idx <= kh_idx;
+                stage0_kw_idx <= kw_idx;
+                stage0_last <= cursor_last;
+                stage0_out_h <= coord_stage0_out_h;
+                stage0_out_w <= coord_stage0_out_w;
+                stage0_local_h <= coord_stage0_local_h;
+                stage0_local_w <= coord_stage0_local_w;
+                stage0_tap_index <= coord_stage0_tap_index;
+            end else if (stage0_to_coord) begin
+                stage0_valid <= 1'b0;
+            end
 
-                ST_ISSUE: begin
-                    lane_done <= '0;
-                    interm_data <= '0;
-                    interm_valid <= '0;
-                    for (int i = 0; i < BLOCK_SIZE; i++) begin
-                        lane_req_q[i] <= lane_req[i];
-                        if (lane_zero[i]) begin
-                            interm_valid[i] <= 1'b1;
-                        end
-                    end
-                    state <= ST_COLLECT;
-                end
+            // Coord atomically captures all metadata generated from a held
+            // Stage-0 token. Its payload is stable while downstream stalls.
+            if (stage0_to_coord) begin
+                coord_valid <= 1'b1;
+                coord_last <= stage0_last;
+                coord_spatial_base_q <= coord_gen_spatial_base;
+                coord_out_w_q <= stage0_out_w;
+                coord_tap_active_q <= coord_gen_tap_active;
+                coord_boundary_valid_q <= coord_gen_boundary_valid;
+                coord_row_eligible_q <= coord_gen_row_eligible;
+                coord_c_valid_q <= coord_gen_c_valid;
+                coord_is_padding_q <= coord_gen_is_padding;
+                coord_in_h_q <= coord_gen_in_h;
+                coord_in_w_q <= coord_gen_in_w;
+                coord_n_index_q <= stage0_n_idx;
+                coord_group_index_q <= stage0_group_idx;
+                coord_n_idx_q <= stage0_n_idx;
+                coord_c_idx_q <= stage0_c_idx;
+            end else if (coord_to_g0) begin
+                coord_valid <= 1'b0;
+            end
 
-                ST_COLLECT: begin : collect_block
-                    logic all_done;
+            // G0 consumes only the held Coord token. All validity, padding,
+            // spatial and coordinate fields remain atomic through A1/S1.
+            if (coord_to_g0) begin
+                g0_valid <= 1'b1;
+                g0_last <= coord_last;
+                g0_req_valid <= coord_req_valid;
+                g0_zero <= lane_zero;
+                g0_row_mask <= lane_row_mask;
+                g0_in_h <= coord_in_h_q;
+                g0_in_w <= coord_in_w_q;
+                g0_spatial_index <= lane_spatial_index;
+                g0_n_index <= coord_n_index_q;
+                g0_group_index <= coord_group_index_q;
+                g0_n_idx <= coord_n_idx_q;
+                g0_c_idx <= coord_c_idx_q;
+            end else if (g0_to_s1) begin
+                g0_valid <= 1'b0;
+            end
 
-                    for (int b = 0; b < SP_BANKS; b++) begin
-                        if (sram_resp_valid[b]) begin
-                            for (int i = 0; i < BLOCK_SIZE; i++) begin
-                                if (lane_req_q[i].valid &&
-                                    !lane_done[i] &&
-                                    lane_req_q[i].bank == b &&
-                                    lane_req_q[i].row == sram_req_addr[b]) begin
-                                    interm_data[lane_req_q[i].dst_lane*ELEM_W +: ELEM_W] <=
-                                        sram_resp_data[b];
-                                    interm_valid[lane_req_q[i].dst_lane] <= 1'b1;
-                                    lane_done[i] <= 1'b1;
-                                end
-                            end
-                        end
-                    end
-
-                    all_done = 1'b1;
-                    for (int i = 0; i < BLOCK_SIZE; i++) begin
-                        if (lane_req_q[i].valid && !lane_done[i]) begin
-                            all_done = 1'b0;
-                        end
-                    end
-
-                    if (all_done) begin
-                        state <= ST_PUSH;
-                    end
-                end
-
-                ST_PUSH: begin
-                    if (fifo_count != FIFO_DEPTH) begin
-                        state <= ST_NEXT;
-                    end
-                end
-
-                ST_NEXT: begin : next_block
-                    logic last_tile;
-                    last_tile = 1'b0;
-
-                    if (kw_idx + 1 < kernel_w_q) begin
-                        kw_idx <= kw_idx + 1'b1;
-                    end else begin
-                        kw_idx <= '0;
-                        if (kh_idx + 1 < kernel_h_q) begin
-                            kh_idx <= kh_idx + 1'b1;
-                        end else begin
-                            kh_idx <= '0;
-                            if (!dw_mode_q && c_idx + 1 < c_q) begin
-                                c_idx <= c_idx + 1'b1;
-                            end else begin
-                                c_idx <= '0;
-                                if (w_q > BLOCK_SIZE && ow_base + BLOCK_SIZE < out_w_q) begin
-                                    ow_base <= ow_base + BLOCK_SIZE;
-                                end else begin
-                                    ow_base <= '0;
-                                    if (w_q <= BLOCK_SIZE &&
-                                        oh_idx + rows_per_word[15:0] < out_h_q) begin
-                                        oh_idx <= oh_idx + rows_per_word[15:0];
-                                    end else if (w_q > BLOCK_SIZE &&
-                                                 oh_idx + 1 < out_h_q) begin
-                                        oh_idx <= oh_idx + 1'b1;
-                                    end else begin
-                                        oh_idx <= '0;
-                                        if (n_idx + 1 < n_q) begin
-                                            n_idx <= n_idx + 1'b1;
-                                        end else begin
-                                            last_tile = 1'b1;
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-
-                    state <= last_tile ? ST_DONE : ST_ISSUE;
-                end
-
-                ST_DONE: begin
-                    done <= 1'b1;
-                    state <= ST_IDLE;
-                end
-
-                default: state <= ST_IDLE;
-            endcase
+            // A1 is combinational in this step; s1 remains the existing
+            // descriptor register and captures the complete A1 payload.
+            if (g0_to_s1) begin
+                s1_valid <= 1'b1;
+                s1_last <= g0_last;
+                s1_zero <= g0_zero;
+                s1_row_mask <= g0_row_mask;
+                s1_n_index <= g0_n_index;
+                s1_group_index <= g0_group_index;
+                s1_spatial_index <= g0_spatial_index;
+                for (int i = 0; i < BLOCK_SIZE; i++)
+                    s1_req[i] <= lane_req[i];
+            end else if (s1_to_s2) begin
+                s1_valid <= 1'b0;
+            end
         end
     end
 
