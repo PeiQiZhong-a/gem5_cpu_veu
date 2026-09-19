@@ -1,7 +1,7 @@
-// Four-row grouped, registered-B output-stationary SAU array.
+// Broadcast 16x16 output-stationary SAU array.
 //
-// B advances one registered row group per cycle; A and masks are delayed to
-// match. Bubbles advance with the data, preserving per-PE K order and II=1. A
+// One accepted input beat injects a complete A-row/B-column outer product into
+// the product registers of all PEs.  A segment is described by a command.  A
 // non-final segment leaves the accumulators in HOLD; the next command must be a
 // matching retain command for the immediately following channel tile.  A final
 // segment emits raw signed INT24 accumulators one valid OC column at a time.
@@ -96,15 +96,6 @@ module sau_array_16x16 #(
     logic input_is_last_expected;
     logic pe_clear_acc;
     logic pe_input_valid;
-    localparam int ROWS_PER_GROUP = 4;
-    localparam int ROW_GROUPS = (BLOCK_SIZE + ROWS_PER_GROUP - 1) / ROWS_PER_GROUP;
-    localparam int DRAIN_W = $clog2(ROW_GROUPS + 2);
-    logic [DRAIN_W-1:0] drain_left;
-    logic [ROW_GROUPS-1:0] group_valid;
-    logic [BLOCK_SIZE*ELEM_W-1:0] group_b [ROW_GROUPS];
-    logic [BLOCK_SIZE-1:0] group_b_mask [ROW_GROUPS];
-    logic pipeline_active;
-    assign pipeline_active = state == S_STREAM || state == S_FLUSH;
 
     logic [K_W-1:0] pending_k_count;
     logic pending_finalize;
@@ -157,58 +148,8 @@ module sau_array_16x16 #(
             result_acc_data[row*ACC_W +: ACC_W] = pe_acc[row][output_col];
     end
 
-    // Only the first register bank loads external B. Different temporal stages
-    // cannot be merged as identical replicated registers by synthesis.
-    generate
-        for (genvar g = 0; g < ROW_GROUPS; g++) begin : g_b_group
-            wire valid_in;
-            wire [BLOCK_SIZE*ELEM_W-1:0] data_in;
-            wire [BLOCK_SIZE-1:0] mask_in;
-            if (g == 0) begin : g_first
-                assign valid_in = pe_input_valid;
-                assign data_in = input_b_data;
-                assign mask_in = input_b_mask;
-            end else begin : g_next
-                assign valid_in = group_valid[g-1];
-                assign data_in = group_b[g-1];
-                assign mask_in = group_b_mask[g-1];
-            end
-            always_ff @(posedge clk or negedge rst_n) begin
-                if (!rst_n) group_valid[g] <= 1'b0;
-                else group_valid[g] <= pipeline_active && valid_in;
-            end
-            // Data is irrelevant without valid; no reset on payload registers.
-            always_ff @(posedge clk) begin
-                if (pipeline_active && valid_in) begin
-                    group_b[g] <= data_in;
-                    group_b_mask[g] <= mask_in;
-                end
-            end
-        end
-    endgenerate
-
     generate
         for (genvar row = 0; row < BLOCK_SIZE; row++) begin : g_row
-            localparam int GROUP = row / ROWS_PER_GROUP;
-            logic [ELEM_W-1:0] a_delay [GROUP+1];
-            logic a_mask_delay [GROUP+1];
-            for (genvar d = 0; d <= GROUP; d++) begin : g_a_delay
-                if (d == 0) begin : g_first
-                    always_ff @(posedge clk) begin
-                        if (pe_input_valid) begin
-                            a_delay[d] <= input_a_data[row*ELEM_W +: ELEM_W];
-                            a_mask_delay[d] <= input_a_mask[row];
-                        end
-                    end
-                end else begin : g_next
-                    always_ff @(posedge clk) begin
-                        if (pipeline_active && group_valid[d-1]) begin
-                            a_delay[d] <= a_delay[d-1];
-                            a_mask_delay[d] <= a_mask_delay[d-1];
-                        end
-                    end
-                end
-            end
             for (genvar col = 0; col < BLOCK_SIZE; col++) begin : g_col
                 sau_pe #(
                     .ELEM_W(ELEM_W),
@@ -217,10 +158,10 @@ module sau_array_16x16 #(
                     .clk(clk),
                     .rst_n(rst_n),
                     .clear_acc(pe_clear_acc),
-                    .input_valid(pipeline_active && group_valid[GROUP]),
-                    .input_mac_enable(a_mask_delay[GROUP] && group_b_mask[GROUP][col]),
-                    .input_a_data(a_delay[GROUP]),
-                    .input_b_data(group_b[GROUP][col*ELEM_W +: ELEM_W]),
+                    .input_valid(pe_input_valid),
+                    .input_mac_enable(input_a_mask[row] && input_b_mask[col]),
+                    .input_a_data(input_a_data[row*ELEM_W +: ELEM_W]),
+                    .input_b_data(input_b_data[col*ELEM_W +: ELEM_W]),
                     .product_pending(pe_product_pending[row][col]),
                     .accumulator(pe_acc[row][col])
                 );
@@ -231,7 +172,6 @@ module sau_array_16x16 #(
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_IDLE;
-            drain_left <= '0;
             active_k_count <= '0;
             accepted_k_count <= '0;
             active_finalize <= 1'b0;
@@ -290,20 +230,14 @@ module sau_array_16x16 #(
                             accepted_k_count <= accepted_k_count + 1'b1;
                             // input_beat_ok already proved that input_last_k
                             // matches the internally expected final beat.
-                            if (input_last_k) begin
-                                drain_left <= DRAIN_W'(ROW_GROUPS + 1);
+                            if (input_last_k)
                                 state <= S_FLUSH;
-                            end
                         end
                     end
                 end
 
                 S_FLUSH: begin
-                    // Last group captures the product after ROW_GROUPS cycles;
-                    // its accumulator commits one cycle later.
-                    if (drain_left > 1) begin
-                        drain_left <= drain_left - 1'b1;
-                    end else if (active_finalize) begin
+                    if (active_finalize) begin
                         output_col <= '0;
                         state <= S_OUTPUT_COL;
                     end else begin

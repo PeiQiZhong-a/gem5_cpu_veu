@@ -157,20 +157,17 @@ module gemmini_im2col_chw_gather_readable #(
     logic stage0_fire;
     logic stage0_to_coord;
     logic [15:0] stage0_n_idx, stage0_c_idx;
-    logic [15:0] stage0_oh_idx, stage0_ow_base;
     logic [GROUP_W-1:0] stage0_group_idx;
     logic [3:0] stage0_kh_idx, stage0_kw_idx;
     logic stage0_last;
     logic [BLOCK_SIZE*16-1:0] stage0_out_h;
     logic [BLOCK_SIZE*16-1:0] stage0_out_w;
-    logic [BLOCK_SIZE*32-1:0] stage0_local_h;
-    logic [BLOCK_SIZE*32-1:0] stage0_local_w;
-    logic [BLOCK_SIZE*COORD_TAP_W-1:0] stage0_tap_index;
+    logic [BLOCK_SIZE-1:0] stage0_row_eligible;
+    logic [COORD_TAP_W-1:0] stage0_tap_index;
     logic [BLOCK_SIZE*16-1:0] coord_stage0_out_h;
     logic [BLOCK_SIZE*16-1:0] coord_stage0_out_w;
-    logic [BLOCK_SIZE*32-1:0] coord_stage0_local_h;
-    logic [BLOCK_SIZE*32-1:0] coord_stage0_local_w;
-    logic [BLOCK_SIZE*COORD_TAP_W-1:0] coord_stage0_tap_index;
+    logic [BLOCK_SIZE-1:0] coord_stage0_row_eligible;
+    logic [COORD_TAP_W-1:0] coord_stage0_tap_index;
 
     // Coord is the elastic intermediate token. It holds the expensive
     // geometry results; G0 performs only the final metadata combines.
@@ -313,30 +310,7 @@ module gemmini_im2col_chw_gather_readable #(
     logic [GROUP_W-1:0] gather_output_group_index;
     logic [BLOCK_SIZE*SPATIAL_W-1:0] gather_output_spatial_index;
 
-    // Debug-friendly mirrors of the procedural lane calculations. These are
-    // intentionally module-level signals so DVE can show them as normal waves.
-    logic [15:0] dbg_out_h [BLOCK_SIZE];
-    logic [15:0] dbg_out_w [BLOCK_SIZE];
-    logic [31:0] dbg_padded_h [BLOCK_SIZE];
-    logic [31:0] dbg_padded_w [BLOCK_SIZE];
-    logic signed [32:0] dbg_real_h [BLOCK_SIZE];
-    logic signed [32:0] dbg_real_w [BLOCK_SIZE];
-    logic [31:0] dbg_local_h [BLOCK_SIZE];
-    logic [31:0] dbg_local_w [BLOCK_SIZE];
-    logic [31:0] dbg_byte_addr [BLOCK_SIZE];
-    logic [SP_BANK_BITS-1:0] dbg_bank [BLOCK_SIZE];
-    logic [SP_ROW_BITS-1:0] dbg_row [BLOCK_SIZE];
-    logic [$clog2(KERNEL_PATTERN_BITS)-1:0] dbg_tap_index [BLOCK_SIZE];
-    logic [BLOCK_SIZE-1:0] dbg_is_padding;
-    logic [BLOCK_SIZE-1:0] dbg_lane_req_valid;
-    logic [BLOCK_SIZE-1:0] dbg_lane_zero;
     logic dbg_collect_all_done;
-    logic [BLOCK_SIZE-1:0] coord_gen_req_valid;
-    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] coord_gen_req_bank;
-    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] coord_gen_req_row;
-    logic [BLOCK_SIZE-1:0] coord_gen_zero;
-    logic [BLOCK_SIZE-1:0] coord_gen_row_mask;
-    logic [BLOCK_SIZE*SPATIAL_W-1:0] coord_gen_spatial_index;
     logic [BLOCK_SIZE*SPATIAL_W-1:0] coord_gen_spatial_base;
     logic [BLOCK_SIZE-1:0] coord_gen_tap_active;
     logic [BLOCK_SIZE-1:0] coord_gen_boundary_valid;
@@ -346,10 +320,6 @@ module gemmini_im2col_chw_gather_readable #(
     logic [BLOCK_SIZE*16-1:0] coord_gen_in_h;
     logic [BLOCK_SIZE*16-1:0] coord_gen_in_w;
     logic [BLOCK_SIZE-1:0] coord_req_valid;
-    logic [BLOCK_SIZE*SP_BANK_BITS-1:0] coord_req_bank;
-    logic [BLOCK_SIZE*SP_ROW_BITS-1:0] coord_req_row;
-    logic [BLOCK_SIZE*16-1:0] coord_in_h;
-    logic [BLOCK_SIZE*16-1:0] coord_in_w;
     logic [BLOCK_SIZE-1:0] s1_req_valid_packed;
     logic [BLOCK_SIZE*SP_BANK_BITS-1:0] s1_req_bank_packed;
     logic [BLOCK_SIZE*SP_ROW_BITS-1:0] s1_req_row_packed;
@@ -367,61 +337,35 @@ module gemmini_im2col_chw_gather_readable #(
         .w_q(w_q), .mline_mode_q(mline_mode_q),
         .oh_idx(oh_idx), .ow_base(ow_base),
         .kh_idx(kh_idx), .kw_idx(kw_idx), .kernel_w_q(kernel_w_q),
+        .rows_per_group_q(rows_per_group_q),
         .lane_out_h(coord_stage0_out_h), .lane_out_w(coord_stage0_out_w),
-        .lane_local_h(coord_stage0_local_h), .lane_local_w(coord_stage0_local_w),
-        .lane_tap_index(coord_stage0_tap_index)
+        .lane_row_eligible(coord_stage0_row_eligible),
+        .tap_index(coord_stage0_tap_index)
     );
 
     im2col_coord_gen #(
         .BLOCK_SIZE(BLOCK_SIZE),
-        .ELEM_W(ELEM_W),
-        .SP_BANKS(SP_BANKS),
-        .SP_BANK_BITS(SP_BANK_BITS),
-        .SP_ROW_BITS(SP_ROW_BITS),
-        .SP_ADDR_BITS(SP_ADDR_BITS),
         .KERNEL_PATTERN_BITS(KERNEL_PATTERN_BITS),
-        .GROUP_W(GROUP_W),
         .SPATIAL_W(SPATIAL_W)
     ) u_coord_gen (
-        .spad_base_q(spad_base_q),
-        .n_q(n_q), .c_q(c_q), .c_base_q(c_base_q), .c_count_q(c_count_q),
+        .c_count_q(c_count_q),
         .h_q(h_q), .w_q(w_q), .out_h_q(out_h_q), .out_w_q(out_w_q),
-        .mline_mode_q(mline_mode_q),
-        .kernel_h_q(kernel_h_q), .kernel_w_q(kernel_w_q),
         .stride_h_q(stride_h_q), .stride_w_q(stride_w_q),
         .dilation_h_q(dilation_h_q), .dilation_w_q(dilation_w_q),
         .pad_top_q(pad_top_q), .pad_left_q(pad_left_q),
         .kernel_pattern_q(kernel_pattern_q),
-        .n_idx(stage0_n_idx), .c_idx(stage0_c_idx),
-        .stage0_oh_idx(stage0_oh_idx), .stage0_ow_base(stage0_ow_base),
-        .stage0_group_idx(stage0_group_idx),
+        .c_idx(stage0_c_idx),
         .stage0_kh_idx(stage0_kh_idx), .stage0_kw_idx(stage0_kw_idx),
         .stage0_out_h(stage0_out_h), .stage0_out_w(stage0_out_w),
-        .stage0_local_h(stage0_local_h), .stage0_local_w(stage0_local_w),
+        .stage0_row_eligible(stage0_row_eligible),
         .stage0_tap_index(stage0_tap_index),
-        .rows_per_group_q(rows_per_group_q),
-        .channel_byte_stride_q(channel_byte_stride),
-        .batch_byte_stride_q(batch_byte_stride),
-        .lane_req_valid(coord_gen_req_valid),
-        .lane_req_bank(coord_gen_req_bank),
-        .lane_req_row(coord_gen_req_row),
-        .lane_zero(coord_gen_zero),
-        .lane_row_mask(coord_gen_row_mask),
-        .lane_spatial_index(coord_gen_spatial_index),
         .lane_spatial_base(coord_gen_spatial_base),
         .lane_tap_active(coord_gen_tap_active),
         .lane_boundary_valid(coord_gen_boundary_valid),
         .lane_row_eligible(coord_gen_row_eligible),
         .lane_c_valid(coord_gen_c_valid),
         .lane_is_padding(coord_gen_is_padding),
-        .lane_in_h(coord_gen_in_h), .lane_in_w(coord_gen_in_w),
-        .dbg_out_h(dbg_out_h), .dbg_out_w(dbg_out_w),
-        .dbg_padded_h(dbg_padded_h), .dbg_padded_w(dbg_padded_w),
-        .dbg_real_h(dbg_real_h), .dbg_real_w(dbg_real_w),
-        .dbg_local_h(dbg_local_h), .dbg_local_w(dbg_local_w),
-        .dbg_byte_addr(dbg_byte_addr), .dbg_bank(dbg_bank), .dbg_row(dbg_row),
-        .dbg_tap_index(dbg_tap_index), .dbg_is_padding(dbg_is_padding),
-        .dbg_lane_req_valid(dbg_lane_req_valid), .dbg_lane_zero(dbg_lane_zero)
+        .lane_in_h(coord_gen_in_h), .lane_in_w(coord_gen_in_w)
     );
 
     function automatic [31:0] g0_chw_byte_addr(
@@ -443,15 +387,10 @@ module gemmini_im2col_chw_gather_readable #(
     // to additions/Boolean combines and the address split consumed by A1.
     always_comb begin
         coord_req_valid = '0;
-        coord_req_bank = '0;
-        coord_req_row = '0;
         lane_zero = '0;
         lane_row_mask = '0;
         lane_spatial_index = '0;
-        coord_in_h = coord_in_h_q;
-        coord_in_w = coord_in_w_q;
         for (int i = 0; i < BLOCK_SIZE; i++) begin
-            logic [31:0] byte_addr;
             logic row_mask_i;
 
             row_mask_i = coord_boundary_valid_q[i] && coord_row_eligible_q[i];
@@ -464,14 +403,6 @@ module gemmini_im2col_chw_gather_readable #(
                 !coord_is_padding_q[i] && coord_c_valid_q[i];
             lane_zero[i] = coord_tap_active_q[i] && row_mask_i &&
                 coord_is_padding_q[i] && coord_c_valid_q[i];
-
-            byte_addr = g0_chw_byte_addr(
-                coord_n_idx_q, coord_c_idx_q,
-                coord_in_h_q[i*16 +: 16], coord_in_w_q[i*16 +: 16]);
-            coord_req_bank[i*SP_BANK_BITS +: SP_BANK_BITS] =
-                byte_addr[SP_BANK_BITS-1:0];
-            coord_req_row[i*SP_ROW_BITS +: SP_ROW_BITS] =
-                byte_addr[SP_ADDR_BITS-1:SP_BANK_BITS];
         end
     end
 
@@ -720,16 +651,13 @@ module gemmini_im2col_chw_gather_readable #(
             stage0_valid <= 1'b0;
             stage0_n_idx <= '0;
             stage0_c_idx <= '0;
-            stage0_oh_idx <= '0;
-            stage0_ow_base <= '0;
             stage0_group_idx <= '0;
             stage0_kh_idx <= '0;
             stage0_kw_idx <= '0;
             stage0_last <= 1'b0;
             stage0_out_h <= '0;
             stage0_out_w <= '0;
-            stage0_local_h <= '0;
-            stage0_local_w <= '0;
+            stage0_row_eligible <= '0;
             stage0_tap_index <= '0;
             coord_valid <= 1'b0;
             coord_last <= 1'b0;
@@ -783,16 +711,13 @@ module gemmini_im2col_chw_gather_readable #(
                 stage0_valid <= 1'b1;
                 stage0_n_idx <= n_idx;
                 stage0_c_idx <= c_idx;
-                stage0_oh_idx <= oh_idx;
-                stage0_ow_base <= ow_base;
                 stage0_group_idx <= group_idx;
                 stage0_kh_idx <= kh_idx;
                 stage0_kw_idx <= kw_idx;
                 stage0_last <= cursor_last;
                 stage0_out_h <= coord_stage0_out_h;
                 stage0_out_w <= coord_stage0_out_w;
-                stage0_local_h <= coord_stage0_local_h;
-                stage0_local_w <= coord_stage0_local_w;
+                stage0_row_eligible <= coord_stage0_row_eligible;
                 stage0_tap_index <= coord_stage0_tap_index;
             end else if (stage0_to_coord) begin
                 stage0_valid <= 1'b0;
