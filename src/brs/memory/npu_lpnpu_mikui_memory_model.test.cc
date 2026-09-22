@@ -23,6 +23,24 @@ TEST(NpuLpnpuMikuiMemoryModelTest, UsesIndependentRegisteredIbus)
     EXPECT_FALSE(model.evaluate().dbus.valid);
 }
 
+TEST(NpuLpnpuMikuiMemoryModelTest, DmaIbusArbiterAddsOneResponseEdge)
+{
+    NpuLpnpuMikuiMemoryModel::Config config;
+    config.dmaTopology = true;
+    NpuLpnpuMikuiMemoryModel model(config);
+    model.writeWord(0x0, 0x12345678);
+    ASSERT_TRUE(model.acceptIbus({0x0}));
+
+    auto outputs = model.clock(false);
+    EXPECT_FALSE(outputs.ibus.valid);
+    EXPECT_FALSE(model.acceptIbus({0x10}));
+
+    outputs = model.clock(false);
+    ASSERT_TRUE(outputs.ibus.valid);
+    EXPECT_EQ(outputs.ibus.readData[0], 0x12345678u);
+    EXPECT_TRUE(model.acceptIbus({0x10}));
+}
+
 TEST(NpuLpnpuMikuiMemoryModelTest, DbusTraversesExact32To128AndRvActive)
 {
     NpuLpnpuMikuiMemoryModel model;
@@ -87,6 +105,12 @@ TEST(NpuLpnpuMikuiMemoryModelTest, UsesNative128BitVeuBeat)
     request.data[0] = 0x12;
     request.data[15] = 0x34;
     ASSERT_TRUE(model.acceptVeu(request));
+    const auto visibleBeat = model.currentVeuSramRequest();
+    EXPECT_TRUE(visibleBeat.valid);
+    EXPECT_EQ(visibleBeat.address, request.address);
+    EXPECT_EQ(visibleBeat.writeStrobe, uint16_t{VeuFullWriteMask});
+    EXPECT_EQ(visibleBeat.writeData[0], 0x12);
+    EXPECT_EQ(visibleBeat.writeData[15], 0x34);
 
     DutKuiMemoryOutputs outputs;
     for (unsigned cycle = 0; cycle < 12 && !outputs.veuWrite.valid;
@@ -97,6 +121,24 @@ TEST(NpuLpnpuMikuiMemoryModelTest, UsesNative128BitVeuBeat)
     EXPECT_EQ(outputs.veuWrite.transactionId, 9u);
     EXPECT_EQ(model.readByte(0x20010020), 0x12);
     EXPECT_EQ(model.readByte(0x2001002f), 0x34);
+    EXPECT_EQ(model.veuOutstandingCount(), 0u);
+}
+
+TEST(NpuLpnpuMikuiMemoryModelTest, PhysicalOnlyVeuBeatDoesNotQueueResponse)
+{
+    NpuLpnpuMikuiMemoryModel model;
+    DutKuiVeuRequest request;
+    request.transactionId = 10;
+    request.address = 3;
+    request.physicalOnly = true;
+
+    ASSERT_TRUE(model.acceptVeu(request));
+    EXPECT_TRUE(model.currentVeuSramRequest().valid);
+    EXPECT_EQ(model.currentVeuSramRequest().address, 3u);
+    EXPECT_EQ(model.veuOutstandingCount(), 0u);
+
+    model.clock(false);
+    EXPECT_FALSE(model.currentVeuSramRequest().valid);
     EXPECT_EQ(model.veuOutstandingCount(), 0u);
 }
 

@@ -72,6 +72,18 @@ class NpuLpnpuMikuiMemoryModel
     {
         return acceptedVeu;
     }
+    Sram128Request currentVeuSramRequest() const
+    {
+        return currentVeuBeat();
+    }
+    bool veuCrossbarStartThisTick(bool lockActive) const
+    {
+        return lockActive && !previousVeuLockActive;
+    }
+    bool veuCrossbarDoneThisTick(bool lockActive) const
+    {
+        return !lockActive && previousVeuLockActive;
+    }
 
   private:
     Config config;
@@ -93,6 +105,9 @@ class NpuLpnpuMikuiMemoryModel
     DutKuiDbusRequest acceptedDbus;
     DutKuiDbusRequest acceptedDmaDbus;
     DutKuiVeuRequest acceptedVeu;
+    // In DMA topology the IBus arbiter registers the SRAM response once
+    // more before presenting it to the CPU. The non-DMA path stays direct.
+    std::deque<DutKuiIbusResponse> dmaIbusResponses;
 
     std::deque<DutKuiVeuRequest> pendingVeuRequests;
     std::deque<DutKuiVeuRequest> issuedVeuRequests;

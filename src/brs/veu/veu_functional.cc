@@ -422,12 +422,18 @@ VeuFunctionalExecutor::execute(const VeuFunctionalInput &input)
     }
     if (input.instruction == VeuInstruction::ReduceSum) {
         // Mikui VCU suppresses the mask only while remaining VLEN is greater
-        // than 0x180 bits, so the last up-to-three running results are stored.
-        result.writeResult = input.chunkIndex + 3 >= input.chunkCount;
+        // than 0x180 bits for its calibrated short-vector cases.  In the
+        // integrated 2048-bit (c16) path, the VLU/VCU boundary suppresses all
+        // intermediate running values and exposes only the final reduction.
+        result.writeResult = input.chunkCount >= 16 ?
+            input.chunkIndex + 1 == input.chunkCount :
+            input.chunkIndex + 3 >= input.chunkCount;
     } else if (input.instruction == VeuInstruction::ReduceMin ||
                input.instruction == VeuInstruction::ReduceMax) {
         storeElement(result.data, 0, elementBytes, reductionValue);
-        result.writeResult = input.chunkIndex + 3 >= input.chunkCount;
+        result.writeResult = input.chunkCount >= 16 ?
+            input.chunkIndex + 1 == input.chunkCount :
+            input.chunkIndex + 3 >= input.chunkCount;
     }
     if (result.writeStrobe == 0) {
         result.writeResult = false;

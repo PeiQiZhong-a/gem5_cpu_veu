@@ -223,6 +223,10 @@ class PipelineCore
     bool redirect_pc = false;
     uint32_t redirect_target = 0;
     bool flush_idex = false;
+    // Mikui IDU registers predict_failed. A decode-stage branch correction
+    // reaches IFU on the following active edge.
+    bool decode_redirect_pending = false;
+    uint32_t decode_redirect_target = 0;
 
     bool halt_requested = false;
 

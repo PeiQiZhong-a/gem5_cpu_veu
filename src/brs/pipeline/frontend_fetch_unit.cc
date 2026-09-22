@@ -387,6 +387,10 @@ FrontendFetchUnit::step(const Input &in)
 {
     Output out;
     const bool resetEndReady = resetEnd == 2;
+    // PFU's allow-input decision is made from the FIFO's registered count at
+    // the start of the active edge.  Consuming a word on this edge cannot
+    // make a new IBus request visible until the following edge.
+    const unsigned fifoCountAtEdgeStart = fifo.count();
     // The RTL IBU decides w_ibus_out_req from the registered state at the
     // beginning of the edge.  A response may retire that state on this edge,
     // but it cannot make a replacement request visible until the next edge.
@@ -487,9 +491,10 @@ FrontendFetchUnit::step(const Input &in)
     }
 
     // PFU only permits the initial IBus request after r_reset_end advances
-    // 0 -> 1 -> 2. The JCU redirect is registered into IBU on this edge; the
-    // redirected request becomes visible on the following edge in RTL.
-    if (!in.redirect && resetEndReady && fifo.count() < 4 &&
+    // 0 -> 1 -> 2. A redirect can drive its target on this edge if IBU was
+    // idle at the edge start. If an old request was in flight, the edge-start
+    // availability check keeps the replacement request deferred.
+    if (resetEndReady && (in.redirect || fifoCountAtEdgeStart < 4) &&
         ibuCouldRequestAtEdgeStart && ibu.canRequest() && pc < in.textEnd) {
         out.requestValid = true;
         // Spirit exposes the true fetch address on ibus_out_addr.  The

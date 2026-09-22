@@ -120,6 +120,18 @@ TEST(TimingVeuTest, CsrWriteAndReadProducesResponse)
     EXPECT_EQ(veu.evaluate().readData, 0x400u);
 }
 
+TEST(TimingVeuTest, VectorStartReturnsMikuiRegisteredCsrValue)
+{
+    TimingVeu veu;
+
+    stepUntilResponse(veu,
+        csrWrite(VeuCsr::VectorLength, VeuVectorBits));
+    veu.clock(vectorStart(VeuInstruction::Add, 0x100, 0x200));
+    ASSERT_TRUE(veu.evaluate().valid);
+    EXPECT_EQ(veu.evaluate().readData, 0u);
+    EXPECT_TRUE(veu.operationBusy());
+}
+
 TEST(TimingVeuTest, VectorAddUsesTimingMemoryAndStoresResult)
 {
     TimingVeu veu;
@@ -451,6 +463,104 @@ TEST(TimingVeuTest, VectorLengthRoundsToFullChunksWithoutTailMasking)
     }
 }
 
+TEST(TimingVeuTest, MikuiMultiplyReadsOperandOneFirst)
+{
+    TimingVeu veu;
+    std::vector<TimingVeuMemoryRequest> reads;
+    veu.setMemoryRequestCallback(
+        [&](const TimingVeuMemoryRequest &request) {
+            if (!request.isWrite) {
+                reads.push_back(request);
+                veu.completeMemoryRead(request.transactionId,
+                                       makeByteVector(1));
+            } else {
+                veu.completeMemoryWrite(request.transactionId);
+            }
+            return true;
+        });
+
+    stepUntilResponse(veu, csrWrite(VeuCsr::WriteAddress, 0x300));
+    stepUntilResponse(veu, csrWrite(VeuCsr::VectorLength, VeuVectorBits));
+    stepUntilResponse(veu, csrWrite(VeuCsr::Mask, VeuFullWriteMask));
+    stepUntilResponse(veu,
+        vectorStart(VeuInstruction::Multiply, 0x100, 0x200));
+    stepUntilOperationComplete(veu);
+
+    ASSERT_GE(reads.size(), 2u);
+    EXPECT_EQ(reads[0].source, VeuSource::Source1);
+    EXPECT_EQ(reads[0].address, 0x100u);
+    EXPECT_EQ(reads[1].source, VeuSource::Source2);
+    EXPECT_EQ(reads[1].address, 0x200u);
+}
+
+TEST(TimingVeuTest, MikuiC16ReductionWritesOnlyFinalAccumulator)
+{
+    TimingVeu veu;
+    VeuTimingConfig config;
+    config.timingProfilePath = "configs/brs/veu_timing_profile.csv";
+    veu.configure(config);
+    std::vector<TimingVeuMemoryRequest> writes;
+    veu.setMemoryRequestCallback(
+        [&](const TimingVeuMemoryRequest &request) {
+            if (request.isWrite) {
+                writes.push_back(request);
+                veu.completeMemoryWrite(request.transactionId);
+            } else {
+                veu.completeMemoryRead(request.transactionId,
+                                       makeByteVector(1));
+            }
+            return true;
+        });
+
+    stepUntilResponse(veu, csrWrite(VeuCsr::WriteAddress, 0x300));
+    stepUntilResponse(veu,
+        csrWrite(VeuCsr::VectorLength, 16 * VeuVectorBits));
+    stepUntilResponse(veu, csrWrite(VeuCsr::Mask, VeuFullWriteMask));
+    stepUntilResponse(veu,
+        vectorStart(VeuInstruction::ReduceSum, 0x100, 0));
+    stepUntilOperationComplete(veu, 500);
+
+    ASSERT_EQ(writes.size(), 1u);
+    EXPECT_EQ(writes[0].address, 0x300u);
+}
+
+TEST(TimingVeuTest, MikuiScalarCompletionDrivesFourPhysicalTailReads)
+{
+    TimingVeu veu;
+    VeuTimingConfig config;
+    config.mikuiPhysicalTail = true;
+    veu.configure(config);
+    std::vector<TimingVeuMemoryRequest> scalarTailReads;
+    veu.setMemoryRequestCallback(
+        [&](const TimingVeuMemoryRequest &request) {
+            if (request.isWrite) {
+                veu.completeMemoryWrite(request.transactionId);
+            } else {
+                if (request.address == 3) {
+                    scalarTailReads.push_back(request);
+                } else {
+                    veu.completeMemoryRead(request.transactionId,
+                                           makeByteVector(1));
+                }
+            }
+            return true;
+        });
+
+    stepUntilResponse(veu, csrWrite(VeuCsr::Config, 0x800));
+    stepUntilResponse(veu, csrWrite(VeuCsr::WriteAddress, 0x300));
+    stepUntilResponse(veu, csrWrite(VeuCsr::VectorLength, VeuVectorBits));
+    stepUntilResponse(veu, csrWrite(VeuCsr::Mask, VeuFullWriteMask));
+    stepUntilResponse(veu,
+        vectorStart(VeuInstruction::Add, 3, 0x200));
+    stepUntilOperationComplete(veu);
+    veu.clock({});
+    veu.clock({});
+    veu.clock({});
+
+    ASSERT_EQ(scalarTailReads.size(), 4u);
+    EXPECT_TRUE(veu.quiescent());
+}
+
 TEST(TimingVeuTest, RetriesRejectedRequestAndArbitratesStoresBeforeReads)
 {
     TimingVeu veu;
@@ -707,6 +817,23 @@ TEST(TimingVeuTest, TimingProfilePreservesEvidenceProvenance)
         "vadd", false, "full", "src1+src2", 1,
         3, 1, 4, 4, 1, 1, 0);
     EXPECT_EQ(selected.operationCycles, 19u);
+}
+
+TEST(TimingVeuTest, ScalarC2UsesRegisteredCsrStatusPhase)
+{
+    TimingVeu veu;
+    VeuTimingConfig config;
+    config.timingProfilePath = "configs/brs/veu_timing_profile.csv";
+    veu.configure(config);
+
+    stepUntilResponse(veu, csrWrite(VeuCsr::Config, 0x800));
+    stepUntilResponse(veu,
+        csrWrite(VeuCsr::VectorLength, 2 * VeuVectorBits));
+    stepUntilResponse(veu, csrWrite(VeuCsr::Mask, VeuFullWriteMask));
+    stepUntilResponse(veu,
+        vectorStart(VeuInstruction::Add, 4, 0x20011000));
+
+    EXPECT_EQ(veu.activeFinishDrainCycles(), 3u);
 }
 
 TEST(TimingVeuTest, TimingProfileRejectsInexactRtlEvidence)

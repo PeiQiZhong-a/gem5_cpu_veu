@@ -6,9 +6,12 @@ namespace gem5
 void
 PipelineCore::stageIF()
 {
+    const bool frontendStalled =
+        stall_ifid || stall_pc || freezeFetchDecodeForExecuteStall();
+
     if (csr_debug_mode) {
         ifid_next = {};
-        if (!stall_ifid && !stall_pc && debug_instr_valid &&
+        if (!frontendStalled && debug_instr_valid &&
             debug_instr_ready) {
             ifid_next.valid = true;
             ifid_next.pc = csr_dpc;
@@ -34,7 +37,7 @@ PipelineCore::stageIF()
         }
 
         FrontendFetchUnit::Input in;
-        in.stall = stall_ifid || stall_pc;
+        in.stall = frontendStalled;
         in.redirect = redirect_pc;
         in.redirectTarget = redirect_target;
         in.textEnd = fetchLimit;
@@ -48,13 +51,13 @@ PipelineCore::stageIF()
 
         if (redirect_pc) {
             ifid_next = {};
-        } else if (stall_ifid || stall_pc) {
+        } else if (frontendStalled) {
             ifid_next = ifid_cur;
         } else {
             ifid_next = {};
         }
 
-        if (!redirect_pc && !stall_ifid && !stall_pc &&
+        if (!redirect_pc && !frontendStalled &&
             out.instValid && out.pc < fetchLimit) {
             ifid_next.valid = true;
             ifid_next.pc = out.pc;
@@ -79,7 +82,7 @@ PipelineCore::stageIF()
         return;
     }
 
-    if (stall_ifid || stall_pc) {
+    if (frontendStalled) {
         ifid_next = ifid_cur;
         return;
     }

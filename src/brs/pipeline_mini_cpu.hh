@@ -100,6 +100,8 @@ class PipelineMiniCPU : public ClockedObject
     RequestorID veuRequestorId;
 
     bool tbMemoryEnabled;
+    bool doneStoreTerminates;
+    bool doneStoreAcceptedThisCycle = false;
     std::string tbMemoryKind;
     std::string tbImemImageFile;
     std::string tbDmemImageFile;

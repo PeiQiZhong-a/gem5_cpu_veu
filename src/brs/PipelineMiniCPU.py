@@ -82,6 +82,8 @@ class PipelineMiniCPU(ClockedObject):
         False,
         "Treat a retired EBREAK as a normal workload termination",
     )
+    done_store_terminates = Param.Bool(
+        False, "Stop after an accepted DONE store to 0x4001e004")
     veu_model = Param.String(
         "fake",
         "VEU backend model: fake or timing",

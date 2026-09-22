@@ -91,7 +91,9 @@ DutKuiMemoryModel::acceptVeu(const DutKuiVeuRequest &request)
     }
     acceptedVeu = request;
     veuAcceptedThisCycle = true;
-    ++veuOutstanding;
+    if (!request.physicalOnly) {
+        ++veuOutstanding;
+    }
     return true;
 }
 
@@ -132,7 +134,7 @@ DutKuiMemoryModel::advance(
         ibusResponses.push_back({config.ibusResponseLatency, response});
     }
 
-    if (veuAcceptedThisCycle) {
+    if (veuAcceptedThisCycle && !acceptedVeu.physicalOnly) {
         pendingVeuRequests.push_back(acceptedVeu);
     }
 

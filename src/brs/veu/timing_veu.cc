@@ -77,6 +77,7 @@ TimingVeu::reset()
     operationFinishTargetCycle = 0;
     nextVfuAcceptCycle = 0;
     drainReadyCycle = 0;
+    physicalTailReadsRemaining = 0;
     requestedVlen = 0;
     operationRequestedVlen = 0;
     operationEffectiveVlen = 0;
@@ -223,6 +224,11 @@ TimingVeu::acceptRequest(const VeuRequest &request)
     responseData = request.csrRead ? readCsr(request.csrAddr) : 0;
     if (request.csrWrite && writeType == VeuWriteType::VectorStart) {
         startVectorOperation(request);
+        // Mikui VCU acknowledges the combined start read/write before the
+        // registered CSR read-data path reaches CBU.  The CPU therefore
+        // observes zero for the destination of a vector-start instruction,
+        // not the newly asserted status value.
+        responseData = 0;
     } else if (request.csrWrite) {
         writeCsr(request.csrAddr, unpackVeuOperand1(request.writeData),
                  writeType);
@@ -309,6 +315,15 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
             "unknown_start_bit" : operationInfo.name;
     activeTerminal = terminalBehavior.select(
         terminalOp, scalarEnabled, maskClassName(), operationChunkCount);
+    // Standalone c2 slide-down captures classify two extra VLU loads as
+    // terminal tail reads.  In the integrated Mikui CPU/VEU trace, those
+    // slots are not issued to SRAM; only the four scalar-address pulses
+    // after lock_finish are physically visible.
+    if (activeTerminal &&
+        operationInstruction == VeuInstruction::SlideDown &&
+        operationChunkCount == 2) {
+        activeTerminal->tailReads = 0;
+    }
     if (!operationInfo.supported && !activeTerminal) {
         ++illegalOperations;
         trace("illegal_operation", -1, VeuSource::None, 0, 0, nullptr, 0,
@@ -353,6 +368,54 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
             timing.executeII, timing.inputFifoDepth,
             timing.maxOutstandingReads, timing.vsuLatency,
             timing.lockStartDelayCycles, timing.finishCycles);
+        if (!activeTiming.matched &&
+            operationInstruction == VeuInstruction::SlideDown &&
+            scalarEnabled && operationChunkCount == 16) {
+            // The c8 terminal capture gives the Mikui slide-down VLU/VFU
+            // shape, but its fixed completion cycle and speculative tail
+            // loads do not apply to c16.  Reuse only the datapath parameters.
+            activeTiming.latency = 1;
+            activeTiming.initiationInterval = 1;
+            activeTiming.fifoDepth = 4;
+            activeTiming.maxOutstandingReads = 3;
+            activeTiming.vsuLatency = 1;
+            activeTiming.finishDrainCycles = 2;
+            activeTiming.profileId = "rtl_vslidedown_s_c8_datapath_c16";
+            activeTiming.timingSource = "rtl_sim_extrapolated";
+            activeTiming.evidenceId =
+                "integrated_vslidedown_scalar_2048_trace";
+            activeTiming.matched = true;
+        }
+        // The integrated Mikui matrix extends the measured c8 operations to
+        // c16.  For non-reduction operations the VLU/VFU scheduling knobs are
+        // unchanged; only the number of chunks grows.  Reuse the exact c8
+        // data-path calibration, but deliberately leave control completion
+        // data-driven until a c16 control row is measured.  The functional
+        // executor separately models the c16 reduction write suppression.
+        if (!activeTiming.matched && operationChunkCount == 16) {
+            auto extrapolated = timingProfile.select(
+                operationInfo.name, scalarEnabled,
+                maskClassName(), sourceSetName(), 8,
+                timing.executeLatency,
+                timing.executeII, timing.inputFifoDepth,
+                timing.maxOutstandingReads, timing.vsuLatency,
+                timing.lockStartDelayCycles, timing.finishCycles);
+            if (extrapolated.matched) {
+                extrapolated.profileId += "_extrapolated_c16";
+                extrapolated.timingSource = "rtl_sim_extrapolated";
+                extrapolated.evidenceId += ";integrated_c16_trace";
+                extrapolated.operationCycles = 0;
+                extrapolated.lockStartDelay = timing.lockStartDelayCycles;
+                // All integrated c16 captures retain lock for three edges
+                // after the final memory transaction.  This drain is outside
+                // the calibrated VFU schedule and does not delay status clear.
+                extrapolated.finishDrainCycles = 3;
+                extrapolated.controlTimingSource = "default";
+                extrapolated.controlEvidenceId =
+                    "builtin_veu_timing_config";
+                activeTiming = std::move(extrapolated);
+            }
+        }
         if (activeTiming.matched) {
             ++profileHits;
         } else {
@@ -378,6 +441,17 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
         ++defaultControlTimingUses;
     }
 
+    // The standalone Mikui timing table records the scalar c2 status edge
+    // at the VCU boundary.  Once the VCU is connected to the CPU, its
+    // registered CSR read path exposes that transition one model edge later.
+    // Keep the measured lock-finish cycle unchanged and move only the visible
+    // status-clear edge by reducing the clear-to-finish drain interval.
+    if (!activeTerminal && scalarEnabled && operationChunkCount == 2 &&
+        activeTiming.controlTimingSource == "rtl_sim" &&
+        activeTiming.finishDrainCycles != 0) {
+        --activeTiming.finishDrainCycles;
+    }
+
     operationId = nextOperationId++;
     operationStartCycle = modelCycle;
     lockStartCycle = modelCycle + activeTiming.lockStartDelay;
@@ -396,10 +470,10 @@ TimingVeu::startVectorOperation(const VeuRequest &request)
     vfuAcceptCycles.assign(executeChunkLimit(), 0);
     nextReadChunk = {};
     outstandingBySource = {};
-    // The RTL multiply-family load selector starts with operand 2.  Three
-    // source MAC/MSUB then rotate source2 -> source3 -> source1.
+    // Mikui VMUL starts with operand 1, like the ordinary two-source ALU
+    // operations.  Only the unsupported three-source MAC/MSUB protocol uses
+    // the legacy source2 -> source3 -> source1 rotation.
     readRoundRobin =
-        operationInstruction == VeuInstruction::Multiply ||
         operationInstruction == VeuInstruction::MultiplyAdd ||
         operationInstruction == VeuInstruction::MultiplySubtract ? 1 : 0;
     for (auto &fifo : inputFifos) fifo.clear();
@@ -662,7 +736,8 @@ TimingVeu::acceptVfuInput()
         extra.result.outputChunk = extraChunk;
         extra.advancesCsr = false;
         extra.readyCycle =
-            vfuAcceptCycles[extraChunk] + activeTiming.latency + 1;
+            vfuAcceptCycles[extraChunk] + activeTiming.latency +
+            (operationInstruction == VeuInstruction::SlideDown ? 2 : 1);
         vfuPipeline.push_back(std::move(extra));
     }
     ++vfuAccepted;
@@ -904,7 +979,8 @@ TimingVeu::completeChunk(uint32_t chunk)
 bool
 TimingVeu::quiescent() const
 {
-    if (!outstanding.empty() || !pendingResponses.empty() || retryRequest ||
+    if (physicalTailReadsRemaining != 0 || !outstanding.empty() ||
+        !pendingResponses.empty() || retryRequest ||
         !vfuPipeline.empty() || !vsuPipeline.empty() || !storeQueue.empty()) {
         return false;
     }
@@ -969,6 +1045,14 @@ TimingVeu::completeOperation()
     currentState = State::Idle;
     ++completedOperations;
 
+    // Mikui's scalar VLU leaves its physical SRAM request output asserted for
+    // four edges, starting on lock_finish.  The address is the scalar operand,
+    // not a valid vector source address.  Preserve this observable RTL tail as
+    // read-only traffic while keeping it outside the functional data path.
+    if (timing.mikuiPhysicalTail && (operationConfig & 0x800u) != 0) {
+        physicalTailReadsRemaining = 4;
+    }
+
     if (activeTerminal) {
         // Keep accepted external requests in `outstanding` until their SRAM
         // responses arrive, but retire all purely internal artifacts.  This
@@ -981,6 +1065,29 @@ TimingVeu::completeOperation()
         storeQueue.clear();
         retryRequest.reset();
     }
+}
+
+void
+TimingVeu::issuePhysicalTailRead()
+{
+    if (physicalTailReadsRemaining == 0 || !memoryRequest) {
+        return;
+    }
+    TimingVeuMemoryRequest request;
+    request.transactionId = nextTransactionId++;
+    request.operationId = operationId;
+    request.chunkIndex = operationChunkCount +
+        (4 - physicalTailReadsRemaining);
+    request.source = VeuSource::Source2;
+    request.address = operationScalar;
+    request.isWrite = false;
+    request.physicalOnly = true;
+    if (!memoryRequest(request)) {
+        return;
+    }
+    trace("physical_scalar_tail_read", request.chunkIndex, request.source,
+          request.transactionId, request.address);
+    --physicalTailReadsRemaining;
 }
 
 void
@@ -1045,6 +1152,7 @@ TimingVeu::clock(const VeuRequest &request)
     if (statusBusy) ++statusActiveCycles;
     if (lockActive) ++lockActiveCycles;
     advanceOperation();
+    issuePhysicalTailRead();
 
     switch (controlState) {
       case ControlState::Idle:

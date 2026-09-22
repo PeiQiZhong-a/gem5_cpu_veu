@@ -37,6 +37,7 @@ struct DutKuiVeuRequest
     bool isWrite = false;
     uint32_t writeStrobe = 0;
     VeuVector data = {};
+    bool physicalOnly = false;
 };
 
 struct DutKuiIbusResponse

@@ -260,7 +260,9 @@ PipelineCore::reset()
     redirect_pc = false;
     redirect_target = 0;
     flush_idex = false;
-        
+    decode_redirect_pending = false;
+    decode_redirect_target = 0;
+
 
     ifid_cur = {};
     ifid_next = {};
@@ -885,6 +887,13 @@ PipelineCore::evaluateOneCycle()
     redirect_pc = false;
     redirect_target = 0;
     flush_idex = false;
+    if (decode_redirect_pending) {
+        redirect_pc = true;
+        redirect_target = decode_redirect_target;
+        flush_idex = true;
+        decode_redirect_pending = false;
+        decode_redirect_target = 0;
+    }
     veu_stall = false;
     sau_stall = false;
     mdu_stall = false;
@@ -938,6 +947,11 @@ PipelineCore::evaluateOneCycle()
         stageID();
         stageIF();
     } else {
+        // SCU freezes IF/ID and ID/EX for a long-latency execute operation,
+        // but PFU/IBU still evaluates its independent prefetch interface.
+        // stageIF() marks instruction delivery stalled while allowing a
+        // registered FIFO-space decision to issue an IBus request.
+        stageIF();
         ++stall_count;
     }
 

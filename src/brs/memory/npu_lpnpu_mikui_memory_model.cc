@@ -30,6 +30,7 @@ NpuLpnpuMikuiMemoryModel::reset()
     acceptedDbus = {};
     acceptedDmaDbus = {};
     acceptedVeu = {};
+    dmaIbusResponses.clear();
     pendingVeuRequests.clear();
     issuedVeuRequests.clear();
     previousVeuLockActive = false;
@@ -100,7 +101,9 @@ NpuLpnpuMikuiMemoryModel::acceptVeu(
     }
     acceptedVeu = request;
     veuAcceptedThisCycle = true;
-    ++veuOutstanding;
+    if (!request.physicalOnly) {
+        ++veuOutstanding;
+    }
     return true;
 }
 
@@ -108,16 +111,24 @@ Sram128Request
 NpuLpnpuMikuiMemoryModel::currentVeuBeat() const
 {
     Sram128Request beat;
-    if (pendingVeuRequests.empty()) {
+    const DutKuiVeuRequest *request = nullptr;
+    if (!pendingVeuRequests.empty()) {
+        request = &pendingVeuRequests.front();
+    } else if (veuAcceptedThisCycle) {
+        // The accepted request is pushed into the queue and presented to
+        // the crossbar on this same edge. Expose that physical beat to the
+        // pre-edge trace without changing the clocked datapath.
+        request = &acceptedVeu;
+    }
+    if (request == nullptr) {
         return beat;
     }
-    const DutKuiVeuRequest &request = pendingVeuRequests.front();
     beat.valid = true;
-    beat.address = request.address;
-    beat.writeStrobe = request.isWrite ?
-        static_cast<uint16_t>(request.writeStrobe) : 0;
+    beat.address = request->address;
+    beat.writeStrobe = request->isWrite ?
+        static_cast<uint16_t>(request->writeStrobe) : 0;
     for (uint8_t byte = 0; byte < Sram128Bytes; ++byte) {
-        beat.writeData[byte] = request.data[byte];
+        beat.writeData[byte] = request->data[byte];
     }
     return beat;
 }
@@ -128,21 +139,33 @@ NpuLpnpuMikuiMemoryModel::advance(
 {
     DutKuiMemoryOutputs outputs;
 
+    if (config.dmaTopology && !dmaIbusResponses.empty()) {
+        outputs.ibus = dmaIbusResponses.front();
+        dmaIbusResponses.pop_front();
+        ibusOutstanding = false;
+    }
+
     // sram_tcdm registers ready and read data directly from the current IBus
     // request. They become visible after this edge and are sampled by the CPU
     // on the following edge.
     if (ibusAcceptedThisCycle) {
-        outputs.ibus.valid = true;
+        DutKuiIbusResponse response;
+        response.valid = true;
         const uint32_t base = acceptedIbus.address & ~uint32_t{0x0f};
         if (instructionMapped(base)) {
             for (uint8_t word = 0; word < 4; ++word) {
-                outputs.ibus.readData[word] = readWord(base + word * 4);
+                response.readData[word] = readWord(base + word * 4);
             }
         }
-        ibusOutstanding = false;
+        if (config.dmaTopology) {
+            dmaIbusResponses.push_back(response);
+        } else {
+            outputs.ibus = response;
+            ibusOutstanding = false;
+        }
     }
 
-    if (veuAcceptedThisCycle) {
+    if (veuAcceptedThisCycle && !acceptedVeu.physicalOnly) {
         pendingVeuRequests.push_back(acceptedVeu);
     }
 

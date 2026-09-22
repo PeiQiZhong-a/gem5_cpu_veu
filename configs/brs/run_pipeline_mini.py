@@ -5,6 +5,8 @@ from m5.objects import *
 from m5.objects import PipelineMiniCPU
 from m5.util.convert import toMemorySize
 
+from mikui_modules import attach_modules, module_names, resolve_modules
+
 
 parser = argparse.ArgumentParser(
     description="Run BRS PipelineMiniCPU with selectable gem5 memory platform."
@@ -96,6 +98,11 @@ parser.add_argument(
     help="Treat a retired EBREAK as the normal workload termination point.",
 )
 parser.add_argument(
+    "--terminate-on-done-store",
+    action="store_true",
+    help="Stop when the CPU writes DONE (bit 1) to 0x4001e004.",
+)
+parser.add_argument(
     "--veu-model",
     choices=["fake", "timing"],
     default="fake",
@@ -150,6 +157,16 @@ parser.add_argument(
         "DMEM text image: rtl-dut-kui-tb uses one 32-bit $readmemh word "
         "per token; spirit-like uses one byte per token."
     ),
+)
+parser.add_argument(
+    "--enable-mikui-module", action="append", default=[],
+    choices=module_names(), metavar="MODULE",
+    help="Enable an optional Mikui module (repeatable).",
+)
+parser.add_argument(
+    "--disable-mikui-module", action="append", default=[],
+    choices=module_names(), metavar="MODULE",
+    help="Disable a default Mikui module where the topology permits it.",
 )
 parser.add_argument(
     "--dma-input-image",
@@ -234,6 +251,12 @@ mikui_tb_mode = (
     args.mem_system == "rtl-npu-lpnpu-mikui" or mikui_dma_tb_mode)
 mikui_three_bank_mode = mikui_dma_tb_mode
 rtl_tb_mode = dut_kui_tb_mode or mikui_tb_mode
+try:
+    mikui_modules = resolve_modules(
+        args.mem_system, args.enable_mikui_module, args.disable_mikui_module)
+except ValueError as error:
+    parser.error(str(error))
+mikui_sau_enabled = any(module.name == "sau" for module in mikui_modules)
 
 max_cycles = args.max_cycles
 if max_cycles is None:
@@ -323,16 +346,7 @@ system.clk_domain = SrcClockDomain()
 system.clk_domain.clock = args.clock_frequency
 system.clk_domain.voltage_domain = VoltageDomain()
 
-if mikui_tb_mode:
-    system.sau_clk_domain = SrcClockDomain()
-    system.sau_clk_domain.clock = (
-        args.sau_clock_frequency or args.clock_frequency)
-    system.sau_clk_domain.voltage_domain = VoltageDomain()
-    system.mikui_sau = MikuiSau(
-        clk_domain=system.sau_clk_domain,
-        cycle_trace_file=args.sau_cycle_trace,
-        output_trace_file=args.sau_output_trace,
-    )
+attach_modules(mikui_modules, "before_cpu", system, args)
 
 system.mem_mode = "timing"
 
@@ -421,6 +435,7 @@ system.pipeline = PipelineMiniCPU(
     cycle_trace_compact=args.cycle_trace_compact,
     console_cycle_trace=not args.quiet_cycle_console,
     ebreak_terminates=args.terminate_on_ebreak,
+    done_store_terminates=args.terminate_on_done_store,
     veu_model=args.veu_model,
     veu_input_fifo_depth=args.veu_input_fifo_depth,
     veu_execute_latency=args.veu_execute_latency,
@@ -463,8 +478,7 @@ system.pipeline = PipelineMiniCPU(
         args.rtl_data_real_bank_count if dut_kui_tb_mode else 1),
 )
 system.pipeline.clk_domain = system.clk_domain
-if mikui_tb_mode:
-    system.pipeline.mikui_sau = system.mikui_sau
+attach_modules(mikui_modules, "after_cpu", system, args)
 
 if args.mem_system == "ddr3":
     system.membus = SystemXBar()
@@ -542,36 +556,7 @@ elif rtl_tb_mode:
     system.imem_stub = SimpleMemory(range=system.mem_ranges[0])
     system.imem_stub.port = system.membus.mem_side_ports
     if mikui_tb_mode:
-        if mikui_dma_tb_mode:
-            system.mikui_dma = MikuiDecompressDma(
-                pio_addr=0x40019C00,
-                pio_size=0x100,
-                pio_latency=args.mem_latency,
-                max_input_bytes=0x1000,
-                max_output_bytes=0x1000,
-            )
-            system.mikui_dma.pio = system.membus.mem_side_ports
-            system.mikui_dma.irq = system.pipeline.dma_irq
-
-            # The independent Mikui DMA remains a 32-bit, one-word-at-a-time
-            # AHB-style master. DDR4 and the embedded three-bank SRAM are the
-            # only slaves on its private data fabric.
-            system.dma_bus = NoncoherentXBar(
-                frontend_latency=0,
-                forward_latency=0,
-                response_latency=0,
-                width=4,
-            )
-            system.mikui_dma.dma = system.dma_bus.cpu_side_ports
-            system.pipeline.dma_sram_port = system.dma_bus.mem_side_ports
-
-            system.dma_ddr4_ctrl = MemCtrl()
-            system.dma_ddr4_ctrl.dram = DDR4_2400_8x8(
-                range=system.mem_ranges[5],
-                image_file=args.dma_input_image,
-            )
-            system.dma_ddr4_ctrl.port = system.dma_bus.mem_side_ports
-        else:
+        if not mikui_dma_tb_mode:
             system.dmem_stub0 = SimpleMemory(range=system.mem_ranges[1])
             system.dmem_stub0.port = system.membus.mem_side_ports
             system.dmem_stub1 = SimpleMemory(range=system.mem_ranges[2])
@@ -627,6 +612,8 @@ elif args.mem_system == "spirit-like":
     )
     system.dmem.port = system.dbus.mem_side_ports
 
+attach_modules(mikui_modules, "after_memory", system, args)
+
 root = Root(full_system=False, system=system)
 
 m5.instantiate()
@@ -639,8 +626,10 @@ print("Timeout cycles: {} ({})".format(
     "total clock edges including reset" if rtl_tb_mode else "active CPU cycles",
 ))
 print("VEU model: {}".format(args.veu_model))
-print("SAU model: {}".format("mikui" if mikui_tb_mode else "stub"))
-if mikui_tb_mode:
+print("SAU model: {}".format("mikui" if mikui_sau_enabled else "stub"))
+print("Mikui modules: {}".format(
+    ", ".join(module.name for module in mikui_modules) or "<none>"))
+if mikui_sau_enabled:
     print("SAU clock frequency: {}".format(
         args.sau_clock_frequency or args.clock_frequency))
     print("SAU cycle trace: {}".format(args.sau_cycle_trace or "<disabled>"))

@@ -34,6 +34,7 @@ struct VeuTimingConfig
     uint32_t startupCycles = 4;
     uint32_t lockStartDelayCycles = 1;
     uint32_t finishCycles = 0;
+    bool mikuiPhysicalTail = false;
     std::string timingProfilePath;
     std::string terminalBehaviorPath;
     std::string cycleTracePath;
@@ -49,6 +50,7 @@ struct TimingVeuMemoryRequest
     bool isWrite = false;
     uint32_t writeStrobe = VeuFullWriteMask;
     VeuVector data = {};
+    bool physicalOnly = false;
 };
 
 class TimingVeu : public VeuEndpoint
@@ -236,6 +238,7 @@ class TimingVeu : public VeuEndpoint
     void completeChunk(uint32_t chunk);
     void enterDrainingIfDone();
     void completeOperation();
+    void issuePhysicalTailRead();
     bool allSourcesReady(uint32_t chunk) const;
     SourceChunk takeSourceChunk(VeuSource source, uint32_t chunk);
     uint32_t sourceAddress(VeuSource source, uint32_t chunk) const;
@@ -278,6 +281,7 @@ class TimingVeu : public VeuEndpoint
     uint64_t operationFinishTargetCycle = 0;
     uint64_t nextVfuAcceptCycle = 0;
     uint64_t drainReadyCycle = 0;
+    uint32_t physicalTailReadsRemaining = 0;
     uint32_t requestedVlen = 0;
     uint32_t operationRequestedVlen = 0;
     uint32_t operationEffectiveVlen = 0;

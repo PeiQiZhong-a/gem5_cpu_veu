@@ -183,6 +183,7 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
       dataRequestorId(p.system->getRequestorId(this, "data")),
       veuRequestorId(p.system->getRequestorId(this, "veu")),
       tbMemoryEnabled(p.tb_memory_enabled),
+      doneStoreTerminates(p.done_store_terminates),
       tbMemoryKind(p.tb_memory_kind),
       tbImemImageFile(p.tb_imem_image_file),
       tbDmemImageFile(p.tb_dmem_image_file),
@@ -216,6 +217,8 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
 {
     fatal_if(frontendBurstBytes != 16,
              "PipelineMiniCPU frontend currently models 16-byte RV-NEW bursts");
+    fatal_if(doneStoreTerminates && !tbMemoryEnabled,
+             "DONE-store termination requires a testbench memory model");
     if (tbMemoryEnabled && tbMemoryKind == "dut-kui") {
         fatal_if(p.tb_data_bank_count == 0 || p.tb_data_bank_count > 4,
                  "dut_kui data bank count must be in the range 1..4");
@@ -258,6 +261,7 @@ PipelineMiniCPU::PipelineMiniCPU(const PipelineMiniCPUParams &p)
     veuConfig.startupCycles = p.veu_startup_cycles;
     veuConfig.lockStartDelayCycles = p.veu_lock_start_delay_cycles;
     veuConfig.finishCycles = p.veu_finish_cycles;
+    veuConfig.mikuiPhysicalTail = npuLpnpuMikuiMemoryEnabled();
     veuConfig.timingProfilePath = p.veu_timing_profile;
     veuConfig.terminalBehaviorPath = p.veu_terminal_behavior;
     veuConfig.cycleTracePath = p.veu_cycle_trace;
@@ -946,6 +950,7 @@ PipelineMiniCPU::requestVeuTiming(
         tbRequest.isWrite = request.isWrite;
         tbRequest.writeStrobe = request.writeStrobe;
         tbRequest.data = request.data;
+        tbRequest.physicalOnly = request.physicalOnly;
         const bool accepted = npuLpnpuMikuiMemoryEnabled() ?
             npuLpnpuMikuiMemory.acceptVeu(tbRequest) :
             dutKuiMemory.acceptVeu(tbRequest);
@@ -1264,7 +1269,22 @@ PipelineMiniCPU::processDutKuiMemoryCycle(
             configuredSoftwareIrq,
             configuredTimerIrq);
     }
+    // The Mikui instruction bus response is a registered input to the CPU
+    // and is sampled at this active edge.  The data/VEU completion paths in
+    // this memory model, however, were calibrated as end-of-cycle events;
+    // moving those paths here removes one cycle from every returned beat.
+    if (mikui && outputs.ibus.valid) {
+        completeDutKuiFetch(outputs.ibus);
+    }
     core.evaluateOneCycle();
+    const brs::DutKuiDbusRequest &dbus = mikui ?
+        npuLpnpuMikuiMemory.currentDbusRequest() :
+        dutKuiMemory.currentDbusRequest();
+    doneStoreAcceptedThisCycle = (mikui ?
+        npuLpnpuMikuiMemory.dbusAcceptedThisTick() :
+        dutKuiMemory.dbusAcceptedThisTick()) &&
+        dbus.isWrite() && dbus.address == 0x4001e004u &&
+        (dbus.writeData & 0x2u) != 0;
     writeDutKuiCycleTrace(sau, outputs);
     if (mikui) {
         npuLpnpuMikuiMemory.clockEdge(
@@ -1273,9 +1293,10 @@ PipelineMiniCPU::processDutKuiMemoryCycle(
         dutKuiMemory.clockEdge(core.timingVeuOwnsSharedDmem(), sau);
     }
 
-    // Commit responses sampled from the old output pins. They affect the next
-    // evaluate phase, independent of C++ call order within this edge.
-    if (outputs.ibus.valid) {
+    // Preserve the calibrated end-of-cycle ordering for the legacy DutKui
+    // model and for Mikui data/VEU completions.  Only the Mikui instruction
+    // response was consumed before evaluate above.
+    if (!mikui && outputs.ibus.valid) {
         completeDutKuiFetch(outputs.ibus);
     }
     if (outputs.dbus.valid) {
@@ -1316,6 +1337,9 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
     const brs::DutKuiVeuRequest &veu = mikui ?
         npuLpnpuMikuiMemory.currentVeuRequest() :
         dutKuiMemory.currentVeuRequest();
+    const brs::Sram128Request veuBeat = mikui ?
+        npuLpnpuMikuiMemory.currentVeuSramRequest() :
+        brs::Sram128Request{};
     const unsigned converterState = mikui ?
         static_cast<unsigned>(npuLpnpuMikuiMemory.converterState()) :
         static_cast<unsigned>(dutKuiMemory.converterState());
@@ -1331,6 +1355,13 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
     const bool veuAccepted = mikui ?
         npuLpnpuMikuiMemory.veuAcceptedThisTick() :
         dutKuiMemory.veuAcceptedThisTick();
+    const bool dbusWrite = dbusAccepted && dbus.isWrite();
+    const bool dbusRead = dbusAccepted && !dbus.isWrite();
+    const bool statusWrite = dbusWrite && dbus.address == 0x4001e004u;
+    const bool done = statusWrite && (dbus.writeData & 0x2u);
+    const bool error = statusWrite && (dbus.writeData & 0x4u);
+    const bool veuLockActive = core.timingVeuOwnsSharedDmem();
+    const uint64_t traceEdge = core.getCycle() + 1;
     const bool dmaEnabled = dmaPioEnabled;
     const unsigned stallMask = core.spiritExecuteStalled() ? 0x7u :
         ((core.stall_pc || core.stall_ifid) ? 0x3u : 0u);
@@ -1400,13 +1431,14 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
         return;
     }
 
-    cycleTrace << "edge=" << elapsedClockEdges
+    cycleTrace << "edge=" << traceEdge
         << " reset=0"
-        << " phase=evaluate"
+        << " phase=posedge-pre-nba"
+        << " source=gem5"
         << " platform=" << (dmaEnabled ?
             "rtl-npu-lpnpu-mikui-decompress-dma" :
             (mikui ? "rtl-npu-lpnpu-mikui" : "rtl-dut-kui-tb"))
-        << " cpu_cycle=" << core.getCycle()
+        << " cpu_cycle=" << traceEdge
         << " cpu_pc=0x" << std::hex << core.getPC()
         << " converter_state_pre=" << std::dec
         << converterState
@@ -1414,26 +1446,48 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
         << crossbarState
         << " ibus_req=" << ibusAccepted
         << " ibus_addr=0x" << std::hex << ibus.address
+        << " ibus_re=" << std::dec << ibusAccepted
         << " ibus_resp=" << std::dec << outputs.ibus.valid
+        << " ibus_r0=0x" << std::hex << outputs.ibus.readData[0]
+        << " ibus_r1=0x" << outputs.ibus.readData[1]
+        << " ibus_r2=0x" << outputs.ibus.readData[2]
+        << " ibus_r3=0x" << outputs.ibus.readData[3]
         << " dbus_req=" << dbusAccepted
         << " dbus_addr=0x" << std::hex << dbus.address
+        << " dbus_re=" << std::dec << dbusRead
+        << " dbus_we=" << dbusWrite
+        << std::hex
         << " dbus_wstrb=0x" << static_cast<unsigned>(dbus.writeStrobe)
         << " dbus_wdata=0x" << dbus.writeData
         << " dbus_resp=" << std::dec << outputs.dbus.valid
         << " dbus_rdata=0x" << std::hex << outputs.dbus.readData
-        << " veu_req=" << std::dec << veuAccepted
-        << " veu_addr=0x" << std::hex << veu.address
-        << " veu_write=" << std::dec << veu.isWrite
+        << " veu_req=" << std::dec << (mikui ? veuBeat.valid : veuAccepted)
+        << " veu_addr=0x" << std::hex
+        << (mikui ? veuBeat.address : veu.address)
+        << " veu_write=" << std::dec
+        << (mikui ? veuBeat.isWrite() : veu.isWrite)
+        << " veu_we=" << (mikui ? veuBeat.isWrite() : veu.isWrite)
+        << " veu_wstrb=0x" << std::hex
+        << (mikui ? veuBeat.writeStrobe :
+            static_cast<uint16_t>(veu.writeStrobe & 0xffffu))
+        << " veu_wdata=0x" << (mikui ?
+            sramWriteDataHex(veuBeat) : std::string("0"))
+        << " veu_rdata=0x" << (mikui ?
+            sramDataHex(outputs.veuRead.readData) : std::string("0"))
+        << " veu_lock_start=" << std::dec << (mikui &&
+            npuLpnpuMikuiMemory.veuCrossbarStartThisTick(veuLockActive))
+        << " veu_lock_finish=" << (mikui &&
+            npuLpnpuMikuiMemory.veuCrossbarDoneThisTick(veuLockActive))
         << " veu_rresp=" << outputs.veuRead.valid
         << " veu_wresp=" << outputs.veuWrite.valid
         << " hc_req=" << hcRequest.hasTransaction()
         << " hc_addr=0x" << std::hex << hcRequest.csrAddr
         << " hc_re=" << std::dec << hcRequest.csrRead
         << " hc_we=" << hcRequest.csrWrite
-        << " hc_write_type="
+        << " hc_write_type=0x" << std::hex
         << static_cast<unsigned>(hcRequest.writeType)
         << " hc_wdata=0x" << std::hex << hcRequest.writeData
-        << " hc_ve_start=0x" << hcRequest.veStart
+        << " hc_vestart=0x" << hcRequest.veStart
         << " hc_target=" << static_cast<unsigned>(core.getHcTarget())
         << " hc_valid=" << hcResponse.valid
         << " hc_rdata=0x" << std::hex << hcResponse.readData
@@ -1475,6 +1529,18 @@ PipelineMiniCPU::writeDutKuiCycleTrace(
         << " wb_rd=" << static_cast<unsigned>(retire.rd)
         << " wb_data=0x" << std::hex << retire.data
         << " stall_mask=0x" << stallMask
+        << " redirect=" << std::dec << core.redirect_pc
+        << " redirect_target=0x" << std::hex << core.redirect_target
+        << " grant=" << std::dec << hcResponse.valid
+        << " set_btb_off=1"
+        << " btb_match=0"
+        << " predict_failed=" << core.redirect_pc
+        << " done=" << done
+        << " done_value=0x" << std::hex
+        << (done ? dbus.writeData : 0u)
+        << " error=" << std::dec << error
+        << " error_value=0x" << std::hex
+        << (error ? dbus.writeData : 0u)
         << " stall_pc=" << std::dec << core.stall_pc
         << " stall_ifid=" << core.stall_ifid
         << " bubble_idex=" << core.bubble_idex
@@ -1503,15 +1569,23 @@ PipelineMiniCPU::startup()
             fatal_if(!cycleTrace.is_open(),
                      "Failed to open cycle trace file: %s",
                      cycleTraceFile);
-            cycleTrace << "# brs-cycle-trace-v2 source=gem5 "
-                       << "sampling=evaluate-before-clock "
-                       << "platform=" << (dmaPioEnabled ?
-                           "rtl-npu-lpnpu-mikui-decompress-dma" :
-                           (mikui ? "rtl-npu-lpnpu-mikui" :
-                            "rtl-dut-kui-tb"))
-                       << " reset_edges=" << resetCyclesRemaining
-                       << " trace_mode="
-                       << (cycleTraceCompact ? "compact" : "full") << '\n';
+            const char *platform = dmaPioEnabled ?
+                "rtl-npu-lpnpu-mikui-decompress-dma" :
+                (mikui ? "rtl-npu-lpnpu-mikui" : "rtl-dut-kui-tb");
+            if (cycleTraceCompact) {
+                cycleTrace << "# brs-cycle-trace-v2 source=gem5 "
+                           << "sampling=evaluate-before-clock "
+                           << "platform=" << platform
+                           << " reset_edges=" << resetCyclesRemaining
+                           << " trace_mode=compact\n";
+            } else {
+                cycleTrace << "# brs-cycle-trace-v3 source=gem5 "
+                           << "sampling=posedge-pre-nba "
+                           << "platform=" << platform
+                           << " predictor_present=0 btb_enabled=0 "
+                           << "reset_edges_excluded="
+                           << resetCyclesRemaining << '\n';
+            }
             cycleTrace.flush();
         }
         if (!tbImemImageFile.empty()) {
@@ -1554,7 +1628,7 @@ PipelineMiniCPU::processTick()
     // The first active CPU edge follows the configured reset interval.
     if (resetCyclesRemaining > 0) {
         --resetCyclesRemaining;
-        if (cycleTrace.is_open()) {
+        if (cycleTrace.is_open() && cycleTraceCompact) {
             cycleTrace << "edge=" << elapsedClockEdges
                        << " reset=1 cpu_cycle=0\n";
             cycleTrace.flush();
@@ -1668,6 +1742,14 @@ PipelineMiniCPU::processTick()
         << " ibusReq=" << core.getIbusReqCount()
         << " align=" << core.getAlignedInstrCount()
         << std::endl;
+    }
+
+    if (doneStoreTerminates && doneStoreAcceptedThisCycle) {
+        if (cycleTrace.is_open()) {
+            cycleTrace.flush();
+        }
+        exitSimLoop("PipelineMiniCPU observed testbench DONE store");
+        return;
     }
 
     if (core.done() && pendingVeuReq == nullptr &&
